@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.25.0
-// @description  汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、Yahooニュース全文表示・専用UA・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応。
+// @version      6.26.0
+// @description  汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、Yahooニュース全文表示・専用UA・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -19,6 +19,70 @@
 // ==/UserScript==
 
 (()=>{"use strict";!function(){
+  if(!/^search\.yahoo\.co\.jp$/i.test(location.hostname))return;
+  if(!/^\/realtime(?:\/|$)/i.test(location.pathname))return;
+
+  const INSTANCE_KEY="__androidGenericYahooRealtimePromoV626";
+  if(window[INSTANCE_KEY])return;
+  window[INSTANCE_KEY]=true;
+
+  const STYLE_ID="generic-yahoo-realtime-promo-style-v626";
+  const SELECTOR='#mhd_banner_wrapper,[data-mhd="mhdBannerWrapper"]';
+  const ZERO_STYLES=[
+    ["display","none"],
+    ["height","0"],
+    ["min-height","0"],
+    ["max-height","0"],
+    ["margin","0"],
+    ["padding","0"],
+    ["border","0"],
+    ["overflow","hidden"],
+    ["visibility","hidden"]
+  ];
+
+  function installStyle(){
+    if(document.getElementById(STYLE_ID))return true;
+    const parent=document.head||document.documentElement;
+    if(!parent)return false;
+    const style=document.createElement("style");
+    style.id=STYLE_ID;
+    style.textContent=SELECTOR+"{display:none!important;height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;visibility:hidden!important}"+
+      '@media screen and (max-width:989px){#msthd,[data-mhd="mhd"].mhd,[data-mhd="spHeader"].mhdSpHeader{height:44px!important;min-height:44px!important;max-height:44px!important}}'+
+      '#msthd:has([data-mhd="spHeader"]),[data-mhd="mhd"].mhd:has([data-mhd="spHeader"]),[data-mhd="spHeader"].mhdSpHeader{height:44px!important;min-height:44px!important;max-height:44px!important}';
+    parent.appendChild(style);
+    return true;
+  }
+
+  function hidePromoFrame(){
+    installStyle();
+    for(const node of document.querySelectorAll(SELECTOR)){
+      if(!(node instanceof HTMLElement))continue;
+      for(const [name,value] of ZERO_STYLES)node.style.setProperty(name,value,"important");
+      node.dataset.genericYahooRealtimePromoV626="1";
+      node.setAttribute("aria-hidden","true");
+    }
+  }
+
+  let queued=false;
+  function schedule(){
+    if(queued)return;
+    queued=true;
+    queueMicrotask(()=>{
+      queued=false;
+      try{hidePromoFrame()}catch{}
+    });
+  }
+
+  try{
+    installStyle();
+    hidePromoFrame();
+    const observer=new MutationObserver(schedule);
+    observer.observe(document,{childList:true,subtree:true});
+    document.addEventListener("DOMContentLoaded",schedule,{once:true});
+    window.addEventListener("pageshow",schedule);
+    window.addEventListener("popstate",schedule);
+  }catch{}
+}();!function(){
   if(!/(^|\.)buzzap\.jp$/i.test(location.hostname))return;
 
   const INSTANCE_KEY="__androidGenericBuzzapPagerV624";
