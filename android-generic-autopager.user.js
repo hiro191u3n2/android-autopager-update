@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.26.0
+// @version      6.27.0
 // @description  汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、Yahooニュース全文表示・専用UA・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
@@ -27,7 +27,8 @@
   window[INSTANCE_KEY]=true;
 
   const STYLE_ID="generic-yahoo-realtime-promo-style-v626";
-  const SELECTOR='#mhd_banner_wrapper,[data-mhd="mhdBannerWrapper"]';
+  const SELECTOR='#mhd_banner_wrapper,[data-mhd="mhdBannerWrapper"],[data-mhd="mhd"] [data-mhd="spBanner"],[data-mhd="mhd"] .spBanner,#mhd_prem_header_sp,[data-mhd="spBanner__MhdPremHeaderSp"]';
+  const HEADER_SELECTOR='#msthd,[data-mhd="mhd"].mhd,[data-mhd="spHeader"].mhdSpHeader';
   const ZERO_STYLES=[
     ["display","none"],
     ["height","0"],
@@ -39,6 +40,11 @@
     ["overflow","hidden"],
     ["visibility","hidden"]
   ];
+  const HEADER_STYLES=[
+    ["height","44px"],
+    ["min-height","44px"],
+    ["max-height","44px"]
+  ];
 
   function installStyle(){
     if(document.getElementById(STYLE_ID))return true;
@@ -47,8 +53,9 @@
     const style=document.createElement("style");
     style.id=STYLE_ID;
     style.textContent=SELECTOR+"{display:none!important;height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;visibility:hidden!important}"+
-      '@media screen and (max-width:989px){#msthd,[data-mhd="mhd"].mhd,[data-mhd="spHeader"].mhdSpHeader{height:44px!important;min-height:44px!important;max-height:44px!important}}'+
-      '#msthd:has([data-mhd="spHeader"]),[data-mhd="mhd"].mhd:has([data-mhd="spHeader"]),[data-mhd="spHeader"].mhdSpHeader{height:44px!important;min-height:44px!important;max-height:44px!important}';
+      '[data-mhd="spHeader"].mhdSpHeader{height:44px!important;min-height:44px!important;max-height:44px!important}'+
+      '@media screen and (max-width:989px){#msthd,[data-mhd="mhd"].mhd{height:44px!important;min-height:44px!important;max-height:44px!important}}'+
+      '#msthd:has([data-mhd="spHeader"]),[data-mhd="mhd"].mhd:has([data-mhd="spHeader"]){height:44px!important;min-height:44px!important;max-height:44px!important}';
     parent.appendChild(style);
     return true;
   }
@@ -60,6 +67,14 @@
       for(const [name,value] of ZERO_STYLES)node.style.setProperty(name,value,"important");
       node.dataset.genericYahooRealtimePromoV626="1";
       node.setAttribute("aria-hidden","true");
+    }
+    const spHeader=document.querySelector('[data-mhd="spHeader"].mhdSpHeader');
+    if(!spHeader)return;
+    for(const node of document.querySelectorAll(HEADER_SELECTOR)){
+      if(!node||1!==node.nodeType)continue;
+      for(const [name,value] of HEADER_STYLES)node.style.setProperty(name,value,"important");
+      if(node.matches?.('[data-mhd="spHeader"].mhdSpHeader')&&!node.classList.contains("mhdSpHeader__noBanner"))node.classList.add("mhdSpHeader__noBanner");
+      if(node.matches?.('[data-mhd="mhd"].mhd')&&!node.classList.contains("mhd__noBanner"))node.classList.add("mhd__noBanner");
     }
   }
 
@@ -77,7 +92,7 @@
     installStyle();
     hidePromoFrame();
     const observer=new MutationObserver(schedule);
-    observer.observe(document,{childList:true,subtree:true});
+    observer.observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:["id","class","data-mhd"]});
     document.addEventListener("DOMContentLoaded",schedule,{once:true});
     window.addEventListener("pageshow",schedule);
     window.addEventListener("popstate",schedule);
