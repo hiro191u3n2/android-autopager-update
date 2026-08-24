@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.31.0
-// @description  汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、Yahooニュース全文表示・一覧限定UA・記事動画の端末UA保持と公式サムネ背景・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応。
+// @version      6.32.0
+// @description  汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -18,24 +18,97 @@
 // @connect      www.buzzap.jp
 // ==/UserScript==
 
-(()=>{"use strict";/* generic-yahoo-article-video-poster-v631 */(function yahooArticleVideoPosterV631Runtime() {
+(()=>{"use strict";/* generic-yahoo-article-edge-ua-v632 */(function yahooArticleUaV632Runtime() {
   if (window.top !== window.self) return;
   if (!/(^|\.)news\.yahoo\.co\.jp$/i.test(location.hostname)) return;
   if (!/^\/(?:articles|expert\/articles|feature|pickup)(?:\/|$)/i.test(location.pathname)) {
     return;
   }
 
-  const instanceKey = "__androidGenericYahooArticleVideoPosterV631";
+  const ua =
+    "Mozilla/5.0 (Linux; Android 10; Pixel 3 XL) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/88.0.4324.181 Mobile Safari/537.36 EdgA/46.1.2.5140";
+
+  function apply(targetUa, realm = window) {
+    const targetNavigator = realm.navigator;
+    const prototype = realm.Navigator?.prototype || Object.getPrototypeOf(targetNavigator);
+    const define = (target, key, getter) => {
+      if (!target) return false;
+      try {
+        Object.defineProperty(target, key, {
+          configurable: true,
+          enumerable: true,
+          get: getter,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    define(prototype, "userAgent", () => targetUa) ||
+      define(targetNavigator, "userAgent", () => targetUa);
+    define(prototype, "appVersion", () => targetUa.replace(/^Mozilla\//, "")) ||
+      define(targetNavigator, "appVersion", () => targetUa.replace(/^Mozilla\//, ""));
+    define(prototype, "vendor", () => "Google Inc.") ||
+      define(targetNavigator, "vendor", () => "Google Inc.");
+    define(prototype, "platform", () => "Linux armv8l") ||
+      define(targetNavigator, "platform", () => "Linux armv8l");
+  }
+
+  try {
+    apply(ua);
+  } catch {}
+  try {
+    if (typeof unsafeWindow === "object" && unsafeWindow && unsafeWindow !== window) {
+      apply(ua, unsafeWindow);
+    }
+  } catch {}
+  try {
+    const inject = () => {
+      try {
+        const script = document.createElement("script");
+        const parent = document.documentElement || document.head;
+        if (!parent) return false;
+        script.id = "generic-yahoo-article-edge-ua-v632";
+        script.textContent = `;(${apply.toString()})(${JSON.stringify(ua)});`;
+        parent.appendChild(script);
+        script.remove();
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    if (!inject()) {
+      const retry = () => {
+        if (inject()) document.removeEventListener("readystatechange", retry);
+      };
+      document.addEventListener("readystatechange", retry);
+      window.setTimeout(retry, 0);
+    }
+  } catch {}
+})();/* generic-yahoo-article-video-guard-v632 */(function yahooArticleVideoGuardV632Runtime() {
+  if (window.top !== window.self) return;
+  if (!/(^|\.)news\.yahoo\.co\.jp$/i.test(location.hostname)) return;
+  if (!/^\/(?:articles|expert\/articles|feature|pickup)(?:\/|$)/i.test(location.pathname)) {
+    return;
+  }
+
+  const instanceKey = "__androidGenericYahooArticleVideoGuardV632";
   if (window[instanceKey]) return;
   window[instanceKey] = true;
 
-  const posterMarker = "genericYahooArticleVideoPosterV631";
+  const slotMarker = "genericYahooArticleVideoSlotV632";
+  const overlayMarker = "genericYahooArticleVideoOverlayV632";
+  const readyMarker = "genericYahooArticleVideoReadyV632";
+  const overlaySelector = '[data-generic-yahoo-article-video-overlay-v632="1"]';
+  const playerScriptSelector = 'script[src*="/images/yvpub/player/js/player.js"]';
   let queued = false;
   let observer = null;
 
   function posterUrl() {
     const value = String(
       document.querySelector('meta[property="og:image"][content]')?.getAttribute("content") ||
+        document.querySelector('meta[name="twitter:image"][content]')?.getAttribute("content") ||
         "",
     ).trim();
     try {
@@ -46,24 +119,103 @@
     }
   }
 
-  function paint(node, poster) {
-    if (!(node instanceof HTMLElement) || node.dataset[posterMarker] === "1") return;
-    node.dataset[posterMarker] = "1";
+  function stylePoster(node, poster) {
     node.style.setProperty("background-color", "#111", "important");
-    node.style.setProperty("background-image", `url(${JSON.stringify(poster)})`, "important");
-    node.style.setProperty("background-position", "center", "important");
-    node.style.setProperty("background-repeat", "no-repeat", "important");
-    node.style.setProperty("background-size", "cover", "important");
+    if (poster) {
+      node.style.setProperty("background-image", `url(${JSON.stringify(poster)})`, "important");
+      node.style.setProperty("background-position", "center", "important");
+      node.style.setProperty("background-repeat", "no-repeat", "important");
+      node.style.setProperty("background-size", "cover", "important");
+    }
+  }
+
+  function overlayFor(slot) {
+    const overlay = slot.querySelector?.(overlaySelector);
+    return overlay instanceof HTMLElement ? overlay : null;
+  }
+
+  function ensureOverlay(slot, poster) {
+    if (!(slot instanceof HTMLElement)) return null;
+    slot.dataset[slotMarker] = "1";
+    slot.style.setProperty("position", "relative", "important");
+    stylePoster(slot, poster);
+    let overlay = overlayFor(slot);
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.dataset[overlayMarker] = "1";
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.style.setProperty("position", "absolute", "important");
+      overlay.style.setProperty("inset", "0", "important");
+      overlay.style.setProperty("z-index", "2147483646", "important");
+      overlay.style.setProperty("pointer-events", "none", "important");
+      stylePoster(overlay, poster);
+      slot.appendChild(overlay);
+    }
+    overlay.style.setProperty(
+      "display",
+      slot.dataset[readyMarker] === "1" ? "none" : "block",
+      "important",
+    );
+    return overlay;
+  }
+
+  function findSlot(node) {
+    let current = node instanceof HTMLElement ? node : null;
+    for (let depth = 0; current && depth < 8; depth += 1) {
+      if (current.querySelector?.(playerScriptSelector)) return current;
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function setReady(slot, ready) {
+    if (!(slot instanceof HTMLElement)) return;
+    slot.dataset[readyMarker] = ready ? "1" : "0";
+    const overlay = ready ? overlayFor(slot) : ensureOverlay(slot, posterUrl());
+    if (overlay) {
+      overlay.style.setProperty("display", ready ? "none" : "block", "important");
+    }
+  }
+
+  function onMediaReady(event) {
+    setReady(findSlot(event.target), true);
+  }
+
+  function onMediaError(event) {
+    setReady(findSlot(event.target), false);
+  }
+
+  function onPlayerMessage(event) {
+    if (event.origin !== "https://s.yimg.jp") return;
+    let payload = event.data;
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        return;
+      }
+    }
+    if (!payload || typeof payload !== "object") return;
+    const id = String(payload.id || "");
+    const name = String(payload.evt || "");
+    if (!id || !name) return;
+    const frame = document.getElementById(id);
+    const slot = findSlot(frame);
+    if (!slot) return;
+    if (/(?:loadedcontentdata|startvideo|timeupdate|play|playing|isplaying)$/i.test(name)) {
+      setReady(slot, true);
+    } else if (/error$/i.test(name)) {
+      setReady(slot, false);
+    }
   }
 
   function scan() {
     queued = false;
     const poster = posterUrl();
-    if (!poster) return;
     for (const script of document.querySelectorAll(
-      '.article_body script[src*="/images/yvpub/player/js/player.js"]',
+      `.article_body ${playerScriptSelector}`,
     )) {
-      paint(script.parentElement, poster);
+      ensureOverlay(script.parentElement, poster);
     }
   }
 
@@ -80,6 +232,18 @@
   }
 
   try {
+    for (const eventName of [
+      "yvpubLoadedcontentdata",
+      "yvpubStartVideo",
+      "yvpubTimeupdate",
+      "yvpubPlay",
+      "yvpubPlaying",
+      "yvpubIsPlaying",
+    ]) {
+      document.addEventListener(eventName, onMediaReady, true);
+    }
+    document.addEventListener("yvpubError", onMediaError, true);
+    window.addEventListener("message", onPlayerMessage, false);
     schedule();
     observer = new MutationObserver(schedule);
     observer.observe(document, { childList: true, subtree: true });
@@ -88,7 +252,7 @@
     window.setTimeout(() => {
       observer?.disconnect();
       observer = null;
-    }, 30000);
+    }, 120000);
   } catch {}
 })();!function(){
   if(window.top!==window.self)return;
