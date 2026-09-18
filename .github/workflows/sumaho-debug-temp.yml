@@ -10,17 +10,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Prepare Selenium
-        shell: bash
-        run: |
-          python3 -m pip install -q selenium
-          which google-chrome || true
-          which chromium || true
-          which chromedriver || true
-      - name: Test current public cleaner on live page
+        run: python3 -m pip install -q selenium
+      - name: Execute full public script on live SumahoDigest
         shell: bash
         run: |
           cat > /tmp/test.py <<'PY'
-          import re,time,urllib.request
+          import re,time,urllib.request,json
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
 
@@ -28,21 +23,8 @@ jobs:
               req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
               return urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
 
-          raw=fetch('https://raw.githubusercontent.com/hiro191u3n2/android-autopager-update/main/android-generic-autopager.user.js')
-          try:
-              pages=fetch('https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js')
-          except Exception as e:
-              pages='ERROR:'+repr(e)
-          def ver(s):
-              m=re.search(r'@version\s+([0-9.]+)',s)
-              return m.group(1) if m else 'none'
-          print('RAW_VERSION',ver(raw))
-          print('PAGES_VERSION',ver(pages))
-          print('RAW_HAS_V637', 'generic-sumahodigest-home-cleanup-v637' in raw)
-          print('PAGES_HAS_V637', 'generic-sumahodigest-home-cleanup-v637' in pages)
-
-          marker='/* generic-sumahodigest-home-cleanup-v637 */'
-          cleaner=raw[raw.index(marker):] if marker in raw else ''
+          script=fetch('https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js')
+          print('PUBLIC_VERSION', re.search(r'@version\s+([0-9.]+)',script).group(1))
 
           opt=Options()
           opt.add_argument('--headless=new')
@@ -53,32 +35,27 @@ jobs:
           d=webdriver.Chrome(options=opt)
           try:
               d.get('https://sumahodigest.com/')
-              time.sleep(2)
-              before=d.execute_script("""
-                const c=s=>String(s||'').replace(/[\\s\\u00a0\\u3000]+/g,'').trim();
-                const hs=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading]')];
-                return {
-                  ready:document.readyState,
-                  headings:hs.filter(x=>['Xperia・Sony','Pixel','Galaxy'].includes(c(x.textContent))).map(x=>({tag:x.tagName,cls:x.className,text:c(x.textContent),parent:x.parentElement?.className||''})),
-                  mores:[...document.querySelectorAll('a,button,[role=button],[role=link]')].filter(x=>/^もっと(?:見る|みる)$/.test(c(x.textContent))).map(x=>({cls:x.className,parent:x.parentElement?.className||'',href:x.href||''})),
-                  columns:[...document.querySelectorAll('#list-columns .list-column')].map(x=>({cls:x.className,text:c(x.querySelector('.list-title')?.textContent),links:x.querySelectorAll('a[href]').length,more:!!x.querySelector('.list-more-button')}))
-                };
-              """)
-              print('BEFORE',before)
-              d.execute_script(cleaner)
               time.sleep(1)
-              after=d.execute_script("""
+              d.execute_script("window.__gaErrors=[];window.addEventListener('error',e=>window.__gaErrors.push(String(e.error||e.message)));")
+              d.execute_script(script)
+              time.sleep(5)
+              result=d.execute_script("""
                 const c=s=>String(s||'').replace(/[\\s\\u00a0\\u3000]+/g,'').trim();
-                const hs=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading]')];
-                const visible=e=>!!e && getComputedStyle(e).display!=='none' && !e.closest('.generic-sumahodigest-home-segment-hidden-v637');
+                const vis=e=>!!e && getComputedStyle(e).display!=='none' && getComputedStyle(e).visibility!=='hidden';
+                const targets=[...document.querySelectorAll('h1.list-title')].filter(x=>['Xperia・Sony','Pixel','Galaxy'].includes(c(x.textContent)));
                 return {
-                  hiddenCount:document.querySelectorAll('.generic-sumahodigest-home-segment-hidden-v637').length,
-                  visibleTargets:hs.filter(x=>['Xperia・Sony','Pixel','Galaxy'].includes(c(x.textContent)) && visible(x)).map(x=>c(x.textContent)),
-                  visibleMore:[...document.querySelectorAll('a.list-more-button')].filter(visible).map(x=>x.href),
-                  htmlClass:document.documentElement.className
+                  errors:window.__gaErrors||[],
+                  hidden637:document.querySelectorAll('.generic-sumahodigest-home-segment-hidden-v637').length,
+                  targetCount:targets.length,
+                  visibleTargets:targets.filter(vis).map(x=>c(x.textContent)),
+                  visibleMore:[...document.querySelectorAll('a.list-more-button')].filter(vis).map(x=>x.href),
+                  pagerPages:document.querySelectorAll('.generic-autopager-page').length,
+                  sentinel:!!document.querySelector('#generic-autopager-sentinel'),
+                  mainText:(document.querySelector('#main')?.innerText||'').slice(-800),
+                  status:document.querySelector('#generic-autopager-status-v2')?.textContent||'',
                 };
               """)
-              print('AFTER',after)
+              print('FULL_RESULT',json.dumps(result,ensure_ascii=False))
           finally:
               d.quit()
           PY
