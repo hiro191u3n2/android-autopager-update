@@ -1,0 +1,42 @@
+name: Sumaho debug temp
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/workflows/sumaho-debug-temp.yml"
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Fetch live homepage
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --max-time 30 \
+            -A 'Mozilla/5.0 (Linux; Android 16; SM-S948Q) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36' \
+            -H 'Accept-Language: ja-JP,ja;q=0.9' \
+            https://sumahodigest.com/ -o home.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('home.html').read_text(errors='replace')
+          s=s.replace('><','>\n<')
+          Path('pretty.html').write_text(s)
+          print('bytes=',len(s))
+          PY
+      - name: Show relevant live markup
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== H2 headings ==='
+          grep -n -E '<h[1-6][^>]*>.*(新着記事|Xperia・Sony|Pixel|Galaxy)' pretty.html || true
+          echo '=== More links ==='
+          grep -n -E 'もっと(見る|みる)' pretty.html | head -30 || true
+          echo '=== Xperia contexts ==='
+          grep -n -B 12 -A 30 'Xperia・Sony' pretty.html | tail -180 || true
+          echo '=== Pixel contexts ==='
+          grep -n -B 12 -A 30 '>Pixel<' pretty.html | tail -140 || true
+          echo '=== Galaxy contexts ==='
+          grep -n -B 12 -A 30 '>Galaxy<' pretty.html | tail -140 || true
+          echo '=== next/pagination ==='
+          grep -n -E 'rel=.next|pagination|page-numbers|次のページ|次へ' pretty.html | tail -80 || true
