@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.38.0
-// @description  汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応。
+// @version      6.39.0
+// @description  汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -17,6 +17,104 @@
 // @connect      buzzap.jp
 // @connect      www.buzzap.jp
 // ==/UserScript==
+
+/* generic-buzzap-followbox-prehide-v639 */
+(() => {
+  "use strict";
+  if (!/(^|\.)buzzap\.jp$/i.test(location.hostname)) return;
+
+  const STYLE_ID = "generic-buzzap-followbox-style-v639";
+  const HIDDEN_CLASS = "generic-buzzap-followbox-hidden-v639";
+  const TARGET = "フォローして最新情報を手に入れよう";
+  const TARGET_NORM = TARGET.replace(/[\s\u00a0\u3000]+/g, "");
+
+  const normalize = (value) => String(value || "")
+    .replace(/[\s\u00a0\u3000]+/g, "")
+    .trim();
+
+  const installStyle = () => {
+    if (document.getElementById(STYLE_ID)) return true;
+    const parent = document.head || document.documentElement;
+    if (!parent) return false;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = "." + HIDDEN_CLASS + "{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;}";
+    parent.appendChild(style);
+    return true;
+  };
+
+  const eligible = (element) => {
+    if (!(element instanceof HTMLElement)) return false;
+    if (element === document.body || element === document.documentElement) return false;
+    if (element.matches("main,article,[role='main'],#primary,#content,#main")) return false;
+    if (element.querySelector("h1,h2,h3,article")) return false;
+    return true;
+  };
+
+  const chooseBox = (start) => {
+    const candidates = [];
+    let element = start;
+    for (let depth = 0; element && depth < 7; depth += 1, element = element.parentElement) {
+      if (!eligible(element)) continue;
+      const text = normalize(element.innerText || element.textContent);
+      if (!text.includes(TARGET_NORM) || text.length > 160) continue;
+      const descendants = element.querySelectorAll("*").length;
+      if (descendants > 90) continue;
+
+      const rect = element.getBoundingClientRect();
+      const height = Math.max(rect.height || 0, element.scrollHeight || 0);
+      const width = Math.max(rect.width || 0, element.scrollWidth || 0);
+      if (height > 320) continue;
+      if (width > Math.max(480, (window.innerWidth || 0) * 1.35)) continue;
+
+      const hint = String(element.id || "") + " " + String(element.className || "");
+      let score = depth * 8;
+      if (/follow|sns|social|subscribe|reader|news/i.test(hint)) score += 120;
+      if (text.includes("フォローする")) score += 25;
+      if (text.includes("GoogleNews")) score += 25;
+      if (height >= 40 && height <= 220) score += 10;
+      if (rect.width >= (window.innerWidth || 0) * 0.55) score += 10;
+      candidates.push({ element, score, depth });
+    }
+    candidates.sort((a, b) => b.score - a.score || b.depth - a.depth);
+    return candidates[0]?.element || (eligible(start) ? start : null);
+  };
+
+  const hideMatch = (element) => {
+    const box = chooseBox(element);
+    if (!box || box.classList.contains(HIDDEN_CLASS)) return;
+    box.classList.add(HIDDEN_CLASS);
+    box.setAttribute("aria-hidden", "true");
+  };
+
+  const scan = () => {
+    installStyle();
+    const root = document.body || document.documentElement;
+    if (!root) return;
+    const elements = root.querySelectorAll("div,section,aside,header,footer,p,span,strong");
+    for (const element of elements) {
+      const text = normalize(element.textContent);
+      if (!text.includes(TARGET_NORM)) continue;
+      hideMatch(element);
+    }
+  };
+
+  let timer = 0;
+  const schedule = () => {
+    if (timer) return;
+    timer = window.setTimeout(() => {
+      timer = 0;
+      if (!document.hidden) scan();
+    }, 60);
+  };
+
+  installStyle();
+  scan();
+  new MutationObserver(schedule).observe(document, { childList: true, subtree: true, characterData: true });
+  document.addEventListener("DOMContentLoaded", schedule, { once: true });
+  window.addEventListener("pageshow", schedule, { passive: true });
+  document.addEventListener("GenericAutoPagerLoaded", schedule, { passive: true });
+})();
 
 /* generic-sumahodigest-home-prehide-v638 */
 (() => {
