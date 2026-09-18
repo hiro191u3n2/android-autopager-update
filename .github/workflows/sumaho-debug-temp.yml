@@ -7,32 +7,79 @@ on:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
-      - name: Fetch live homepage
+      - name: Prepare Selenium
         shell: bash
         run: |
-          set -euo pipefail
-          curl -L --fail --max-time 30 \
-            -A 'Mozilla/5.0 (Linux; Android 16; SM-S948Q) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36' \
-            -H 'Accept-Language: ja-JP,ja;q=0.9' \
-            https://sumahodigest.com/ -o home.html
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('home.html').read_text(errors='replace').replace('><','>\n<')
-          Path('pretty.html').write_text(s)
+          python3 -m pip install -q selenium
+          which google-chrome || true
+          which chromium || true
+          which chromedriver || true
+      - name: Test current public cleaner on live page
+        shell: bash
+        run: |
+          cat > /tmp/test.py <<'PY'
+          import re,time,urllib.request
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+
+          def fetch(url):
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+              return urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
+
+          raw=fetch('https://raw.githubusercontent.com/hiro191u3n2/android-autopager-update/main/android-generic-autopager.user.js')
+          try:
+              pages=fetch('https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js')
+          except Exception as e:
+              pages='ERROR:'+repr(e)
+          def ver(s):
+              m=re.search(r'@version\s+([0-9.]+)',s)
+              return m.group(1) if m else 'none'
+          print('RAW_VERSION',ver(raw))
+          print('PAGES_VERSION',ver(pages))
+          print('RAW_HAS_V637', 'generic-sumahodigest-home-cleanup-v637' in raw)
+          print('PAGES_HAS_V637', 'generic-sumahodigest-home-cleanup-v637' in pages)
+
+          marker='/* generic-sumahodigest-home-cleanup-v637 */'
+          cleaner=raw[raw.index(marker):] if marker in raw else ''
+
+          opt=Options()
+          opt.add_argument('--headless=new')
+          opt.add_argument('--no-sandbox')
+          opt.add_argument('--disable-gpu')
+          opt.add_argument('--window-size=412,915')
+          opt.add_argument('--user-agent=Mozilla/5.0 (Linux; Android 16; SM-S948Q) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36')
+          d=webdriver.Chrome(options=opt)
+          try:
+              d.get('https://sumahodigest.com/')
+              time.sleep(2)
+              before=d.execute_script("""
+                const c=s=>String(s||'').replace(/[\\s\\u00a0\\u3000]+/g,'').trim();
+                const hs=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading]')];
+                return {
+                  ready:document.readyState,
+                  headings:hs.filter(x=>['Xperia・Sony','Pixel','Galaxy'].includes(c(x.textContent))).map(x=>({tag:x.tagName,cls:x.className,text:c(x.textContent),parent:x.parentElement?.className||''})),
+                  mores:[...document.querySelectorAll('a,button,[role=button],[role=link]')].filter(x=>/^もっと(?:見る|みる)$/.test(c(x.textContent))).map(x=>({cls:x.className,parent:x.parentElement?.className||'',href:x.href||''})),
+                  columns:[...document.querySelectorAll('#list-columns .list-column')].map(x=>({cls:x.className,text:c(x.querySelector('.list-title')?.textContent),links:x.querySelectorAll('a[href]').length,more:!!x.querySelector('.list-more-button')}))
+                };
+              """)
+              print('BEFORE',before)
+              d.execute_script(cleaner)
+              time.sleep(1)
+              after=d.execute_script("""
+                const c=s=>String(s||'').replace(/[\\s\\u00a0\\u3000]+/g,'').trim();
+                const hs=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading]')];
+                const visible=e=>!!e && getComputedStyle(e).display!=='none' && !e.closest('.generic-sumahodigest-home-segment-hidden-v637');
+                return {
+                  hiddenCount:document.querySelectorAll('.generic-sumahodigest-home-segment-hidden-v637').length,
+                  visibleTargets:hs.filter(x=>['Xperia・Sony','Pixel','Galaxy'].includes(c(x.textContent)) && visible(x)).map(x=>c(x.textContent)),
+                  visibleMore:[...document.querySelectorAll('a.list-more-button')].filter(visible).map(x=>x.href),
+                  htmlClass:document.documentElement.className
+                };
+              """)
+              print('AFTER',after)
+          finally:
+              d.quit()
           PY
-      - name: Show exact home segments
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo '=== around latest more ==='
-          sed -n '625,650p' pretty.html
-          echo '=== around Xperia more ==='
-          sed -n '790,825p' pretty.html
-          echo '=== around Pixel more ==='
-          sed -n '970,1005p' pretty.html
-          echo '=== around Galaxy more ==='
-          sed -n '1148,1185p' pretty.html
-          echo '=== structural names ==='
-          grep -n -E 'front-top-page|front-page|list-more-button|Xperia・Sony|>Pixel<|>Galaxy<' pretty.html | tail -80
+          python3 /tmp/test.py
