@@ -7,27 +7,35 @@ on:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - name: Prepare Selenium
         run: python3 -m pip install -q selenium
-      - name: Prepublish live regression test v6.38
+      - name: Final public live regression test v6.38
         shell: bash
         run: |
-          timeout 70s python3 -u - <<'PY'
-          import re,time,urllib.request,json,sys
+          timeout 100s python3 -u - <<'PY'
+          import re,time,urllib.request,json
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
 
+          URL='https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js'
           def fetch(url):
-              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache'})
               return urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
 
-          script=fetch('https://raw.githubusercontent.com/hiro191u3n2/android-autopager-update/main/Android_Generic_AutoPager_v6.38.js')
-          ver=re.search(r'@version\s+([0-9.]+)',script)
-          print('CANDIDATE_VERSION', ver.group(1) if ver else 'none', flush=True)
-          assert ver and ver.group(1)=='6.38.0'
-          assert 'generic-sumahodigest-home-prehide-v638' in script
+          script=''
+          for attempt in range(18):
+              script=fetch(URL+'?verify='+str(attempt))
+              m=re.search(r'@version\s+([0-9.]+)',script)
+              version=m.group(1) if m else 'none'
+              print('PUBLIC_VERSION_ATTEMPT',attempt,version,flush=True)
+              if version=='6.38.0' and 'generic-sumahodigest-home-prehide-v638' in script:
+                  break
+              time.sleep(5)
+          else:
+              raise AssertionError('GitHub Pages did not publish v6.38.0 in time')
+
           assert 'generic-sumahodigest-home-cleanup-v637' not in script
 
           opt=Options()
@@ -51,13 +59,11 @@ jobs:
               """)
               print('BEFORE',json.dumps(before,ensure_ascii=False),flush=True)
               assert 'paged=2' in before['next']
-              assert before['columns']==3
-              assert before['more']>=4
+              assert before['columns']==3 and before['more']>=4
 
               d.execute_script("window.__gaErrors=[];window.addEventListener('error',e=>window.__gaErrors.push(String(e.error||e.message)));")
               d.execute_script(script)
               time.sleep(2)
-
               after=d.execute_script("""
                 const visible=e=>!!e&&getComputedStyle(e).display!=='none'&&getComputedStyle(e).visibility!=='hidden';
                 const topMore=document.querySelector('#list-wrap .list-new-entries > .list-more-button-wrap');
@@ -75,26 +81,21 @@ jobs:
               """)
               print('AFTER',json.dumps(after,ensure_ascii=False),flush=True)
               assert after['errors']==[]
-              assert after['style']
-              assert after['topMoreDisplay']=='none'
-              assert after['columnsDisplay']=='none'
-              assert after['visibleMore']==0
-              assert after['visibleColumns']==0
-              assert after['sentinel']
+              assert after['style'] and after['topMoreDisplay']=='none' and after['columnsDisplay']=='none'
+              assert after['visibleMore']==0 and after['visibleColumns']==0 and after['sentinel']
 
               d.execute_script("""
                 const s=document.querySelector('#generic-autopager-sentinel');
-                if(s){s.scrollIntoView({block:'center'});}
+                if(s)s.scrollIntoView({block:'center'});
                 window.dispatchEvent(new Event('scroll'));
                 document.dispatchEvent(new Event('scroll',{bubbles:true}));
               """)
               deadline=time.time()+20
-              pages=0
               while time.time()<deadline:
-                  pages=d.execute_script("return document.querySelectorAll('.generic-autopager-page').length")
-                  if pages>=1: break
+                  if d.execute_script("return document.querySelectorAll('.generic-autopager-page').length")>=1:
+                      break
                   d.execute_script("window.scrollTo(0,document.documentElement.scrollHeight);window.dispatchEvent(new Event('scroll'));")
-                  time.sleep(0.7)
+                  time.sleep(.7)
 
               final=d.execute_script("""
                 const visible=e=>!!e&&getComputedStyle(e).display!=='none'&&getComputedStyle(e).visibility!=='hidden';
@@ -111,12 +112,10 @@ jobs:
               """)
               print('FINAL',json.dumps(final,ensure_ascii=False),flush=True)
               assert final['errors']==[]
-              assert final['pages']>=1
-              assert any('paged=2' in x for x in final['sources'])
+              assert final['pages']>=1 and any('paged=2' in x for x in final['sources'])
               assert final['page2Cards']>0
-              assert final['visibleMore']==0
-              assert final['visibleColumns']==0
-              print('RESULT PASS',flush=True)
+              assert final['visibleMore']==0 and final['visibleColumns']==0
+              print('PUBLIC_RESULT PASS',flush=True)
           finally:
               d.quit()
           PY
