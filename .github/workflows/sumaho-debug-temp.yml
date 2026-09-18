@@ -19,24 +19,20 @@ jobs:
             https://sumahodigest.com/ -o home.html
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('home.html').read_text(errors='replace')
-          s=s.replace('><','>\n<')
+          s=Path('home.html').read_text(errors='replace').replace('><','>\n<')
           Path('pretty.html').write_text(s)
-          print('bytes=',len(s))
           PY
-      - name: Show relevant live markup
+      - name: Show exact home segments
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== H2 headings ==='
-          grep -n -E '<h[1-6][^>]*>.*(新着記事|Xperia・Sony|Pixel|Galaxy)' pretty.html || true
-          echo '=== More links ==='
-          grep -n -E 'もっと(見る|みる)' pretty.html | head -30 || true
-          echo '=== Xperia contexts ==='
-          grep -n -B 12 -A 30 'Xperia・Sony' pretty.html | tail -180 || true
-          echo '=== Pixel contexts ==='
-          grep -n -B 12 -A 30 '>Pixel<' pretty.html | tail -140 || true
-          echo '=== Galaxy contexts ==='
-          grep -n -B 12 -A 30 '>Galaxy<' pretty.html | tail -140 || true
-          echo '=== next/pagination ==='
-          grep -n -E 'rel=.next|pagination|page-numbers|次のページ|次へ' pretty.html | tail -80 || true
+          echo '=== around latest more ==='
+          sed -n '625,650p' pretty.html
+          echo '=== around Xperia more ==='
+          sed -n '790,825p' pretty.html
+          echo '=== around Pixel more ==='
+          sed -n '970,1005p' pretty.html
+          echo '=== around Galaxy more ==='
+          sed -n '1148,1185p' pretty.html
+          echo '=== structural names ==='
+          grep -n -E 'front-top-page|front-page|list-more-button|Xperia・Sony|>Pixel<|>Galaxy<' pretty.html | tail -80
