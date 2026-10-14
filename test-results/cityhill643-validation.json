@@ -1,7 +1,7 @@
 {
   "STAGE": "success",
   "BUILD": "success",
-  "PREORDER": "failure",
+  "PREORDER": "success",
   "CITY": "success",
   "FASHION": "success",
   "RLAB": "success",

@@ -1,7 +1,7 @@
 {
   "environment": "Synthetic mobile Chromium, not live CITYHILL or Android AdGuard",
-  "passed": 18,
-  "failed": 1,
+  "passed": 25,
+  "failed": 0,
   "tests": [
     {
       "name": "alias adds reservation",
@@ -197,8 +197,35 @@
     },
     {
       "name": "canonical reservation redirect",
-      "status": "FAIL",
-      "error": "Page.wait_for_function: Timeout 14000ms exceeded.",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "http://127.0.0.1:33077/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:33077/majesticlegon/item/preorder.html?pno=2",
+          "type": "fetch"
+        },
+        {
+          "url": "http://127.0.0.1:33077/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "http://127.0.0.1:33077/majesticlegon/item/preorder.html?pno=3&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "http://127.0.0.1:33077/majesticlegon/item/search.html?pno=3&rsv=1",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "same route legacy page numbers",
+      "status": "pass",
+      "cards": 12,
       "requests": [
         {
           "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
@@ -209,31 +236,89 @@
           "type": "fetch"
         },
         {
-          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=2",
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=3",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "fetch forbidden uses native same-origin frame",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1",
           "type": "document"
         }
-      ],
-      "diagnostics": {
-        "version": "6.43.0",
-        "state": "loading",
-        "items": 4,
-        "page": 1,
-        "nextMode": "url",
-        "events": [
-          {
-            "time": 1792005677571,
-            "state": "waiting-controls",
-            "items": 4
-          },
-          {
-            "time": 1792005677574,
-            "state": "loading",
-            "page": 2,
-            "mode": "url"
-          }
-        ]
-      },
-      "browser_errors": []
+      ]
+    },
+    {
+      "name": "multiple filters preserved",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?tag=a&tag=b&color=blue",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1&tag=a&tag=b&color=blue",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1&tag=a&tag=b&color=blue",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "filter-changing link refused",
+      "status": "pass",
+      "cards": 50,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?color=blue",
+          "type": "document"
+        }
+      ]
+    },
+    {
+      "name": "other brand refused",
+      "status": "pass",
+      "cards": 50,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        }
+      ]
+    },
+    {
+      "name": "one-page list never requests nonexistent next",
+      "status": "pass",
+      "cards": 32,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        }
+      ]
     }
   ]
 }
