@@ -8,7 +8,20 @@ s=source.decode();end=s.index('// ==/UserScript==')+len('// ==/UserScript==')
 header,body=s[:end],s[end:]
 header=re.sub(r'(?m)^(// @version\s+)6\.41\.0$',r'\g<1>6.42.0',header)
 header=header.replace('// @description  ','// @description  CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。',1)
-module=(root/'src/cityhill-autopager.js').read_text()
+module_path=root/'src/cityhill-autopager.js'
+module=module_path.read_text()
+# Idempotent migration of the staged v6.42 source: a parsed document cannot run
+# delayed pagination scripts. Retain a live frame document for these pages.
+old="      if(l&&cards(l,control.url).some(el=>!seen.has(itemKey(el,control.url))))return {doc,list:l,url:control.url};"
+new="""      if(l&&cards(l,control.url).some(el=>!seen.has(itemKey(el,control.url)))) {
+        const scripted=[...doc.querySelectorAll('script')].some(s=>/^(?:|module|text\\/javascript|application\\/javascript)$/i.test(s.type||'')&&(s.src||s.textContent.trim()));
+        if(!nextControl(doc,control.url)&&scripted)return rendered(control,signal);
+        return {doc,list:l,url:control.url};
+      }"""
+if old in module:
+ assert module.count(old)==1
+ module=module.replace(old,new,1);module_path.write_text(module)
+assert new in module,'Delayed pagination migration missing'
 result=header+'\n\n'+module+body
 assert result.endswith(body) and result.count('// @version')==1
 for name in ['android-generic-autopager.user.js','Android_Generic_AutoPager_v6.42.js']:
