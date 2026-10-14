@@ -1,0 +1,51 @@
+name: Fashion autopager validation
+on:
+  push:
+    branches: [fix/fashion-autopager-6.41]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public listing markup
+        run: |
+          python -m pip -q install requests beautifulsoup4
+          mkdir -p test-results/fashion-source
+          python - <<'PY'
+          import requests, json, pathlib, concurrent.futures, re
+          from bs4 import BeautifulSoup
+          urls = {
+            'pal': 'https://www.palcloset.jp/display/display/?mode=zSearch&mcId=001011&b=olivedesolive&c=11&sex=&scId=',
+            'atomic': 'https://atomicboxx.com/ap/s/s?rows=30&sort=fsdt+desc&fq=bd:AB000&fq=cc1:C',
+            'city': 'https://store.cityhill.co.jp/majesticlegon/item/preorder.html'
+          }
+          def inspect(pair):
+            name, url = pair
+            try:
+              r = requests.get(url, timeout=35, headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36'})
+              r.encoding = r.apparent_encoding
+              pathlib.Path('test-results/fashion-source/'+name+'.html').write_text(r.text, encoding='utf-8')
+              s = BeautifulSoup(r.text, 'html.parser')
+              pagers = [str(e)[:16000] for e in s.find_all(['div','nav','ul','section','p']) if re.search(r'pag(?:e|ing|ination)|pager', str(e.get('id',''))+' '+str(e.get('class','')), re.I) and len(str(e)) < 25000]
+              forms = [str(e)[:12000] for e in s.select('form')]
+              links = [str(e) for e in s.select('a') if re.search(r'(次|next|[?&](?:page|p|start|offset)=|javascript:)', str(e), re.I)]
+              products = [e for e in s.select('a[href]') if re.search(r'/item/|/ap/item/|/display/item/|goods/', e.get('href',''))]
+              ancestors=[]
+              for a in products[:4]:
+                ancestors.append([str(a)[:1600]]+[str(p)[:1800] for p in list(a.parents)[:3]])
+              result={'name':name,'url':r.url,'status':r.status_code,'length':len(r.content),'title':s.title.text if s.title else '', 'pagers':pagers[:30],'forms':forms[:5],'links':links[-25:],'products':ancestors,'scripts':[e.get('src') for e in s.select('script[src]')]}
+            except Exception as e:
+              result={'name':name,'error':str(e)}
+            pathlib.Path('test-results/fashion-source/'+name+'.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+            print(json.dumps(result,ensure_ascii=False),flush=True)
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool: list(pool.map(inspect, urls.items()))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fashion-source
+          path: test-results/fashion-source/
+          retention-days: 3
