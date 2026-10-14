@@ -1,0 +1,195 @@
+{
+  "status": "pass",
+  "test": "live visible appended cards and decoded product photo",
+  "cards": [
+    {
+      "id": "4087",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4086",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4085",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4082",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4081",
+      "width": 198,
+      "height": 346.78125,
+      "display": "block"
+    },
+    {
+      "id": "4077",
+      "width": 198,
+      "height": 346.78125,
+      "display": "block"
+    },
+    {
+      "id": "4071",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4064",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4063",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4062",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4047",
+      "width": 198,
+      "height": 346.78125,
+      "display": "block"
+    },
+    {
+      "id": "4046",
+      "width": 198,
+      "height": 346.78125,
+      "display": "block"
+    },
+    {
+      "id": "4045",
+      "width": 198,
+      "height": 400.375,
+      "display": "block"
+    },
+    {
+      "id": "4043",
+      "width": 198,
+      "height": 400.375,
+      "display": "block"
+    },
+    {
+      "id": "4042",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4041",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4040",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4039",
+      "width": 198,
+      "height": 362.375,
+      "display": "block"
+    },
+    {
+      "id": "4036",
+      "width": 198,
+      "height": 395.65625,
+      "display": "block"
+    },
+    {
+      "id": "4035",
+      "width": 198,
+      "height": 395.65625,
+      "display": "block"
+    },
+    {
+      "id": "4034",
+      "width": 198,
+      "height": 400.375,
+      "display": "block"
+    },
+    {
+      "id": "4032",
+      "width": 198,
+      "height": 400.375,
+      "display": "block"
+    },
+    {
+      "id": "4030",
+      "width": 198,
+      "height": 395.65625,
+      "display": "block"
+    },
+    {
+      "id": "4029",
+      "width": 198,
+      "height": 395.65625,
+      "display": "block"
+    },
+    {
+      "id": "4024",
+      "width": 198,
+      "height": 380.0625,
+      "display": "block"
+    },
+    {
+      "id": "4019",
+      "width": 198,
+      "height": 380.0625,
+      "display": "block"
+    },
+    {
+      "id": "4017",
+      "width": 198,
+      "height": 418.0625,
+      "display": "block"
+    },
+    {
+      "id": "4016",
+      "width": 198,
+      "height": 418.0625,
+      "display": "block"
+    },
+    {
+      "id": "4015",
+      "width": 198,
+      "height": 400.375,
+      "display": "block"
+    },
+    {
+      "id": "4014",
+      "width": 198,
+      "height": 400.375,
+      "display": "block"
+    }
+  ],
+  "first_image": {
+    "src": "https://rojita.itembox.cloud/product/040/000000004087/000000004087-01.jpg?size=m&w=NDAw&t=20260901111947",
+    "naturalWidth": 400,
+    "naturalHeight": 480,
+    "width": 181.984375,
+    "height": 218.390625
+  },
+  "scroll_before_append": 4754,
+  "scroll_after_append": 4754
+}
