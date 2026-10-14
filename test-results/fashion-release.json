@@ -1,0 +1,24 @@
+{
+  "version": "6.41.0",
+  "sha256": "6028822ffe39b333b7ae741ebcd51c51f2712b71f722327e3547c61ffcd0ddf8",
+  "live_verified": [
+    "pal",
+    "atomic"
+  ],
+  "unverified": [
+    {
+      "site": "city",
+      "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+      "real_android_adguard_tested": false,
+      "status": 403,
+      "verified": false,
+      "reason": "HTTP 403 from public site in Chromium; synthetic adapter regressions only",
+      "page_errors": [],
+      "autopager_console": [],
+      "requests": [
+        "https://store.cityhill.co.jp/majesticlegon/item/preorder.html"
+      ]
+    }
+  ],
+  "real_android_adguard_tested": false
+}

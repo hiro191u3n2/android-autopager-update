@@ -1,0 +1,138 @@
+[
+  {
+    "name": "pal-three-pages",
+    "passed": true,
+    "site": "pal",
+    "requests": 3,
+    "items": 90,
+    "fixture_only": true
+  },
+  {
+    "name": "pal-color-variants",
+    "passed": true,
+    "site": "pal",
+    "requests": 3,
+    "items": 90,
+    "fixture_only": true
+  },
+  {
+    "name": "pal-enhanced-replacement",
+    "passed": true,
+    "site": "pal",
+    "requests": 2,
+    "items": 60,
+    "fixture_only": true
+  },
+  {
+    "name": "pal-no-next",
+    "passed": true,
+    "site": "pal",
+    "requests": 1,
+    "items": 30,
+    "fixture_only": true
+  },
+  {
+    "name": "pal-duplicate-stop",
+    "passed": true,
+    "site": "pal",
+    "requests": 2,
+    "items": 30,
+    "fixture_only": true
+  },
+  {
+    "name": "pal-retry",
+    "passed": true,
+    "site": "pal",
+    "requests": 3,
+    "items": 60,
+    "fixture_only": true
+  },
+  {
+    "name": "atomic-api-30-60-90",
+    "passed": true,
+    "site": "atomic",
+    "requests": 3,
+    "items": 90,
+    "fixture_only": true
+  },
+  {
+    "name": "atomic-frame-fallback",
+    "passed": true,
+    "site": "atomic",
+    "requests": 2,
+    "items": 60,
+    "fixture_only": true
+  },
+  {
+    "name": "atomic-filter-preservation",
+    "passed": true,
+    "site": "atomic",
+    "requests": 1,
+    "items": 30,
+    "fixture_only": true
+  },
+  {
+    "name": "atomic-retry",
+    "passed": true,
+    "site": "atomic",
+    "requests": 3,
+    "items": 60,
+    "fixture_only": true
+  },
+  {
+    "name": "atomic-duplicate-stop",
+    "passed": true,
+    "site": "atomic",
+    "requests": 2,
+    "items": 30,
+    "fixture_only": true
+  },
+  {
+    "name": "city-page",
+    "passed": true,
+    "site": "city",
+    "requests": 3,
+    "items": 90,
+    "fixture_only": true
+  },
+  {
+    "name": "city-p",
+    "passed": true,
+    "site": "city",
+    "requests": 2,
+    "items": 60,
+    "fixture_only": true
+  },
+  {
+    "name": "city-page-no",
+    "passed": true,
+    "site": "city",
+    "requests": 2,
+    "items": 60,
+    "fixture_only": true
+  },
+  {
+    "name": "city-no-next",
+    "passed": true,
+    "site": "city",
+    "requests": 1,
+    "items": 30,
+    "fixture_only": true
+  },
+  {
+    "name": "city-filter-change-stop",
+    "passed": true,
+    "site": "city",
+    "requests": 1,
+    "items": 30,
+    "fixture_only": true
+  },
+  {
+    "name": "city-duplicate-stop",
+    "passed": true,
+    "site": "city",
+    "requests": 2,
+    "items": 30,
+    "fixture_only": true
+  }
+]
