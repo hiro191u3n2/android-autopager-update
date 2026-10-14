@@ -10,38 +10,38 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect public listing markup
+      - name: Install test dependency
         run: |
-          python -m pip -q install requests beautifulsoup4
+          python -m pip -q install playwright==1.55.0 requests beautifulsoup4
+          if ! command -v google-chrome && ! command -v chromium; then python -m playwright install --with-deps chromium; fi
+      - name: Inspect rendered public listings
+        run: |
           mkdir -p test-results/fashion-source
           python - <<'PY'
-          import requests, json, pathlib, concurrent.futures, re
-          from bs4 import BeautifulSoup
-          urls = {
-            'pal': 'https://www.palcloset.jp/display/display/?mode=zSearch&mcId=001011&b=olivedesolive&c=11&sex=&scId=',
-            'atomic': 'https://atomicboxx.com/ap/s/s?rows=30&sort=fsdt+desc&fq=bd:AB000&fq=cc1:C',
-            'city': 'https://store.cityhill.co.jp/majesticlegon/item/preorder.html'
-          }
-          def inspect(pair):
-            name, url = pair
-            try:
-              r = requests.get(url, timeout=35, headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36'})
-              r.encoding = r.apparent_encoding
-              pathlib.Path('test-results/fashion-source/'+name+'.html').write_text(r.text, encoding='utf-8')
-              s = BeautifulSoup(r.text, 'html.parser')
-              pagers = [str(e)[:16000] for e in s.find_all(['div','nav','ul','section','p']) if re.search(r'pag(?:e|ing|ination)|pager', str(e.get('id',''))+' '+str(e.get('class','')), re.I) and len(str(e)) < 25000]
-              forms = [str(e)[:12000] for e in s.select('form')]
-              links = [str(e) for e in s.select('a') if re.search(r'(次|next|[?&](?:page|p|start|offset)=|javascript:)', str(e), re.I)]
-              products = [e for e in s.select('a[href]') if re.search(r'/item/|/ap/item/|/display/item/|goods/', e.get('href',''))]
-              ancestors=[]
-              for a in products[:4]:
-                ancestors.append([str(a)[:1600]]+[str(p)[:1800] for p in list(a.parents)[:3]])
-              result={'name':name,'url':r.url,'status':r.status_code,'length':len(r.content),'title':s.title.text if s.title else '', 'pagers':pagers[:30],'forms':forms[:5],'links':links[-25:],'products':ancestors,'scripts':[e.get('src') for e in s.select('script[src]')]}
-            except Exception as e:
-              result={'name':name,'error':str(e)}
-            pathlib.Path('test-results/fashion-source/'+name+'.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
-            print(json.dumps(result,ensure_ascii=False),flush=True)
-          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool: list(pool.map(inspect, urls.items()))
+          import json, pathlib, shutil, requests
+          from playwright.sync_api import sync_playwright
+          out=pathlib.Path('test-results/fashion-source')
+          urls={'city':'https://store.cityhill.co.jp/majesticlegon/item/preorder.html','atomic':'https://atomicboxx.com/ap/s/s?rows=30&sort=fsdt+desc&fq=bd:AB000&fq=cc1:C','pal2':'https://www.palcloset.jp/display/display/?mode=zSearch&mcId=001011&b=olivedesolive&c=11&sex=&scId=&p=2'}
+          with sync_playwright() as p:
+            b=p.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium'),headless=True,args=['--no-sandbox'])
+            c=b.new_context(viewport={'width':412,'height':915},is_mobile=True,has_touch=True,user_agent='Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36')
+            for name,url in urls.items():
+              page=c.new_page(); nets=[]; errors=[]
+              page.on('response',lambda r: nets.append({'url':r.url,'status':r.status}) if r.request.resource_type in ['xhr','fetch'] else None)
+              page.on('pageerror',lambda e:errors.append(str(e)))
+              try:
+                r=page.goto(url,wait_until='domcontentloaded',timeout=45000);page.wait_for_timeout(6500)
+                (out/(name+'.html')).write_text(page.content())
+                data=page.evaluate('''() => ({title:document.title,url:location.href,links:[...document.querySelectorAll('a[href]')].filter(a=>/next|次|[?&](start|page|p)=/i.test(a.outerHTML)).map(a=>a.outerHTML).slice(-25),grids:[...document.querySelectorAll('#item_container,#item_list,[class*=pager],[class*=pagenation],[class*=paging],[class*=pagination]')].map(e=>e.outerHTML.slice(0,8000)),products:[...document.querySelectorAll('a[href]')].filter(a=>/\/item\/(?:\d|i\/|[A-Z])/.test(a.getAttribute('href'))).slice(0,4).map(a=>a.parentElement.outerHTML.slice(0,4500))})''')
+                data.update(status=r.status if r else None,networks=nets,errors=errors)
+                (out/(name+'.json')).write_text(json.dumps(data,ensure_ascii=False,indent=2));print(name,json.dumps(data,ensure_ascii=False),flush=True)
+              except Exception as e:print(name,'ERROR',str(e),flush=True)
+              page.close()
+            b.close()
+          for start in [0,30,60]:
+            r=requests.get('https://atomicboxx.com/ise/select',params=[('wt','json'),('rows','30'),('sort','fsdt desc'),('fq','bd:AB000'),('fq','cc1:C'),('start',str(start))],timeout=30)
+            (out/('atomic-api-'+str(start)+'.json')).write_text(r.text)
+            j=r.json();print('ATOMIC API',r.status_code,j.get('responseHeader'),{k:v for k,v in j.get('response',{}).items() if k!='docs'},[d.get('cd') for d in j.get('response',{}).get('docs',[])],flush=True)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
