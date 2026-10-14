@@ -222,7 +222,11 @@
       if(r.url&&keyURL(r.url)!==keyURL(control.url))throw new Error('Unexpected redirect');
       const type=r.headers.get('content-type')||'';if(type&&!/html/i.test(type))throw new Error('Non-HTML response');
       const doc=new DOMParser().parseFromString(await r.text(),'text/html'),l=listing(doc,control.url);
-      if(l&&cards(l,control.url).some(el=>!seen.has(itemKey(el,control.url))))return {doc,list:l,url:control.url};
+      if(l&&cards(l,control.url).some(el=>!seen.has(itemKey(el,control.url)))) {
+        const scripted=[...doc.querySelectorAll('script')].some(s=>/^(?:|module|text\/javascript|application\/javascript)$/i.test(s.type||'')&&(s.src||s.textContent.trim()));
+        if(!nextControl(doc,control.url)&&scripted)return rendered(control,signal);
+        return {doc,list:l,url:control.url};
+      }
       throw new Error('Unrendered or repeated listing');
     }catch(e){if(signal.aborted)throw e;return rendered(control,signal);}
   }

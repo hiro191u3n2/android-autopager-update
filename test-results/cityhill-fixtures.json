@@ -1,7 +1,7 @@
 {
   "environment": "Mobile Chromium synthetic fixtures; not Android AdGuard or live site",
-  "passed": 6,
-  "failed": 1,
+  "passed": 22,
+  "failed": 0,
   "tests": [
     {
       "name": "old v6.41 reproduces page_navi stop",
@@ -123,9 +123,9 @@
     },
     {
       "name": "delayed pagination stays watched",
-      "status": "FAIL",
-      "error": "Page.wait_for_function: Timeout 11000ms exceeded.",
-      "browser_errors": [],
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
       "requests": [
         {
           "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
@@ -136,32 +136,353 @@
           "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
           "type": "fetch",
           "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "document",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "document",
+          "page": 3
         }
-      ],
-      "diagnostics": {
-        "version": "6.42.0",
-        "state": "waiting-controls",
-        "events": [
-          {
-            "time": 1792004462901,
-            "state": "waiting-controls",
-            "items": 3
-          },
-          {
-            "time": 1792004464196,
-            "state": "loading",
-            "page": 2,
-            "mode": "url"
-          },
-          {
-            "time": 1792004464204,
-            "state": "waiting-controls",
-            "page": 2,
-            "added": 3,
-            "total": 6
-          }
-        ]
-      }
+      ]
+    },
+    {
+      "name": "JavaScript-only pagination",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "name": "numeric JavaScript control",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "name": "load-more three pages",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "name": "fetch 403 rendered fallback",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "document",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "document",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "pageNo parameter",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pageNo=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pageNo=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "page_num parameter",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page_num=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page_num=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "pno parameter",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "repeated filters preserved",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?color=blue&tag=a&tag=b",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2&color=blue&tag=a&tag=b",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3&color=blue&tag=a&tag=b",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "changed filters rejected",
+      "status": "pass",
+      "cards": 3,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?color=blue",
+          "type": "document",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "name": "lazy images hydrated",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "last page no repeat",
+      "status": "pass",
+      "cards": 3,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "name": "repeated first page stops",
+      "status": "pass",
+      "cards": 3,
+      "state": "duplicate",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "document",
+          "page": 2
+        }
+      ]
+    },
+    {
+      "name": "list bottom before long footer; no jump",
+      "status": "pass",
+      "cards": 90,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "grid replacement restarts",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "product detail not intercepted",
+      "status": "pass",
+      "cards": 9,
+      "state": null,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/item/100000.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/item/100000.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/item/100000.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
     }
   ]
 }
