@@ -20,12 +20,14 @@ jobs:
         run: python tests/test_rlab.py
       - name: Live read-only Rlab pagination checks
         run: python tests/test_rlab_live.py
+      - name: Visible appended product images and grid geometry
+        run: python tests/test_rlab_visual.py
       - name: Commit verified release to feature branch only
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add android-generic-autopager.user.js Android_Generic_AutoPager_v6.40.js android-generic-autopager.meta.js index.html test-results/*.json
-          git commit -m 'Build verified Rlab userscript v6.40.0 [skip ci]'
+          git diff --cached --quiet || git commit -m 'Build verified Rlab userscript v6.40.0 [skip ci]'
           git push origin HEAD:fix/rlab-autopager-6.40
       - uses: actions/upload-artifact@v4
         if: always()
