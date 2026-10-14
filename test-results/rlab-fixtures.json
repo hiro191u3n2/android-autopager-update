@@ -1,0 +1,151 @@
+[
+  {
+    "test": "icon-only next and continuous page 2 to 3",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2",
+      "https://rlab-store.jp/c/ROJITA?page=3"
+    ],
+    "products": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "test": "numeric next fallback",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2",
+      "https://rlab-store.jp/c/ROJITA?page=3"
+    ],
+    "products": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "test": "single-page plus unrelated gallery next",
+    "status": "pass",
+    "requests": [],
+    "products": [
+      1,
+      2
+    ]
+  },
+  {
+    "test": "no speculative next for complete five-item category",
+    "status": "pass",
+    "requests": [],
+    "products": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "test": "duplicate server page stops once",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2"
+    ],
+    "products": [
+      1,
+      2
+    ]
+  },
+  {
+    "test": "overlapping products deduplicated",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2",
+      "https://rlab-store.jp/c/ROJITA?page=3"
+    ],
+    "products": [
+      1,
+      2,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "test": "sort and filter preservation",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2&sort=price_low&keyword=coat",
+      "https://rlab-store.jp/c/ROJITA?page=3&sort=price_low&keyword=coat"
+    ],
+    "products": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "test": "reject sort-changing next",
+    "status": "pass",
+    "requests": [],
+    "products": [
+      1,
+      2
+    ]
+  },
+  {
+    "test": "scroll fallback without observers",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2",
+      "https://rlab-store.jp/c/ROJITA?page=3"
+    ],
+    "products": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "test": "network retries and visible native fallback",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2",
+      "https://rlab-store.jp/c/ROJITA?page=2",
+      "https://rlab-store.jp/c/ROJITA?page=2"
+    ],
+    "products": [
+      1,
+      2
+    ]
+  },
+  {
+    "test": "list-end proximity instead of footer",
+    "status": "pass",
+    "requests": [
+      "https://rlab-store.jp/c/ROJITA?page=2",
+      "https://rlab-store.jp/c/ROJITA?page=3"
+    ],
+    "products": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  }
+]

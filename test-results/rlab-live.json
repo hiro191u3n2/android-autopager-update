@@ -1,0 +1,41 @@
+{
+  "verified_at": "2026-10-14T17:54:11.270161+00:00",
+  "environment": "Headless Chromium, Android UA and mobile viewport; not an Android/AdGuard device",
+  "results": [
+    {
+      "test": "live coat final-page detection",
+      "url": "https://rlab-store.jp/c/ROJITA/ROJITA-outer/ROJITA-coat",
+      "status": "pass",
+      "initial_products": 5,
+      "native_status": "\n5件中\n1-5件表示\n",
+      "requests": [],
+      "site_page_errors": []
+    },
+    {
+      "test": "live automatic page 1 to 2 to 3",
+      "url": "https://rlab-store.jp/c/ROJITA",
+      "status": "pass",
+      "product_counts": [
+        30,
+        60,
+        90
+      ],
+      "native_status": "\n197件中\n1-30件表示\n",
+      "requests": [
+        "https://rlab-store.jp/c/ROJITA?page=2&sort=latest",
+        "https://rlab-store.jp/c/ROJITA?page=3&sort=latest",
+        "https://rlab-store.jp/c/ROJITA?page=4&sort=latest"
+      ],
+      "appended_list_images": 60,
+      "unique_products": 90,
+      "site_page_errors": []
+    },
+    {
+      "test": "live last native page stops",
+      "url": "https://rlab-store.jp/c/ROJITA?page=7&sort=latest",
+      "status": "pass",
+      "products": 17,
+      "requests": []
+    }
+  ]
+}
