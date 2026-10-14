@@ -1,0 +1,70 @@
+name: CITYHILL v6.42 validation
+on:
+  push:
+    branches: [fix/cityhill-6.42]
+    paths:
+      - .github/workflows/cityhill-autopager.yml
+      - scripts/stage_cityhill.py
+      - scripts/build_cityhill.py
+      - src/cityhill-autopager.js
+      - tests/test_cityhill.py
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test dependency
+        run: python -m pip -q install playwright==1.55.0 requests beautifulsoup4
+      - name: Unpack reviewed source on first run
+        run: test -f src/cityhill-autopager.js || python scripts/stage_cityhill.py
+      - name: Build and verify byte-for-byte preservation
+        id: build
+        run: python scripts/build_cityhill.py
+      - name: CITYHILL mobile pagination regressions
+        id: city
+        run: python tests/test_cityhill.py
+      - name: Existing PAL, atomicboxx and CITYHILL regressions
+        id: fashion
+        if: success() || failure()
+        run: python tests/test_fashion.py
+      - name: Existing Rlab regressions
+        id: rlab
+        if: success() || failure()
+        run: python tests/test_rlab.py
+      - name: Save reports; stage release only when all tests pass
+        if: always()
+        env:
+          BUILD: ${{ steps.build.outcome }}
+          CITY: ${{ steps.city.outcome }}
+          FASHION: ${{ steps.fashion.outcome }}
+          RLAB: ${{ steps.rlab.outcome }}
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path('test-results');p.mkdir(exist_ok=True)
+          r={k:os.environ[k] for k in ['BUILD','CITY','FASHION','RLAB']}
+          r['version']='6.42.0';r['live_site']='403 access forbidden on mobile and desktop; not verified';r['android_adguard']='not tested'
+          (p/'cityhill-validation.json').write_text(json.dumps(r,indent=2))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cityhill-autopager.js scripts/build_cityhill.py tests/test_cityhill.py test-results/
+          if [ "$BUILD/$CITY/$FASHION/$RLAB" = 'success/success/success/success' ]; then
+            git add android-generic-autopager.user.js Android_Generic_AutoPager_v6.42.js android-generic-autopager.meta.js index.html
+          fi
+          git diff --cached --quiet || git commit -m 'Record CITYHILL v6.42 validation and verified build [skip ci]'
+          git push origin HEAD:fix/cityhill-6.42
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cityhill-6.42-validation
+          path: |
+            test-results/
+            android-generic-autopager.user.js
+            android-generic-autopager.meta.js
+            src/cityhill-autopager.js
+          retention-days: 3
