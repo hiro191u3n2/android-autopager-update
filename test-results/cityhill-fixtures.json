@@ -1,0 +1,167 @@
+{
+  "environment": "Mobile Chromium synthetic fixtures; not Android AdGuard or live site",
+  "passed": 6,
+  "failed": 1,
+  "tests": [
+    {
+      "name": "old v6.41 reproduces page_navi stop",
+      "status": "pass",
+      "cards": 3,
+      "state": null,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "name": "old v6.41 reproduces relative-link stop",
+      "status": "pass",
+      "cards": 3,
+      "state": null,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "name": "page_navi three pages",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "relative product links",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "mobile /sp listing",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/sp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/sp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/sp/majesticlegon/item/search.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "preorder listing",
+      "status": "pass",
+      "cards": 9,
+      "state": "waiting-controls",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?page=2",
+          "type": "fetch",
+          "page": 2
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?page=3",
+          "type": "fetch",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "name": "delayed pagination stays watched",
+      "status": "FAIL",
+      "error": "Page.wait_for_function: Timeout 11000ms exceeded.",
+      "browser_errors": [],
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+          "type": "document",
+          "page": 1
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?page=2",
+          "type": "fetch",
+          "page": 2
+        }
+      ],
+      "diagnostics": {
+        "version": "6.42.0",
+        "state": "waiting-controls",
+        "events": [
+          {
+            "time": 1792004462901,
+            "state": "waiting-controls",
+            "items": 3
+          },
+          {
+            "time": 1792004464196,
+            "state": "loading",
+            "page": 2,
+            "mode": "url"
+          },
+          {
+            "time": 1792004464204,
+            "state": "waiting-controls",
+            "page": 2,
+            "added": 3,
+            "total": 6
+          }
+        ]
+      }
+    }
+  ]
+}

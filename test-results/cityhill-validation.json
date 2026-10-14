@@ -1,0 +1,9 @@
+{
+  "BUILD": "success",
+  "CITY": "failure",
+  "FASHION": "success",
+  "RLAB": "success",
+  "version": "6.42.0",
+  "live_site": "403 access forbidden on mobile and desktop; not verified",
+  "android_adguard": "not tested"
+}

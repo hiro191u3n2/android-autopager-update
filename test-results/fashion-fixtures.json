@@ -131,7 +131,7 @@
     "name": "city-duplicate-stop",
     "passed": true,
     "site": "city",
-    "requests": 2,
+    "requests": 3,
     "items": 30,
     "fixture_only": true
   }
