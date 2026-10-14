@@ -1,6 +1,6 @@
 """Read-only checks on live Rlab pages, using the complete release userscript."""
 from pathlib import Path
-from urllib.parse import urlsplit, parse_qs, urljoin
+from urllib.parse import urlsplit, parse_qs
 from datetime import datetime, timezone
 from playwright.sync_api import sync_playwright
 import json, shutil
@@ -41,15 +41,16 @@ with sync_playwright() as p:
             page.evaluate('window.scrollTo(0,document.body.scrollHeight)')
             page.wait_for_timeout(1500)
             assert page.locator(ITEMS).count()==initial and not requests
-            reports.append({'test':'live coat final-page detection','url':url,'status':'pass','initial_products':initial,'native_status':initial_status,'requests':requests,'site_page_errors':errors})
+            reports.append({'test':'live coat final-page detection','url':url,'status':'pass','initial_products':initial,'native_status':initial_status,'requests':list(requests),'site_page_errors':list(errors)})
         else:
             assert links, 'Expected a multipage category for live testing'
             last=max(links,key=lambda s:int(parse_qs(urlsplit(s).query).get('page',['1'])[0]))
             counts=[initial]
             for n in [2,3]:
                 page.evaluate('document.querySelector("#generic-rlab-autopager-sentinel").scrollIntoView()')
-                page.wait_for_function('(n)=>document.querySelectorAll("[data-generic-rlab-page=\""+n+"\"]").length>0',arg=str(n),timeout=45000)
+                page.wait_for_function('(n)=>Array.from(document.querySelectorAll("[data-generic-rlab-page]")).some(e=>e.dataset.genericRlabPage===n)',arg=str(n),timeout=45000)
                 counts.append(page.locator(ITEMS).count())
+                print('LIVE PAGE',n,'products',counts[-1],flush=True)
             ids=page.locator(ITEMS).evaluate_all('(els)=>els.map(e=>e.dataset.productId)')
             assert len(set(ids))==len(ids), 'Duplicate product IDs'
             assert counts[0]<counts[1]<counts[2], counts
@@ -57,9 +58,8 @@ with sync_playwright() as p:
             images=page.locator('[data-generic-rlab-page] .fs-c-productListItem__image img').evaluate_all('(els)=>els.map(e=>({src:e.src,loading:e.loading}))')
             assert images and all('/loading.svg' not in i['src'] and i['loading']=='eager' for i in images)
             assert {2,3}.issubset({int(parse_qs(urlsplit(s).query)['page'][0]) for s in requests})
-            reports.append({'test':'live automatic page 1 to 2 to 3','url':url,'status':'pass','product_counts':counts,'native_status':initial_status,'requests':requests,'appended_list_images':len(images),'unique_products':len(set(ids)),'site_page_errors':errors})
+            reports.append({'test':'live automatic page 1 to 2 to 3','url':url,'status':'pass','product_counts':counts,'native_status':initial_status,'requests':list(requests),'appended_list_images':len(images),'unique_products':len(set(ids)),'site_page_errors':list(errors)})
             page.screenshot(path=str(OUT/'rlab-mobile-page3.png'))
-            # The actual last native page must not start speculative requests.
             requests.clear()
             page.goto(last,wait_until='domcontentloaded',timeout=60000)
             page.wait_for_selector(ROOTSEL,timeout=20000)
@@ -68,7 +68,7 @@ with sync_playwright() as p:
             page.evaluate('window.scrollTo(0,document.body.scrollHeight)')
             page.wait_for_timeout(1200)
             assert not requests
-            reports.append({'test':'live last native page stops','url':last,'status':'pass','products':page.locator(ITEMS).count(),'requests':requests})
+            reports.append({'test':'live last native page stops','url':last,'status':'pass','products':page.locator(ITEMS).count(),'requests':list(requests)})
         print('LIVE PASS',kind,flush=True)
         ctx.close()
     browser.close()
