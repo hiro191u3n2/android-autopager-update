@@ -1,0 +1,102 @@
+name: CITYHILL v6.43 validation
+on:
+  push:
+    branches: [fix/cityhill-6.43]
+    paths:
+      - .github/workflows/cityhill643.yml
+      - scripts/stage_cityhill643.py
+      - scripts/build_cityhill643.py
+      - tests/test_cityhill643.py
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack checksummed reviewed source
+        id: stage
+        run: python scripts/stage_cityhill643.py
+      - name: Build preserving all other adapters
+        id: build
+        run: python scripts/build_cityhill643.py
+      - name: Install test dependencies
+        run: python -m pip -q install playwright==1.55.0 requests beautifulsoup4
+      - name: New preorder regression cases
+        id: preorder
+        run: python tests/test_cityhill643.py
+      - name: Existing CITYHILL regressions
+        id: city
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: python tests/test_cityhill.py
+      - name: Existing fashion regressions
+        id: fashion
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: python tests/test_fashion.py
+      - name: Existing Rlab regressions
+        id: rlab
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: python tests/test_rlab.py
+      - name: Inspect public live pages without authentication
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: |
+          python - <<'PY'
+          import json,requests
+          from pathlib import Path
+          from bs4 import BeautifulSoup
+          out=[]
+          for name in ['preorder','search']:
+            url='https://store.cityhill.co.jp/majesticlegon/item/'+name+'.html'
+            try:
+              r=requests.get(url,headers={'User-Agent':'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36'},timeout=20)
+              row={'url':url,'http_status':r.status_code,'final_url':r.url,'live_behavior_verified':False}
+              if r.status_code==200:
+                soup=BeautifulSoup(r.text,'html.parser')
+                row['pagination']=[str(a)[:1800] for a in soup.select('a[href]') if 'pno=' in a.get('href','')][:30]
+                row['sample_product']=[str(a)[:1200] for a in soup.select('a[href]') if '/item/' in a.get('href','') and '.html' in a.get('href','')][-10:]
+              out.append(row)
+            except Exception as e:out.append({'url':url,'error':str(e),'live_behavior_verified':False})
+          Path('test-results').mkdir(exist_ok=True)
+          Path('test-results/cityhill643-live.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - name: Record outcomes; stage release only if tests pass
+        if: always()
+        env:
+          STAGE: ${{ steps.stage.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          PREORDER: ${{ steps.preorder.outcome }}
+          CITY: ${{ steps.city.outcome }}
+          FASHION: ${{ steps.fashion.outcome }}
+          RLAB: ${{ steps.rlab.outcome }}
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path('test-results');p.mkdir(exist_ok=True)
+          r={k:os.environ[k] for k in ['STAGE','BUILD','PREORDER','CITY','FASHION','RLAB']}
+          r['version']='6.43.0';r['android_adguard']='not tested'
+          (p/'cityhill643-validation.json').write_text(json.dumps(r,indent=2))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add test-results/
+          test ! -f scripts/build_cityhill643.py || git add scripts/build_cityhill643.py
+          test ! -f tests/test_cityhill643.py || git add tests/test_cityhill643.py
+          if [ "$STAGE/$BUILD/$PREORDER/$CITY/$FASHION/$RLAB" = 'success/success/success/success/success/success' ]; then
+            git add src/cityhill-autopager.js android-generic-autopager.user.js Android_Generic_AutoPager_v6.43.js android-generic-autopager.meta.js index.html
+          fi
+          git diff --cached --quiet || git commit -m 'Record CITYHILL 6.43 tests and validated build [skip ci]'
+          git push origin HEAD:fix/cityhill-6.43
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cityhill-6.43-validation
+          path: |
+            test-results/
+            android-generic-autopager.user.js
+            android-generic-autopager.meta.js
+            scripts/build_cityhill643.py
+            tests/test_cityhill643.py
+          retention-days: 3
