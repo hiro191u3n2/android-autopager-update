@@ -1,0 +1,58 @@
+name: CITYHILL read-only inspection
+on:
+  push:
+    branches: [fix/cityhill-6.42]
+    paths: [.github/workflows/cityhill-inspect.yml]
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip -q install playwright==1.55.0 requests beautifulsoup4
+      - name: Inspect public search pages without purchases or logins
+        run: |
+          mkdir -p test-results/cityhill
+          cat > /tmp/inspect_city.py <<'PY'
+          import json,shutil,time
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          out=Path('test-results/cityhill')
+          reports=[]
+          with sync_playwright() as p:
+            b=p.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium'),headless=True,args=['--no-sandbox'])
+            for kind,ua,mobile in [('mobile','Mozilla/5.0 (Linux; Android 16; SM-S948Q) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36',True),('desktop','Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',False)]:
+              c=b.new_context(user_agent=ua,viewport={'width':412 if mobile else 1280,'height':900},is_mobile=mobile)
+              page=c.new_page(); report={'kind':kind}; requests=[]
+              page.on('request',lambda r:requests.append(r.url) if r.resource_type in ['xhr','fetch','document'] else None)
+              try:
+                r=page.goto('https://store.cityhill.co.jp/majesticlegon/item/search.html',wait_until='domcontentloaded',timeout=40000)
+                page.wait_for_timeout(6000)
+                report.update(status=r.status if r else None,url=page.url,title=page.title())
+                report['text']=page.locator('body').inner_text()[:12000]
+                report['elements']=page.evaluate('''() => [...document.querySelectorAll('a,button,input,select')].filter(e=>/page|paging|pager|次|もっと|more|item\\//i.test(e.outerHTML)).slice(0,200).map(e=>e.outerHTML.slice(0,1400))''')
+                report['scripts']=page.locator('script[src]').evaluate_all('(es)=>es.map(e=>e.src)')
+                (out/(kind+'.html')).write_text(page.content())
+                page.screenshot(path=str(out/(kind+'.png')),full_page=False)
+              except Exception as e:report['error']=str(e)
+              report['requests']=requests;reports.append(report);c.close()
+            b.close()
+          (out/'inspection.json').write_text(json.dumps(reports,ensure_ascii=False,indent=2))
+          print(json.dumps(reports,ensure_ascii=False,indent=2))
+          PY
+          python /tmp/inspect_city.py
+      - name: Save diagnostic summary to feature branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add test-results/cityhill/inspection.json
+          git diff --cached --quiet || git commit -m 'Record CITYHILL live inspection [skip ci]'
+          git push origin HEAD:fix/cityhill-6.42
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cityhill-inspection
+          path: test-results/cityhill/
+          retention-days: 3
