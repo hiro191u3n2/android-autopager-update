@@ -7,45 +7,39 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Install test dependency
         run: |
           python -m pip -q install playwright==1.55.0 requests beautifulsoup4
           if ! command -v google-chrome && ! command -v chromium; then python -m playwright install --with-deps chromium; fi
-      - name: Inspect rendered public listings
+      - name: Build and verify unrelated source preservation
+        run: python scripts/build_fashion.py
+      - name: Mobile Chromium pagination fixtures
+        run: python tests/test_fashion.py
+      - name: Existing Rlab regression tests
+        if: success() || failure()
+        run: python tests/test_rlab.py
+      - name: Read-only live fashion pagination and images
+        if: success() || failure()
+        run: python tests/test_fashion_live.py
+      - name: Commit verified release to feature branch only
+        if: success()
         run: |
-          mkdir -p test-results/fashion-source
-          python - <<'PY'
-          import json, pathlib, shutil, requests
-          from playwright.sync_api import sync_playwright
-          out=pathlib.Path('test-results/fashion-source')
-          urls={'city':'https://store.cityhill.co.jp/majesticlegon/item/preorder.html','atomic':'https://atomicboxx.com/ap/s/s?rows=30&sort=fsdt+desc&fq=bd:AB000&fq=cc1:C','pal2':'https://www.palcloset.jp/display/display/?mode=zSearch&mcId=001011&b=olivedesolive&c=11&sex=&scId=&p=2'}
-          with sync_playwright() as p:
-            b=p.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium'),headless=True,args=['--no-sandbox'])
-            c=b.new_context(viewport={'width':412,'height':915},is_mobile=True,has_touch=True,user_agent='Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36')
-            for name,url in urls.items():
-              page=c.new_page(); nets=[]; errors=[]
-              page.on('response',lambda r: nets.append({'url':r.url,'status':r.status}) if r.request.resource_type in ['xhr','fetch'] else None)
-              page.on('pageerror',lambda e:errors.append(str(e)))
-              try:
-                r=page.goto(url,wait_until='domcontentloaded',timeout=45000);page.wait_for_timeout(6500)
-                (out/(name+'.html')).write_text(page.content())
-                data=page.evaluate('''() => ({title:document.title,url:location.href,links:[...document.querySelectorAll('a[href]')].filter(a=>/next|次|[?&](start|page|p)=/i.test(a.outerHTML)).map(a=>a.outerHTML).slice(-25),grids:[...document.querySelectorAll('#item_container,#item_list,[class*=pager],[class*=pagenation],[class*=paging],[class*=pagination]')].map(e=>e.outerHTML.slice(0,8000)),products:[...document.querySelectorAll('a[href]')].filter(a=>/\/item\/(?:\d|i\/|[A-Z])/.test(a.getAttribute('href'))).slice(0,4).map(a=>a.parentElement.outerHTML.slice(0,4500))})''')
-                data.update(status=r.status if r else None,networks=nets,errors=errors)
-                (out/(name+'.json')).write_text(json.dumps(data,ensure_ascii=False,indent=2));print(name,json.dumps(data,ensure_ascii=False),flush=True)
-              except Exception as e:print(name,'ERROR',str(e),flush=True)
-              page.close()
-            b.close()
-          for start in [0,30,60]:
-            r=requests.get('https://atomicboxx.com/ise/select',params=[('wt','json'),('rows','30'),('sort','fsdt desc'),('fq','bd:AB000'),('fq','cc1:C'),('start',str(start))],timeout=30)
-            (out/('atomic-api-'+str(start)+'.json')).write_text(r.text)
-            j=r.json();print('ATOMIC API',r.status_code,j.get('responseHeader'),{k:v for k,v in j.get('response',{}).items() if k!='docs'},[d.get('cd') for d in j.get('response',{}).get('docs',[])],flush=True)
-          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android-generic-autopager.user.js Android_Generic_AutoPager_v6.41.js android-generic-autopager.meta.js index.html test-results/*.json
+          git diff --cached --quiet || git commit -m 'Build verified fashion userscript v6.41.0 [skip ci]'
+          git push origin HEAD:fix/fashion-autopager-6.41
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fashion-source
-          path: test-results/fashion-source/
+          name: fashion-6.41-validation
+          path: |
+            test-results/
+            android-generic-autopager.user.js
+            android-generic-autopager.meta.js
+            src/fashion-autopager.js
+            tests/test_fashion*.py
           retention-days: 3
