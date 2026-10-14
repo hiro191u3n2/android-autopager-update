@@ -1,0 +1,56 @@
+name: Rlab autopager validation
+on:
+  push:
+    branches: [fix/rlab-autopager-6.40]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect live Rlab markup and existing pagination code
+        run: |
+          python -m pip -q install beautifulsoup4==4.13.4
+          mkdir -p diagnostics
+          python - <<'PY'
+          import urllib.request, pathlib, re, json
+          from bs4 import BeautifulSoup
+          source = pathlib.Path('android-generic-autopager.user.js').read_text()
+          lines = source.splitlines()
+          print('SOURCE_LINES', len(lines))
+          for i, line in enumerate(lines):
+              if re.search(r'function\s+(?:find|detect|choose|load|append|init|start)|const\s+(?:findNext|detect|SITE|RULE|sites|rules)|rlab|fs-c-|futureshop|sentinel|nextPage|nextLink|pageElement', line, re.I):
+                  print('SOURCE', i+1, line[:450])
+          urls = [
+              'https://rlab-store.jp/c/ROJITA/ROJITA-outer/ROJITA-coat',
+              'https://rlab-store.jp/c/ROJITA/ROJITA-outer/ROJITA-coat?page=2',
+              'https://rlab-store.jp/c/ROJITA',
+          ]
+          for n, url in enumerate(urls):
+              try:
+                  req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36'})
+                  with urllib.request.urlopen(req, timeout=35) as response:
+                      text = response.read().decode('utf-8')
+                      print('PAGE', n, response.status, response.url, len(text))
+                  pathlib.Path('diagnostics/page%d.html' % n).write_text(text)
+                  soup = BeautifulSoup(text, 'html.parser')
+                  for el in soup.select('[class*="pagin"], [class*="Pagin"], [class*="listControl"], [class*="ListControl"], [class*="resultCount"]'):
+                      print('PAGER', str(el)[:6500])
+                  for el in soup.select('.fs-c-productList, .fs-c-productList__list, .fs-c-productList__list__item')[:3]:
+                      print('PRODUCT_MARKUP', str(el)[:3500])
+                  for el in soup.select('script[src]'):
+                      print('SCRIPT', el.get('src'))
+              except Exception as exc:
+                  print('PAGE_ERROR', n, type(exc).__name__, str(exc))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rlab-inspection
+          path: |
+            diagnostics/
+            android-generic-autopager.user.js
+          retention-days: 2
