@@ -1,5 +1,6 @@
 """Synthetic mobile fixtures; never described as a live-site or Android test."""
-import json, shutil, os
+import json, shutil, os, threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, urlencode
 from playwright.sync_api import sync_playwright
@@ -45,18 +46,42 @@ def check(ok,msg='assertion failed'):
 def scroll(p,mode):
     p.evaluate('''(mode)=>{const el=document.querySelector('.products > li:last-child');if(mode==='inner'){const box=document.querySelector('#scrollbox');box.scrollTop+=el.getBoundingClientRect().bottom-box.getBoundingClientRect().bottom;}else window.scrollTo(0,el.getBoundingClientRect().bottom+scrollY-innerHeight+5);}''',mode)
 def case(browser,name,mode='alias',old=False,total=182,size=50,stop=False,url=BASE,forbidden=False):
-    requests=[];errors=[];ctx=browser.new_context(viewport={'width':412,'height':915},is_mobile=True)
-    p=ctx.new_page();p.on('pageerror',lambda e:errors.append(str(e)));p.add_init_script(OLD if old else NEW)
+    requests=[];errors=[];server=None;thread=None;source=OLD if old else NEW
+    if mode=='canonical':
+        # Playwright routing only handles the first request of an HTTP redirect chain.
+        # Use a real loopback HTTP server, not a 302 mock escaping to the live site.
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self,*args):pass
+            def do_GET(self):
+                u=urlparse(self.path);qs=parse_qs(u.query);n=int(qs.get('pno',['1'])[0])
+                if u.path.endswith('preorder.html') and n>1:
+                    self.send_response(302)
+                    self.send_header('Location','search.html?pno='+str(n)+'&rsv=1')
+                    self.send_header('Content-Length','0');self.end_headers();return
+                if '/photos/' in u.path:
+                    data=b'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120"/>';kind='image/svg+xml'
+                elif u.path.endswith('/favicon.ico'):
+                    data=b'';kind='image/x-icon'
+                else:
+                    data=html(n,mode,total,size).encode();kind='text/html; charset=utf-8'
+                self.send_response(200);self.send_header('Content-Type',kind)
+                self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        url='http://127.0.0.1:'+str(server.server_port)+'/majesticlegon/item/preorder.html'
+        source=source.replace(r'store\.cityhill\.co\.jp',r'127\.0\.0\.1')
+    ctx=browser.new_context(viewport={'width':412,'height':915},is_mobile=True)
+    p=ctx.new_page();p.on('pageerror',lambda e:errors.append(str(e)));p.add_init_script(source)
     def handler(r):
         u=urlparse(r.request.url);qs=parse_qs(u.query);n=int(qs.get('pno',['1'])[0])
         if '/photos/' in u.path:
             r.fulfill(status=200,content_type='image/svg+xml',body='<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120"/>');return
         requests.append({'url':r.request.url,'type':r.request.resource_type})
         if forbidden and n>1 and r.request.resource_type=='fetch':r.fulfill(status=403,body='Forbidden');return
-        if mode=='canonical' and n>1 and u.path.endswith('preorder.html'):
-            r.fulfill(status=302,headers={'location':ORIGIN+'/majesticlegon/item/search.html?pno='+str(n)+'&rsv=1'});return
         r.fulfill(status=200,content_type='text/html; charset=utf-8',body=html(n,mode,total,size))
-    p.route('**/*',handler)
+    if mode=='canonical':
+        p.on('request',lambda r:requests.append({'url':r.url,'type':r.resource_type}) if r.resource_type in ['document','fetch','xhr'] else None)
+    else:p.route('**/*',handler)
     try:
         p.goto(url,wait_until='domcontentloaded');p.wait_for_timeout(250)
         if stop or old:
@@ -75,6 +100,7 @@ def case(browser,name,mode='alias',old=False,total=182,size=50,stop=False,url=BA
             keys=p.locator('.products > li a').evaluate_all('(es)=>es.map(e=>e.href)')
             check(len(set(keys))==total,'colors collapsed or duplicate products')
             check(p.locator('li[data-generic-fashion-page] img').evaluate_all('(es)=>es.every(e=>e.complete&&e.naturalWidth>0&&!e.hasAttribute("data-original"))'),'images not hydrated')
+            if mode=='canonical':check(any('/search.html?pno=2&rsv=1' in r['url'] for r in requests),'redirect was not followed')
             if mode=='implicit':check(all('rsv=1' in r['url'] for r in requests[1:]),'reservation flag lost')
             if '?tag=' in url:check(all(parse_qs(urlparse(r['url']).query).get('tag')==['a','b'] for r in requests[1:]),'multi-value filters lost')
             if forbidden:check(any(r['type']=='document' and 'pno=2' in r['url'] for r in requests),'no frame fallback')
@@ -85,7 +111,9 @@ def case(browser,name,mode='alias',old=False,total=182,size=50,stop=False,url=BA
     except Exception as e:
         REPORT.append({'name':name,'status':'FAIL','error':str(e),'requests':requests,'diagnostics':p.evaluate('window.__genericCityhillAutoPagerDiagnostics||null'),'browser_errors':errors})
         print(json.dumps(REPORT[-1],ensure_ascii=False),flush=True);raise
-    finally:ctx.close()
+    finally:
+        ctx.close()
+        if server:server.shutdown();server.server_close();thread.join(timeout=2)
 def units(browser):
     module=(ROOT/'src/cityhill-autopager.js').read_text().replace('  const log=[];', '  window.__cityTests={forwardURL,equivalentPage};const log=[];')
     ctx=browser.new_context();p=ctx.new_page();p.route('**/*',lambda r:r.fulfill(status=200,content_type='text/html',body='<body>test</body>'));p.add_init_script(adapt(module));p.goto(BASE)
