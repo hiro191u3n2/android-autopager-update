@@ -1,0 +1,9 @@
+{
+  "version": "6.43.0",
+  "syntax": "pass",
+  "other_modules_byte_identical": true,
+  "sha256": "4f83e3016ab5687dff7cb1f8c0f82dbf60d7b1c1e2a264aef936d338c69a668e",
+  "baseline_blob": "03ccb28868a7c00dc0765046c16231fc58fbf3fb",
+  "live_site": "not verified; 403 on external inspection",
+  "android_adguard": "not tested"
+}

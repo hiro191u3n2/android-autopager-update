@@ -1,0 +1,10 @@
+{
+  "STAGE": "success",
+  "BUILD": "success",
+  "PREORDER": "failure",
+  "CITY": "success",
+  "FASHION": "success",
+  "RLAB": "success",
+  "version": "6.43.0",
+  "android_adguard": "not tested"
+}

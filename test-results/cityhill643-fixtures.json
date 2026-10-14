@@ -1,0 +1,239 @@
+{
+  "environment": "Synthetic mobile Chromium, not live CITYHILL or Android AdGuard",
+  "passed": 18,
+  "failed": 1,
+  "tests": [
+    {
+      "name": "alias adds reservation",
+      "status": "pass"
+    },
+    {
+      "name": "reservation removal rejected",
+      "status": "pass"
+    },
+    {
+      "name": "cross brand rejected",
+      "status": "pass"
+    },
+    {
+      "name": "cross origin rejected",
+      "status": "pass"
+    },
+    {
+      "name": "no guessed page without page evidence",
+      "status": "pass"
+    },
+    {
+      "name": "wrong filters rejected",
+      "status": "pass"
+    },
+    {
+      "name": "canonical same-page redirect",
+      "status": "pass"
+    },
+    {
+      "name": "redirect cannot skip page",
+      "status": "pass"
+    },
+    {
+      "name": "redirect cannot drop filters",
+      "status": "pass"
+    },
+    {
+      "name": "sales listing not mixed",
+      "status": "pass"
+    },
+    {
+      "name": "v6.42 reproduces preorder to search stop",
+      "status": "pass",
+      "cards": 50,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        }
+      ]
+    },
+    {
+      "name": "182 products, 50 to 100 to 150 to 182; cc colors retained",
+      "status": "pass",
+      "cards": 182,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=4&rsv=1",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "implicit reservation filter on search alias",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "unlabelled numeric JavaScript pager",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        }
+      ]
+    },
+    {
+      "name": "literal location handler on li",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "product tail instead of oversized wrapper",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=2",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=3",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "nested scroll container",
+      "status": "pass",
+      "cards": 90,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=2",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=3",
+          "type": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "late pager insertion",
+      "status": "pass",
+      "cards": 12,
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=2&rsv=1",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html?pno=3&rsv=1",
+          "type": "document"
+        }
+      ]
+    },
+    {
+      "name": "canonical reservation redirect",
+      "status": "FAIL",
+      "error": "Page.wait_for_function: Timeout 14000ms exceeded.",
+      "requests": [
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+          "type": "document"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=2",
+          "type": "fetch"
+        },
+        {
+          "url": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html?pno=2",
+          "type": "document"
+        }
+      ],
+      "diagnostics": {
+        "version": "6.43.0",
+        "state": "loading",
+        "items": 4,
+        "page": 1,
+        "nextMode": "url",
+        "events": [
+          {
+            "time": 1792005677571,
+            "state": "waiting-controls",
+            "items": 4
+          },
+          {
+            "time": 1792005677574,
+            "state": "loading",
+            "page": 2,
+            "mode": "url"
+          }
+        ]
+      },
+      "browser_errors": []
+    }
+  ]
+}
