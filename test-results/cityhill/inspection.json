@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "mobile",
+    "status": 403,
+    "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+    "title": "403 access forbidden",
+    "text": "403 access forbidden\n\nお探しのページは現在利用できません。",
+    "elements": [],
+    "scripts": [],
+    "requests": [
+      "https://store.cityhill.co.jp/majesticlegon/item/search.html"
+    ]
+  },
+  {
+    "kind": "desktop",
+    "status": 403,
+    "url": "https://store.cityhill.co.jp/majesticlegon/item/search.html",
+    "title": "403 access forbidden",
+    "text": "403 access forbidden\n\nお探しのページは現在利用できません。",
+    "elements": [],
+    "scripts": [],
+    "requests": [
+      "https://store.cityhill.co.jp/majesticlegon/item/search.html"
+    ]
+  }
+]
