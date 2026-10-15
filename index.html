@@ -22,9 +22,11 @@
     <main>
       <h1>Android 汎用オートページャー</h1>
       <span class="version">v6.44.0</span>
-      <p>CITYHILL（MAJESTIC LEGON）の検索・予約商品一覧を修正。スマホ用URL、相対商品リンク、ページナビ、JavaScript式ページ送り、追加ページの遅延描画に対応しました。</p>
-      <p>CITYHILLの再現テスト22項目と、PAL CLOSET・atomicboxx・Rlab等の既存テストが通過。CITYHILL以外の既存サイト用コードは変更していません。</p>
+      <p>CITYHILL（MAJESTIC LEGON）の検索・予約商品一覧を修正。実際の<code>search.html?rsv=1&amp;pno=2</code>を使い、ページ番号リンクの検出、表示枠のない要素、取得した一覧と表示中の一覧の照合を改善しました。</p>
+      <p>通常は次ページの商品を下へ追加します。初回の追加処理が止まった場合は、商品末尾にある実際の次ページリンクへ自動で移動する予備処理が働きます。この場合は継ぎ足し表示ではなく通常の画面遷移です。予約・絞り込み条件を維持し、追加に成功した後は予備処理を無効にします。</p>
+      <p>新しい再現テスト28項目、検証用ページでの実ブラウザーの進む・戻る2項目、既存のCITYHILL・PAL CLOSET・atomicboxx・Rlabのテストが通過。CITYHILL以外の既存サイト用コードは変更していません。</p>
       <p>検証環境ではCITYHILLがHTTP 403となるため、実サイトでの動作は未確認です。Android実機のAdGuard上での検証も未実施です。</p>
+      <p>止まる場合は、CITYHILLの現在のページ番号を約1秒長押しするとローカル診断を表示できます。診断内容の自動送信は行いません。</p>
       <p>下のボタンを長押ししてリンクをコピーし、AdGuardの「URLまたはファイルパス」へ貼り付けてください。</p>
       <p>今後は同じURLのまま、<code>@version</code>の更新を検出できます。</p>
       <a href="./android-generic-autopager.user.js">ユーザースクリプトを開く</a>
