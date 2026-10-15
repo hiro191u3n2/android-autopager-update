@@ -1,0 +1,36 @@
+{
+  "version": "6.46.0",
+  "date": "2026-10-16 Asia/Tokyo",
+  "product_url": "https://store.cityhill.co.jp/item/945932.html?cc=01",
+  "environment": "Node/jsdom with controlled clocks and geometry; desktop Chrome site observation; NOT Android/AdGuard hardware measurements",
+  "listing_fixture": {
+    "actions": "30 scroll events, native body.hfix changes and 3 seconds idle away from load threshold",
+    "baseline_6_45_300_cards": { "dom_queries": 3303, "rectangle_reads": 1525, "style_reads": 1510 },
+    "candidate_6_46_30_cards": { "dom_queries": 3, "rectangle_reads": 35, "style_reads": 20 },
+    "candidate_6_46_300_cards": { "dom_queries": 3, "rectangle_reads": 35, "style_reads": 20 },
+    "candidate_fetches": 0
+  },
+  "gallery_evidence": {
+    "official_gallery_slides": 118,
+    "official_swiper_version": "11.2.10",
+    "desktop_native_thumbnail": "advances from slide 1 to slide 2 after click and animation frame",
+    "vendor_jsdom_without_patch": "pointer input succeeds; click-only and touch-only sequences fail equally with and without v6.45",
+    "vendor_jsdom_with_patch": "click-only, touch-only, pointer-only and combined sequences each reach realIndex 2 with exactly one native slideToLoop call",
+    "vendor_fixture_limit": "trusted callbacks are simulated; this is not real Android input delivery",
+    "userscript_caused_thumbnail_failure_proven": false,
+    "current_product_snapshot": "v6.45 performs unnecessary initial generic scans, but no ongoing observer, image mutation or generic paging on this snapshot"
+  },
+  "regression_coverage": [
+    "generic product-route isolation and next-product/gallery pager exclusion",
+    "listing Product microdata remains pageable",
+    "unchanged-grid work independent of 30 versus 300 cards",
+    "body/header class churn and image src/style churn do not rebuild product cache",
+    "normal, display:contents and hidden-tail pagination",
+    "grid replacement, in-place filtering and changed product URLs",
+    "missing next control, late insertion and disabled-to-enabled control",
+    "native successful gallery tap not duplicated; missed selection repaired through existing Swiper API",
+    "drag, scroll, long press, cancellation, multitouch and untrusted events do not trigger gallery fallback",
+    "imported commerce card images lazy; non-commerce, Google and Buzzap behavior preserved",
+    "Yahoo realtime DOM/event regressions and unrelated legacy feature byte preservation"
+  ]
+}
