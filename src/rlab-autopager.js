@@ -91,7 +91,7 @@
       }
       const srcset = img.getAttribute('data-layzr-srcset') || img.getAttribute('data-srcset');
       if (srcset) img.setAttribute('srcset', srcset);
-      img.loading = 'eager';
+      img.loading = 'lazy';
       img.decoding = 'async';
     }
     return root;
