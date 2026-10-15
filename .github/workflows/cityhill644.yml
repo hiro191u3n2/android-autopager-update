@@ -1,0 +1,146 @@
+name: CITYHILL 6.44 validation
+on:
+  push:
+    branches: [fix/cityhill-6.44]
+    paths:
+      - .github/workflows/cityhill644.yml
+      - scripts/stage_cityhill644.py
+      - scripts/amend_cityhill644.py
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore exact reviewed transport bundle and verify checksum
+        id: stage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('scripts/stage_cityhill644.py')
+          s=p.read_text().replace('SeiVZZrx','SeiVZrx').replace('I1a9bql','I1a9ql')
+          b=s.encode()
+          assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()=='72236d18d9c0b147e5e1c2dfd29c5c2180a4e4c0'
+          p.write_text(s)
+          PY
+          python scripts/stage_cityhill644.py
+          python scripts/amend_cityhill644.py
+      - name: Build CITYHILL only and check complete script syntax
+        id: build
+        run: |
+          python scripts/build_cityhill644.py
+          echo '17c9ddcbabb69a7fbce76bb3f3dcfc07c05f051b2f05873cd6fded44e00389d0  android-generic-autopager.user.js' | sha256sum -c
+      - name: Install test dependencies
+        run: python -m pip -q install playwright==1.55.0 requests beautifulsoup4
+      - name: New offline browser regressions
+        id: fresh
+        run: python tests/test_cityhill644.py
+      - name: Verify actual browser navigation and Back with synthetic pages
+        id: native
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,shutil
+          from playwright.sync_api import sync_playwright
+          base='https://store.cityhill.co.jp/majesticlegon/item/preorder.html'
+          target='https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2'
+          html='<style>body{margin:0}#space{height:2600px}#pages{padding:30px}footer{height:2200px}</style><div id="space"></div><nav id="pages"><span>1</span><a href="search.html?rsv=1&pno=2">2</a></nav><footer></footer>'
+          requests=[]
+          with sync_playwright() as p:
+            b=p.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium'),headless=True,args=['--no-sandbox'])
+            page=b.new_page(viewport={'width':412,'height':915})
+            def serve(r):
+              requests.append(r.request.url)
+              r.fulfill(status=200,content_type='text/html',body=html)
+            page.route('**/*',serve)
+            page.add_init_script(Path('src/cityhill-pno-guard.js').read_text())
+            page.goto(base,wait_until='domcontentloaded')
+            page.evaluate('document.querySelector("#pages").scrollIntoView({block:"center"})')
+            page.wait_for_timeout(750)
+            page.evaluate('()=>{const old=Date.now;Date.now=()=>old()+10000;}')
+            page.wait_for_url(target,timeout=8000)
+            forward=page.url
+            page.go_back(wait_until='domcontentloaded')
+            page.wait_for_timeout(750)
+            page.evaluate('()=>{const old=Date.now;Date.now=()=>old()+20000;}')
+            page.wait_for_timeout(750)
+            assert page.url==base,'Back bounced forward'
+            report={'scope':'synthetic pages with production guard and real Chromium navigation; not the live site','forward':forward,'back':page.url,'passed':2,'requests':requests}
+            b.close()
+          Path('test-results/cityhill644-native.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report))
+          PY
+      - name: Existing CITYHILL 6.43 regressions
+        id: previous
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: python tests/test_cityhill643.py
+      - name: Existing CITYHILL regressions
+        id: city
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: python tests/test_cityhill.py
+      - name: Existing PAL and atomicboxx regressions
+        id: fashion
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: python tests/test_fashion.py
+      - name: Existing Rlab regressions
+        id: rlab
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: python tests/test_rlab.py
+      - name: Inspect the two public URLs without authentication
+        if: steps.build.outcome == 'success' && (success() || failure())
+        run: |
+          python - <<'PY'
+          import requests,json
+          from pathlib import Path
+          out=[]
+          for url in ['https://store.cityhill.co.jp/majesticlegon/item/preorder.html','https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2']:
+            try:
+              r=requests.get(url,timeout=15)
+              out.append({'url':url,'status':r.status_code,'final_url':r.url,'live_behavior_verified':False})
+            except Exception as e:out.append({'url':url,'error':str(e),'live_behavior_verified':False})
+          Path('test-results/cityhill644-live.json').write_text(json.dumps(out,indent=2))
+          print(json.dumps(out))
+          PY
+      - name: Record results and commit release files only if all required checks pass
+        if: always()
+        env:
+          STAGE: ${{ steps.stage.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          FRESH: ${{ steps.fresh.outcome }}
+          NATIVE: ${{ steps.native.outcome }}
+          PREVIOUS: ${{ steps.previous.outcome }}
+          CITY: ${{ steps.city.outcome }}
+          FASHION: ${{ steps.fashion.outcome }}
+          RLAB: ${{ steps.rlab.outcome }}
+        run: |
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          keys=['STAGE','BUILD','FRESH','NATIVE','PREVIOUS','CITY','FASHION','RLAB']
+          r={k:os.environ[k] for k in keys}
+          r.update(version='6.44.0',android_adguard='not tested',live_site='not verified',release_ready=all(r[k]=='success' for k in keys))
+          Path('test-results').mkdir(exist_ok=True)
+          Path('test-results/cityhill644-validation.json').write_text(json.dumps(r,indent=2))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add test-results/ scripts/stage_cityhill644.py
+          for f in scripts/build_cityhill644.py tests/test_cityhill644.py src/cityhill-pno-guard.js; do test ! -f "$f" || git add "$f"; done
+          if [ "$STAGE/$BUILD/$FRESH/$NATIVE/$PREVIOUS/$CITY/$FASHION/$RLAB" = 'success/success/success/success/success/success/success/success' ]; then
+            git add src/cityhill-autopager.js android-generic-autopager.user.js Android_Generic_AutoPager_v6.44.js android-generic-autopager.meta.js index.html
+          fi
+          git diff --cached --quiet || git commit -m 'Record CITYHILL 6.44 validation and approved build [skip ci]'
+          git push origin HEAD:fix/cityhill-6.44
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cityhill-6.44-validation
+          path: |
+            test-results/
+            android-generic-autopager.user.js
+            android-generic-autopager.meta.js
+          retention-days: 3
