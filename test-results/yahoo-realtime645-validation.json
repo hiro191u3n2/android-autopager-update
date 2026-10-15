@@ -1,0 +1,25 @@
+{
+  "version": "6.45.0",
+  "source_recovery": {
+    "authorized_by_owner": true,
+    "source": "https://github.com/hiro191u3n2/android-autopager-update.git",
+    "base_commit": "462e8b7f1ac81184a6adc95204bbdfe6aca25c4e",
+    "base_userscript_blob": "ee0c1d906375c7d34ebc3046719abef10d42c7ae"
+  },
+  "jsdom_fixture_tests_passed": 57,
+  "saved_public_html_selector_tests_passed": 2,
+  "saved_public_html_tweet_counts": {"mobile": 10, "desktop": 40},
+  "generic_core_guard_host_and_path_tests_passed": 8,
+  "unchanged_features": "Every v6.44 executable byte preserved except the exact Yahoo realtime-search generic-core exclusion guard",
+  "syntax": "pass",
+  "release_packaging": "pass",
+  "independent_review": "Two manual/lifecycle retry races found, fixed, and regression-tested; no remaining blocking finding",
+  "userscript_sha256": "395c7edf5572ea9964e28ed5c53a120809b708d6064f3829ee614ce84e7aafa2",
+  "metadata_sha256": "bda7b00a6188216441d7c284b10bc2249a7a1c2353e2ea04658ee0b0ac01a32f",
+  "limits": [
+    "Geometry and clock are mocked in the jsdom fixture tests",
+    "Live Yahoo React/network end-to-end behavior was not executed",
+    "Android/AdGuard device behavior was not tested",
+    "Historical browser regression tests were not rerun; exact baseline byte preservation was verified"
+  ]
+}
