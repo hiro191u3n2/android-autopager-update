@@ -145,7 +145,7 @@
       }
       for (const attr of ['data-srcset','data-lazy-srcset']) if (img.getAttribute(attr)) img.setAttribute('srcset', img.getAttribute(attr));
       if (!img.alt && img.getAttribute('data-alt')) img.alt = img.getAttribute('data-alt');
-      img.loading = 'eager'; img.decoding = 'async';
+      img.loading = 'lazy'; img.decoding = 'async';
       img.classList.remove('lazy','lazyload','lazyloading'); img.classList.add('lazyloaded');
       img.style.setProperty('opacity', '1'); img.style.setProperty('visibility', 'visible');
       for (const attr of ['data-src','data-original','data-lazy-src','data-layzr','data-echo']) img.removeAttribute(attr);
