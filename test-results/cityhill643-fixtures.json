@@ -201,23 +201,23 @@
       "cards": 12,
       "requests": [
         {
-          "url": "http://127.0.0.1:33077/majesticlegon/item/preorder.html",
+          "url": "http://127.0.0.1:38553/majesticlegon/item/preorder.html",
           "type": "document"
         },
         {
-          "url": "http://127.0.0.1:33077/majesticlegon/item/preorder.html?pno=2",
+          "url": "http://127.0.0.1:38553/majesticlegon/item/preorder.html?pno=2",
           "type": "fetch"
         },
         {
-          "url": "http://127.0.0.1:33077/majesticlegon/item/search.html?pno=2&rsv=1",
+          "url": "http://127.0.0.1:38553/majesticlegon/item/search.html?pno=2&rsv=1",
           "type": "fetch"
         },
         {
-          "url": "http://127.0.0.1:33077/majesticlegon/item/preorder.html?pno=3&rsv=1",
+          "url": "http://127.0.0.1:38553/majesticlegon/item/preorder.html?pno=3&rsv=1",
           "type": "fetch"
         },
         {
-          "url": "http://127.0.0.1:33077/majesticlegon/item/search.html?pno=3&rsv=1",
+          "url": "http://127.0.0.1:38553/majesticlegon/item/search.html?pno=3&rsv=1",
           "type": "fetch"
         }
       ]

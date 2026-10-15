@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.43.0
-// @description  CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.44.0
+// @description  CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -18,15 +18,150 @@
 // @connect      www.buzzap.jp
 // ==/UserScript==
 
-/* generic-cityhill-product-autopager-v643 */
+/* generic-cityhill-pno-guard-v644 */
+(() => {
+  'use strict';
+  if (!/^store\.cityhill\.co\.jp$/i.test(location.hostname) ||
+      !/^\/(?:sp\/)?(?:majesticlegon\/)?item\/(?:preorder|search)\.html$/i.test(location.pathname) ||
+      window.top !== window.self || window.__genericCityhillPnoGuard) return;
+  window.__genericCityhillPnoGuard = true;
+  const EXCLUDE = 'header,footer,aside,[hidden],[aria-hidden="true"],[class*="recommend" i],[id*="recommend" i],[class*="recent" i],[class*="carousel" i],#generic-cityhill-render';
+  const canonical = p => p.replace(/^\/sp\//, '/').replace(/preorder\.html$/i, 'search.html');
+  const values = (q, k) => JSON.stringify(q.getAll(k).sort());
+  const number = v => /^[1-9]\d*$/.test(v || '') && Number.isSafeInteger(+v) ? +v : null;
+  // Only follow an existing next-page URL. Never synthesize a missing page or change filters.
+  function target(raw, base = location.href) {
+    try {
+      const from = new URL(base), to = new URL(raw, base);
+      if (to.origin !== from.origin || !/^https?:$/.test(to.protocol) ||
+          canonical(to.pathname) !== canonical(from.pathname) ||
+          to.searchParams.getAll('pno').length !== 1 || from.searchParams.getAll('pno').length > 1) return null;
+      const current = from.searchParams.has('pno') ? number(from.searchParams.get('pno')) : 1;
+      if (current === null || number(to.searchParams.get('pno')) !== current + 1) return null;
+      if (/preorder\.html$/i.test(from.pathname)) from.searchParams.set('rsv', '1');
+      if (/preorder\.html$/i.test(to.pathname)) to.searchParams.set('rsv', '1');
+      for (const k of new Set([...from.searchParams.keys(), ...to.searchParams.keys()])) {
+        if (k === 'pno') continue;
+        if (!to.searchParams.has(k)) for (const v of from.searchParams.getAll(k)) to.searchParams.append(k, v);
+        if (values(from.searchParams, k) !== values(to.searchParams, k)) return null;
+      }
+      to.hash = '';
+      return to.href;
+    } catch (_) { return null; }
+  }
+  function bounds(el) {
+    if (!el || el.closest(EXCLUDE)) return null;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return null;
+    let r = el.getBoundingClientRect();
+    if (!r.width && !r.height) {
+      const range = document.createRange(); range.selectNodeContents(el); r = range.getBoundingClientRect();
+    }
+    return r.width || r.height ? r : null;
+  }
+  function candidate() {
+    let found = null;
+    for (const a of document.querySelectorAll('a[href]')) {
+      if (a.closest('[disabled],[aria-disabled="true"],.disabled,.is-disabled') || a.querySelector('img,picture')) continue;
+      const url = target(a.getAttribute('href')), r = url && bounds(a);
+      if (!r) continue;
+      // The lower copy wins on templates with both top and bottom pagination.
+      found = {node:a, url, rect:r};
+    }
+    return found;
+  }
+  let scrolled = false, innerScroll = 0, armedURL = '', armedAt = 0, stopped = false, timer = 0;
+  let lastY = 0, hold = 0, held = false, pointerX = 0, pointerY = 0;
+  let gestureNeeded = performance.getEntriesByType('navigation').some(e => e.type === 'back_forward');
+  const snapshot = (state, extra = {}) => {
+    window.__genericCityhillPnoGuardDiagnostics = {version:'6.44.0', state, ...extra};
+  };
+  function inspect() {
+    if (stopped || gestureNeeded || document.hidden || !document.body) return;
+    const core = window.__genericCityhillAutoPagerDiagnostics;
+    // Once appending succeeds, never jump back to the original page-2 link.
+    if (!scrolled || (core && core.page > 1) || document.querySelector('[data-generic-fashion-page]')) {
+      armedURL = ''; armedAt = 0; return;
+    }
+    const c = candidate();
+    const lowerPager = c && c.rect.top + Math.max(window.scrollY, innerScroll) > innerHeight;
+    const onScreen = c && c.rect.bottom > 0 && c.rect.top < innerHeight;
+    if (!c || !lowerPager || !onScreen || document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')) {
+      armedURL = ''; armedAt = 0; return;
+    }
+    if (armedURL !== c.url) { armedURL = c.url; armedAt = Date.now(); snapshot('watching', {nextURL:c.url}); return; }
+    // Give normal insertion time to finish. Its network timeout is 28 seconds.
+    const wait = core?.state === 'loading' ? 32000 : 6500;
+    if (Date.now() - armedAt < wait) return;
+    // Recheck all guards immediately before navigation; no retries and no loop across page loads.
+    const latest = window.__genericCityhillAutoPagerDiagnostics;
+    if ((latest && latest.page > 1) || document.querySelector('[data-generic-fashion-page]') || target(c.node.getAttribute('href')) !== c.url) return;
+    stopped = true; clearInterval(timer);
+    snapshot('native-navigation', {nextURL:c.url, reason:latest?.state || 'adapter-not-started'});
+    location.assign(c.url);
+  }
+  function diagnostics() {
+    const c = candidate();
+    return JSON.stringify({version:'6.44.0', url:location.href,
+      viewport:[innerWidth,innerHeight], readyState:document.readyState,
+      core:window.__genericCityhillAutoPagerDiagnostics || null,
+      guard:window.__genericCityhillPnoGuardDiagnostics || null,
+      nextURL:c?.url || null,
+      pageLinks:[...document.querySelectorAll('a[href]')].filter(a => /(?:\?|&)pno=/.test(a.getAttribute('href'))).slice(0,12).map(a=>({href:a.getAttribute('href'),visible:!!bounds(a)}))
+    }, null, 2);
+  }
+  function currentPageTarget(el) {
+    const n = String(number(new URL(location.href).searchParams.get('pno')) || 1);
+    const e = el?.closest('span,strong,em,b,li,a');
+    if (!e || (e.textContent || '').trim() !== n || e.closest(EXCLUDE)) return false;
+    let p = e.parentElement;
+    for (let i=0; p && i<3; i++,p=p.parentElement) {
+      if (p === document.body || p.matches('main') || p.querySelector('img,picture')) break;
+      if ([...p.querySelectorAll('a[href]')].some(a => /(?:\?|&)pno=/.test(a.getAttribute('href')))) return true;
+    }
+    return false;
+  }
+  function begin() {
+    snapshot('ready');
+    window.addEventListener('wheel', e => { if (e.deltaY > 0) gestureNeeded = false; }, {passive:true});
+    window.addEventListener('touchmove', () => { gestureNeeded = false; }, {passive:true});
+    window.addEventListener('keydown', e => { if (['ArrowDown','PageDown',' '].includes(e.key)) gestureNeeded = false; });
+    document.addEventListener('scroll', e => {
+      const y = e.target === document ? window.scrollY : (e.target.scrollTop || 0);
+      if (y > 32 && y >= lastY) scrolled = true;
+      if (y < lastY - 16) { armedURL = ''; armedAt = 0; }
+      lastY = y; if (e.target !== document) innerScroll = y;
+    }, {passive:true,capture:true});
+    // An explicit long press on the current page number opens a local, copyable diagnostic.
+    // No telemetry, cookies, product data, background uploads, or persistent storage.
+    document.addEventListener('pointerdown', e => {
+      clearTimeout(hold); held = false; pointerX = e.clientX; pointerY = e.clientY;
+      if (!currentPageTarget(e.target)) return;
+      hold = setTimeout(() => { held = true; window.prompt('CITYHILL オートページャー診断（コピーして送ってください）', diagnostics()); }, 900);
+    }, {passive:true});
+    for (const type of ['pointerup','pointercancel']) document.addEventListener(type, () => clearTimeout(hold), {passive:true});
+    document.addEventListener('pointermove', e => { if (Math.hypot(e.clientX-pointerX,e.clientY-pointerY)>12) clearTimeout(hold); }, {passive:true});
+    document.addEventListener('contextmenu', e => {
+      if (!currentPageTarget(e.target)) return;
+      e.preventDefault(); clearTimeout(hold);
+      if (!held) { held = true; window.prompt('CITYHILL オートページャー診断（コピーして送ってください）', diagnostics()); }
+    });
+    timer = setInterval(() => { try { inspect(); } catch (e) { snapshot('guard-error', {error:String(e.message).slice(0,160)}); } }, 500);
+  }
+  window.addEventListener('pagehide', () => { stopped = true; clearInterval(timer); clearTimeout(hold); });
+  window.addEventListener('pageshow', e => { if (e.persisted) { stopped = false; gestureNeeded = true; scrolled = false; lastY = window.scrollY; innerScroll = 0; armedURL = ''; armedAt = 0; timer = setInterval(inspect, 500); } });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', begin, {once:true}); else begin();
+})();
+
+/* generic-cityhill-product-autopager-v644 */
 (() => {
   'use strict';
   const listPath = p => /^\/(?:sp\/)?(?:majesticlegon\/)?item\/(?:search|preorder|new|newarrival|ranking|sale|index|list)(?:\.html|\/)?$/i.test(p);
   if (!/^store\.cityhill\.co\.jp$/i.test(location.hostname) || !listPath(location.pathname)) return;
   // Reserve CITYHILL before the v6.41 adapter/generic engine runs, including child frames.
   window.__genericFashionAutoPagerV641 = true;
-  if (window.top !== window.self || window.__genericCityhillAutoPagerV643) return;
-  window.__genericCityhillAutoPagerV643 = true;
+  if (window.top !== window.self || window.__genericCityhillAutoPagerV644) return;
+  window.__genericCityhillAutoPagerV644 = true;
   const ATTR = 'data-generic-cityhill-autopager', PRELOAD = 1400, MAX_PAGES = 80;
   const PAGER = '[class*="pagina" i],[class*="pagenation" i],[class*="paging" i],[class*="pager" i],[class*="page_navi" i],[class*="page-navi" i],[class*="pagenavi" i],[class*="page_nav" i],[class*="page-nav" i],[class*="pageNav" i],[class*="page_link" i],[class*="page-link" i],[class*="pageLink" i],[class*="page_num" i],[class*="page-num" i],[class*="pageNumber" i],[id*="pagina" i],[id*="paging" i],[id*="pager" i],[id*="page_navi" i],[id*="pageNavi" i],[role="navigation"][aria-label*="ページ"],[role="navigation"][aria-label*="pag" i],[class~="page"],[class~="pages"],.pageList,.page-list,.page_list,[class*="page_next" i],[class*="page-next" i],[class*="pageNext" i]';
   const EXCLUDE = 'header,footer,aside,[hidden],[aria-hidden="true"],[class*="recommend" i],[id*="recommend" i],[class*="ranking" i],[class*="recent" i],[class*="carousel" i],[class*="slick" i],#generic-cityhill-render';
@@ -39,9 +174,20 @@
   const CONTROL = 'a,button,input[type="button"],input[type="submit"],[role="button"],[onclick],[data-page],[data-pno],[data-pageno]';
   const sameValues = (a,b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
   const disabled = el => !!el?.closest('[disabled],[aria-disabled="true"],.disabled,.is-disabled,.off');
+  function elementRect(el) {
+    let r=el.getBoundingClientRect();
+    if(!r.width&&!r.height) {
+      const range=el.ownerDocument.createRange();range.selectNodeContents(el);r=range.getBoundingClientRect();
+    }
+    return r;
+  }
   function visible(el) {
     if (el.closest('[hidden],[aria-hidden="true"]')) return false;
-    return !el.ownerDocument.defaultView || !!el.getClientRects().length;
+    const view=el.ownerDocument.defaultView;
+    if(!view)return true;
+    const style=view.getComputedStyle(el);
+    if(style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse')return false;
+    const r=elementRect(el);return !!(r.width||r.height);
   }
   function productURL(a, base) {
     try {
@@ -68,7 +214,16 @@
     q.sort();return route(u.pathname)+'?'+q.toString();
   }
   const cards=(list,base)=>[...list.children].filter(el=>productLinks(el,base).length && !el.hasAttribute('data-cityhill-sentinel'));
-  function listing(doc,base) {
+  function listing(doc,base,reference=null) {
+    const fingerprint=e=>e?e.tagName+'#'+e.id+'.'+[...e.classList].filter(c=>!/^generic-|^lazy|^is-/i.test(c)).sort().join('.'):'';
+    const affinity=e=>{
+      if(!reference||e.tagName!==reference.tagName)return 0;
+      let score=reference.id&&e.id===reference.id?100000:0;
+      if(fingerprint(e)===fingerprint(reference))score+=10000;
+      if(fingerprint(e.parentElement)===fingerprint(reference.parentElement))score+=4000;
+      if(fingerprint(e.parentElement?.parentElement)===fingerprint(reference.parentElement?.parentElement))score+=1000;
+      return score;
+    };
     const candidates=new Set();
     for(const a of doc.querySelectorAll('a[href]')) {
       if(!productURL(a,base)||a.closest(EXCLUDE)||!visible(a))continue;
@@ -83,7 +238,7 @@
       const children=cards(el,base);if(!children.length||!visible(el))continue;
       if(children.some(c=>new Set(productLinks(c,base).map(a=>productID(a,base))).size>1))continue;
       const hint=el.id+' '+el.className;
-      const n=Math.min(children.length,200)*20+(/item|product|goods/i.test(hint)?35:0)+(/list|grid/i.test(hint)?45:0);
+      const n=affinity(el)+Math.min(children.length,200)*20+(/item|product|goods/i.test(hint)?35:0)+(/list|grid/i.test(hint)?45:0);
       if(n>score){best=el;score=n;}
     }
     return best;
@@ -191,9 +346,10 @@
     const roots=pagerRoots(doc),controls=pagerControls(doc),all=[...new Set([...doc.querySelectorAll('link[rel~="next"][href],a[href]'),...controls])],direct=[];
     const inPager=el=>roots.some(p=>p===el||p.contains(el));
     for(const a of all) {
-      if(disabled(a)||(!a.matches('link')&&!visible(a)))continue;
-      if(!a.matches('link[rel~="next"]')&&!inPager(a)&&!explicitNext(a)&&!/^\d+$/.test(text(a)))continue;
-      const found=forwardURL(controlURL(a),base,explicitNext(a));
+      if(disabled(a)||(!a.matches('link')&&(!visible(a)||a.closest(EXCLUDE))))continue;
+      const raw=controlURL(a),found=forwardURL(raw,base,explicitNext(a));
+      const concretePno=found&&new URL(found.url).searchParams.has('pno');
+      if(!concretePno&&!a.matches('link[rel~="next"]')&&!inPager(a)&&!explicitNext(a)&&!/^\d+$/.test(text(a)))continue;
       if(found)direct.push({...found,node:a,priority:explicitNext(a)?0:1,kind:'url'});
     }
     direct.sort((a,b)=>a.priority-b.priority||a.distance-b.distance);
@@ -247,7 +403,7 @@
     document.documentElement.setAttribute(ATTR,state);
     if(list)list.setAttribute('data-generic-fashion-autopager',state==='waiting-controls'?'end':state);
     log.push({time:Date.now(),state,...detail});if(log.length>40)log.shift();
-    window.__genericCityhillAutoPagerDiagnostics={version:'6.43.0',state,items:seen.size,page:pageCount,nextMode:next?.kind||null,events:log.slice()};
+    window.__genericCityhillAutoPagerDiagnostics={version:'6.44.0',state,items:seen.size,page:pageCount,sourceURL:base,nextURL:next?.url||null,list:list?{tag:list.tagName,id:list.id,className:list.className}:null,nextMode:next?.kind||null,events:log.slice()};
   }
   let list=null,base=location.href,entry=keyURL(location.href),next=null,busy=false,blocked=false,pageCount=1;
   let seen=new Set(),seenURLs=new Set(),lastSignature='',timer=0,retryAt=0,failures=0,controller=null,frame=null,frameBase=null;
@@ -262,7 +418,7 @@
   function frameRead() {
     try {
       const doc=frame?.contentDocument;if(!doc||doc.readyState==='loading'||!doc.location||doc.location.origin!==location.origin||!listPath(doc.location.pathname))return null;
-      const l=listing(doc,doc.location.href);return l?{doc,list:l,url:doc.location.href}:null;
+      const l=listing(doc,doc.location.href,list);return l?{doc,list:l,url:doc.location.href}:null;
     }catch(_){return null;}
   }
   function waitFrame(signal,predicate) {
@@ -312,7 +468,7 @@
       const pageURL=r.url||control.url;
       if(!equivalentPage(pageURL,control.url))throw new Error('Unexpected redirect');
       const type=r.headers.get('content-type')||'';if(type&&!/html/i.test(type))throw new Error('Non-HTML response');
-      const doc=new DOMParser().parseFromString(await r.text(),'text/html'),l=listing(doc,pageURL);
+      const doc=new DOMParser().parseFromString(await r.text(),'text/html'),l=listing(doc,pageURL,list);
       if(l&&cards(l,pageURL).some(el=>!seen.has(itemKey(el,pageURL)))) {
         const scripted=[...doc.querySelectorAll('script')].some(s=>/^(?:|module|text\/javascript|application\/javascript)$/i.test(s.type||'')&&(s.src||s.textContent.trim()));
         const following=nextControl(doc,pageURL),roots=pagerRoots(doc);
@@ -369,11 +525,11 @@
     // Absence of controls is not permanently cached: late/AJAX pagination can still appear.
     if(!next){if(document.documentElement.getAttribute(ATTR)!=='waiting-controls')status('waiting-controls');return;}
     const tail=cards(list,location.href).filter(visible).slice(-2);
-    const edge=tail.length?Math.max(...tail.map(el=>el.getBoundingClientRect().bottom)):list.getBoundingClientRect().bottom;
-    const pager=next.node?.ownerDocument===document&&visible(next.node)?next.node.getBoundingClientRect():null;
+    const edge=tail.length?Math.max(...tail.map(el=>elementRect(el).bottom)):elementRect(list).bottom;
+    const pager=next.node?.ownerDocument===document&&visible(next.node)?elementRect(next.node):null;
     if(visible(list)&&(edge<=innerHeight+PRELOAD||(pager&&pager.top>=0&&pager.top<=innerHeight+PRELOAD)))void load(next);
   }
-  function schedule(){if(!paused&&!timer)timer=setTimeout(check,150);}
+  function schedule(){if(!paused&&!timer)timer=setTimeout(()=>{try{check();}catch(e){timer=0;status('adapter-error',{error:String(e.message).slice(0,160)});}},150);}
   function begin(){
     observer=new MutationObserver(schedule);observer.observe(document.body,{childList:true,subtree:true});
     for(const e of ['scroll','resize','pageshow','popstate','online'])window.addEventListener(e,schedule,{passive:true});

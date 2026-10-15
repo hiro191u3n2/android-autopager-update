@@ -1,0 +1,11 @@
+{
+  "scope": "synthetic pages with production guard and real Chromium navigation; not the live site",
+  "forward": "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2",
+  "back": "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+  "passed": 2,
+  "requests": [
+    "https://store.cityhill.co.jp/majesticlegon/item/preorder.html",
+    "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2",
+    "https://store.cityhill.co.jp/majesticlegon/item/preorder.html"
+  ]
+}

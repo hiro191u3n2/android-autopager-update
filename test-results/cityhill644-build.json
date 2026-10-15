@@ -1,0 +1,10 @@
+{
+  "version": "6.44.0",
+  "syntax": "pass",
+  "other_adapters_byte_identical": true,
+  "baseline_blob": "625b722af213dbdaaeb3c21ad255e9a8ee92df37",
+  "sha256": "17c9ddcbabb69a7fbce76bb3f3dcfc07c05f051b2f05873cd6fded44e00389d0",
+  "live_cityhill": "not verified",
+  "android_adguard": "not tested",
+  "fallback": "Existing next pno link only; normal full-page navigation after insertion stalls; disabled after successful append"
+}

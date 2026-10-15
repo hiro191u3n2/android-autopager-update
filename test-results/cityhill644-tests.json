@@ -1,0 +1,196 @@
+{
+  "kind": "offline Chromium synthetic fixtures; NOT real site or Android AdGuard",
+  "version": "6.44.0",
+  "passed": 28,
+  "tests": [
+    {
+      "name": "6.43 accepts the exact user-provided URL",
+      "status": "pass"
+    },
+    {
+      "name": "6.44 accepts the exact user-provided URL",
+      "status": "pass"
+    },
+    {
+      "name": "6.43 display-contents regression",
+      "status": "pass",
+      "detected": {
+        "list": false,
+        "next": false
+      }
+    },
+    {
+      "name": "6.44 display-contents regression",
+      "status": "pass",
+      "detected": {
+        "list": true,
+        "next": true
+      }
+    },
+    {
+      "name": "Concrete pno URL works without text, aria label, or pager class",
+      "status": "pass"
+    },
+    {
+      "name": "182 synthetic items append 50/100/150/182",
+      "status": "pass",
+      "counts": [
+        50,
+        100,
+        150,
+        182
+      ],
+      "requests": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2",
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=3",
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=4"
+      ],
+      "visible_navigation": false
+    },
+    {
+      "name": "Boxless links append without navigation",
+      "status": "pass",
+      "counts": [
+        50,
+        100,
+        150,
+        182
+      ],
+      "requests": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2",
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=3",
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=4"
+      ],
+      "visible_navigation": false
+    },
+    {
+      "name": "Fetched desktop/mobile duplicates match live mobile grid",
+      "status": "pass",
+      "counts": [
+        50,
+        100,
+        150,
+        182
+      ],
+      "requests": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2",
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=3",
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=4"
+      ],
+      "visible_navigation": false
+    },
+    {
+      "name": "Independent fallback when adapter did not start",
+      "status": "pass",
+      "navigation": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2"
+      ]
+    },
+    {
+      "name": "Fallback when product list is not recognized",
+      "status": "pass",
+      "navigation": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2"
+      ]
+    },
+    {
+      "name": "Fallback after fetch/render retry",
+      "status": "pass",
+      "navigation": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2"
+      ]
+    },
+    {
+      "name": "Loading is not interrupted by short guard timeout",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Loading cannot stall forever at bottom pager",
+      "status": "pass",
+      "navigation": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2"
+      ]
+    },
+    {
+      "name": "Successful append disarms fallback",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Imported product marker independently disarms fallback",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "No auto-navigation without scrolling",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Top-only pagination must not auto-navigate",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Opening actual pno2 advances to actual pno3",
+      "status": "pass",
+      "navigation": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=3"
+      ]
+    },
+    {
+      "name": "Changed reservation filter is rejected",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Another brand route is rejected",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "External next-page URL is rejected",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Extra category filter is rejected",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Duplicate page parameters are rejected",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Final page has no forward link",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "Current page long-press opens local diagnostics without data upload",
+      "status": "pass"
+    },
+    {
+      "name": "Repeated filters and sort survive fallback",
+      "status": "pass",
+      "navigation": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2&tag=a&tag=b&sort=price"
+      ]
+    },
+    {
+      "name": "Browser Back never automatically bounces forward",
+      "status": "pass",
+      "navigation": []
+    },
+    {
+      "name": "A fresh downward gesture re-enables fallback after Back",
+      "status": "pass",
+      "navigation": [
+        "https://store.cityhill.co.jp/majesticlegon/item/search.html?rsv=1&pno=2"
+      ]
+    }
+  ]
+}

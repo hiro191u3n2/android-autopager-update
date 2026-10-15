@@ -1,0 +1,14 @@
+{
+  "STAGE": "success",
+  "BUILD": "success",
+  "FRESH": "success",
+  "NATIVE": "success",
+  "PREVIOUS": "success",
+  "CITY": "success",
+  "FASHION": "success",
+  "RLAB": "success",
+  "version": "6.44.0",
+  "android_adguard": "not tested",
+  "live_site": "not verified",
+  "release_ready": true
+}
