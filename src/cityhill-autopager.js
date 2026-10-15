@@ -236,7 +236,7 @@
       const source=['data-src','data-original','data-lazy-src','data-lazy','data-layzr','data-echo'].map(k=>img.getAttribute(k)).find(Boolean);
       if(source)try{const u=new URL(source,base);if(/^https?:$/.test(u.protocol))img.src=u.href;}catch(_){}
       const srcset=img.getAttribute('data-srcset')||img.getAttribute('data-lazy-srcset');if(srcset)img.srcset=srcset;
-      img.loading='eager';img.decoding='async';img.classList.remove('lazy','lazyload','lazyloading');img.classList.add('lazyloaded');
+      img.loading='lazy';img.decoding='async';img.classList.remove('lazy','lazyload','lazyloading');img.classList.add('lazyloaded');
       img.style.setProperty('opacity','1');img.style.setProperty('visibility','visible');
       for(const k of ['data-src','data-original','data-lazy-src','data-lazy','data-layzr','data-echo'])img.removeAttribute(k);
     }
@@ -248,17 +248,81 @@
     document.documentElement.setAttribute(ATTR,state);
     if(list)list.setAttribute('data-generic-fashion-autopager',state==='waiting-controls'?'end':state);
     log.push({time:Date.now(),state,...detail});if(log.length>40)log.shift();
-    window.__genericCityhillAutoPagerDiagnostics={version:'6.44.0',state,items:seen.size,page:pageCount,sourceURL:base,nextURL:next?.url||null,list:list?{tag:list.tagName,id:list.id,className:list.className}:null,nextMode:next?.kind||null,events:log.slice()};
+    window.__genericCityhillAutoPagerDiagnostics={version:'6.46.0',state,items:seen.size,page:pageCount,sourceURL:base,nextURL:next?.url||null,list:list?{tag:list.tagName,id:list.id,className:list.className}:null,nextMode:next?.kind||null,events:log.slice()};
   }
   let list=null,base=location.href,entry=keyURL(location.href),next=null,busy=false,blocked=false,pageCount=1;
   let seen=new Set(),seenURLs=new Set(),lastSignature='',timer=0,retryAt=0,failures=0,controller=null,frame=null,frameBase=null;
-  let lastScan=0,sourceDoc=document,observer=null,paused=false;
+  let sourceDoc=document,observer=null,sourceObserver=null,paused=false;
+  let cardCache=[],cardKeys=[],cardsDirty=true,controlsDirty=true,discoveryDirty=true;
+  const CARD_ATTRIBUTES=['href','data-color','data-color-id','data-color-code','data-color-cd','data-cc','data-sku'];
+  const OBSERVED_ATTRIBUTES=[...CARD_ATTRIBUTES,'data-href','data-url','onclick','data-page','data-pno','data-pageno','rel','disabled','aria-disabled','aria-current','aria-label','hidden','aria-hidden','class','style'];
   const signature=(l,b)=>cards(l,b).map(e=>itemKey(e,b)).filter(Boolean).join('|');
-  function disposeFrame(){if(frame)frame.remove();frame=null;frameBase=null;}
+  function refreshCards() {
+    cardCache=cards(list,location.href);cardKeys=cardCache.map(el=>itemKey(el,location.href)).filter(Boolean);cardsDirty=false;
+    return cardKeys.join('|');
+  }
+  function controlMutation(node,descendants=true) {
+    const el=node?.nodeType===1?node:node?.parentElement;
+    if(!el)return false;
+    // A previously selected control becoming hidden still invalidates its cached state.
+    if(next?.node&&(el===next.node||next.node.contains(el)))return true;
+    if(el.closest(EXCLUDE))return false;
+    return el.matches(PAGER+',link[rel~="next"],'+CONTROL)||!!el.closest(PAGER)||
+      (descendants&&!!el.querySelector(PAGER+',a[href],button,[role="button"],[data-page],[data-pno]'));
+  }
+  function mutations(records,remote=false) {
+    let changed=false;
+    for(const record of records) {
+      const target=record.target.nodeType===1?record.target:record.target.parentElement;
+      if(!target||target.closest('#generic-cityhill-render'))continue;
+      const inside=!remote&&list&&(target===list||list.contains(target));
+      if(record.type==='attributes') {
+        if(inside) {
+          if(CARD_ATTRIBUTES.includes(record.attributeName))cardsDirty=true;
+          // Visibility can change without invalidating the product identities.
+          changed=true;
+        } else {
+          if(!remote&&!list) {discoveryDirty=true;changed=true;}
+          // Sticky-header/body class changes during scroll are not pagination mutations.
+          if(controlMutation(target,false)) {
+            if(remote||sourceDoc===document)controlsDirty=true;
+            changed=true;
+          }
+        }
+      } else if(record.type==='childList') {
+        const nodes=[...record.addedNodes,...record.removedNodes].filter(n=>n.nodeType===1&&!n.matches('script,style,iframe'));
+        if(inside) {
+          if(nodes.some(n=>cardCache.includes(n)||n.matches('a[href],img,picture')||n.querySelector('a[href],img,picture'))) {
+            cardsDirty=true;changed=true;
+          }
+        } else {
+          if(!remote&&(!list||!list.isConnected)&&nodes.length) {discoveryDirty=true;changed=true;}
+          if(nodes.some(node=>controlMutation(node))||controlMutation(target,false)) {
+            if(remote||sourceDoc===document)controlsDirty=true;
+            changed=true;
+          }
+        }
+      } else if(!inside&&controlMutation(target,false)) {
+        if(remote||sourceDoc===document)controlsDirty=true;
+        changed=true;
+      }
+    }
+    if(changed)schedule();
+  }
+  function setSource(doc) {
+    sourceObserver?.disconnect();sourceObserver=null;sourceDoc=doc;
+    // A native pager may insert its next controls later inside the retained frame.
+    // Detached fetch documents are immutable and need no polling or observation.
+    if(doc!==document&&doc.defaultView&&doc.documentElement) {
+      sourceObserver=new MutationObserver(records=>mutations(records,true));
+      sourceObserver.observe(doc.documentElement,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:OBSERVED_ATTRIBUTES});
+    }
+  }
+  function disposeFrame(){sourceObserver?.disconnect();sourceObserver=null;if(frame)frame.remove();frame=null;frameBase=null;}
   function reset(newList) {
     controller?.abort();disposeFrame();list=newList;base=location.href;entry=keyURL(base);next=null;busy=false;blocked=false;
-    pageCount=1;failures=0;retryAt=0;seenURLs=new Set([keyURL(base)]);seen=new Set(cards(list,base).map(e=>itemKey(e,base)).filter(Boolean));
-    lastSignature=signature(list,base);sourceDoc=document;status('waiting-controls',{items:seen.size});
+    pageCount=1;failures=0;retryAt=0;seenURLs=new Set([keyURL(base)]);lastSignature=refreshCards();seen=new Set(cardKeys);
+    discoveryDirty=false;controlsDirty=true;setSource(document);status('waiting-controls',{items:seen.size});
   }
   function frameRead() {
     try {
@@ -341,7 +405,7 @@
       for(const el of fresh){const clone=prepare(document.importNode(el,true),r.url);clone.setAttribute('data-generic-fashion-page',String(pageCount+1));fragment.appendChild(clone);}
       list.appendChild(fragment);for(const k of keys)seen.add(k);
       if(control.url)seenURLs.add(keyURL(control.url));base=r.url;next=following;pageCount++;failures=0;retryAt=0;
-      lastSignature=signature(list,location.href);sourceDoc=r.doc;
+      lastSignature=refreshCards();setSource(r.doc);controlsDirty=false;
       status(next?'ready':'waiting-controls',{page:pageCount,added:fresh.length,total:seen.size});
       document.dispatchEvent(new CustomEvent('GenericAutoPagerLoaded',{detail:{site:'city',url:base,page:pageCount,added:fresh.length}}));
       if(pageCount>=MAX_PAGES){blocked=true;disposeFrame();status('limit');}
@@ -354,29 +418,36 @@
   function check() {
     timer=0;if(paused||document.hidden||!document.body)return;
     if(!list||!list.isConnected||entry!==keyURL(location.href)) {
+      if(list&&(!list.isConnected||entry!==keyURL(location.href)))discoveryDirty=true;
+      if(!discoveryDirty)return;
+      discoveryDirty=false;
       const found=listing(document,location.href);if(!found){status('waiting-list');return;}reset(found);
     }
-    // Replaced grids are common after sorting/filtering; also detect in-place child replacement.
-    if(Date.now()-lastScan>1200&&!busy) {
-      lastScan=Date.now();const sig=signature(list,location.href);
+    // Rebuild identities only when relevant markup changed, never on ordinary scroll ticks.
+    if(cardsDirty) {
+      const sig=refreshCards();
       if(sig!==lastSignature) {
-        const actual=cards(list,location.href).map(el=>itemKey(el,location.href)).filter(Boolean);
-        if(actual.some(k=>!seen.has(k))||actual.length<seen.size)reset(list);
+        if(cardKeys.some(k=>!seen.has(k))||cardKeys.length<seen.size)reset(list);
         else lastSignature=sig;
       }
     }
     if(blocked||busy||Date.now()<retryAt)return;
-    if(!next)next=nextControl(sourceDoc,base);
-    // Absence of controls is not permanently cached: late/AJAX pagination can still appear.
+    if(controlsDirty) {next=nextControl(sourceDoc,base);controlsDirty=false;}
+    // A missing next control is cached until the document or native source actually changes.
     if(!next){if(document.documentElement.getAttribute(ATTR)!=='waiting-controls')status('waiting-controls');return;}
-    const tail=cards(list,location.href).filter(visible).slice(-2);
+    const liveControl=next.node?.ownerDocument===document;
+    const pager=liveControl&&visible(next.node)?elementRect(next.node):null;
+    if(liveControl&&!pager)return;
+    if(!visible(list))return;
+    const tail=[];
+    for(let i=cardCache.length-1;i>=0&&tail.length<2;i--)if(cardCache[i].isConnected&&visible(cardCache[i]))tail.push(cardCache[i]);
     const edge=tail.length?Math.max(...tail.map(el=>elementRect(el).bottom)):elementRect(list).bottom;
-    const pager=next.node?.ownerDocument===document&&visible(next.node)?elementRect(next.node):null;
-    if(visible(list)&&(edge<=innerHeight+PRELOAD||(pager&&pager.top>=0&&pager.top<=innerHeight+PRELOAD)))void load(next);
+    if(edge<=innerHeight+PRELOAD||(pager&&pager.top>=0&&pager.top<=innerHeight+PRELOAD))void load(next);
   }
   function schedule(){if(!paused&&!timer)timer=setTimeout(()=>{try{check();}catch(e){timer=0;status('adapter-error',{error:String(e.message).slice(0,160)});}},150);}
   function begin(){
-    observer=new MutationObserver(schedule);observer.observe(document.body,{childList:true,subtree:true});
+    observer=new MutationObserver(records=>mutations(records));
+    observer.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:OBSERVED_ATTRIBUTES});
     for(const e of ['scroll','resize','pageshow','popstate','online'])window.addEventListener(e,schedule,{passive:true});
     document.addEventListener('scroll',schedule,{passive:true,capture:true});
     document.addEventListener('visibilitychange',schedule);setInterval(schedule,1800);schedule();
