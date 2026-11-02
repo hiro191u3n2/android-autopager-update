@@ -23,7 +23,8 @@ assert(start >= 0 && end > start && built.indexOf('function _(t,e){', start + 1)
 const utilityStart = built.indexOf('function X(t,e){', end);
 const utilityEnd = built.indexOf('function tt(t){', utilityStart);
 assert(utilityStart > end && utilityEnd > utilityStart, 'Production X/K/Z/Q helper boundaries must exist');
-const code = helper + '\n' + built.slice(start, end) + '\n' + built.slice(utilityStart, utilityEnd);
+const googleHelper = readFileSync(resolve(ROOT, 'src/google-import-layout.js'), 'utf8').trim();
+const code = googleHelper + '\n' + helper + '\n' + built.slice(start, end) + '\n' + built.slice(utilityStart, utilityEnd);
 const BASE = 'https://brand.example/collections/dresses?page=2';
 const MEDIA = '<picture><source data-srcset="/image/one.webp 1x, /image/two.webp 2x"><img id="imported" src="data:image/gif;base64,R0lGODlhAQABA" data-src="/image/real.jpg" data-srcset="/image/one.jpg 1x, /image/two.jpg 2x"></picture>';
 let passed = 0;
