@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.46.0';
+export const VERSION = '6.47.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -12,6 +12,15 @@ export const PRODUCT_GUARD = 'if(isGenericFashionProductPageV646())return;';
 export const COMMERCE_IMAGE_REPLACEMENTS = [
   ['function _(t,e){if(!t)return!1;let n=!1;', 'function _(t,e){if(!t)return!1;const c=useGenericCommerceLazyImagesV646(t);let n=!1;'],
   [String.raw`i.setAttribute("loading",/(^|\.)buzzap\.jp$/i.test(location.hostname)?"lazy":"eager")`, String.raw`i.setAttribute("loading",/(^|\.)buzzap\.jp$/i.test(location.hostname)||c?"lazy":"eager")`],
+];
+// Capture before legacy hydration exposes hidden images. Restore only the imported
+// Google subtree; no source CSS is inserted into the first page.
+export const GOOGLE_LAYOUT_REPLACEMENTS = [
+  ['function(t,e){for(const n of t.querySelectorAll("img"))', 'function(t,e){captureGenericGoogleLayoutV647(t);for(const n of t.querySelectorAll("img"))'],
+  ['const u=document.importNode(e,!0);', 'const u=document.importNode(e,!0);if(r)applyGenericGoogleLayoutV647(e,u);'],
+  ['function y(t,e){if(!t?.querySelector)return!1;', 'function y(t,e){if(!t?.querySelector||hasGenericGoogleLayoutV647(t))return!1;'],
+  ['function M(t){if(!t)return;', 'function M(t){if(!t||hasGenericGoogleLayoutV647(t))return;'],
+  ['function _(t,e){if(!t)return!1;', 'function _(t,e){if(!t||hasGenericGoogleLayoutV647(t))return!1;'],
 ];
 // Exact original ranges are pinned so unrelated legacy features cannot drift.
 export const MODULE_REPLACEMENTS = [
@@ -45,9 +54,17 @@ export async function buildUserscript() {
     assert.equal(body.split(from).length, 2, 'Generic image hydration boundary changed');
     body = body.replace(from, to);
   }
+  for (const [from, to] of GOOGLE_LAYOUT_REPLACEMENTS) {
+    assert.equal(body.split(from).length, 2, 'Google layout boundary changed');
+    body = body.replace(from, to);
+  }
+  const googleLayout = (await readFile(new URL('src/google-import-layout.js', root), 'utf8')).trim();
+  assert.equal(body.split('function e(){').length, 2, 'Google layout helper boundary changed');
+  body = body.replace('function e(){', `${googleLayout}\nfunction e(){`);
   let header = baseline.slice(0, end).replace(/^(\/\/ @version\s+)6\.44\.0$/m, `$1${VERSION}`);
   header = header.replace('// @description  ', '// @description  Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。');
   header = header.replace('// @description  ', '// @description  服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。');
+  header = header.replace('// @description  ', '// @description  Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。');
   const module = await readFile(new URL('src/yahoo-realtime-autopager.js', root), 'utf8');
   assert(module.includes('__genericYahooRealtimeAutoPagerV645'));
   const gallery = await readFile(new URL('src/cityhill-gallery-compat.js', root), 'utf8');
@@ -59,7 +76,7 @@ export async function buildUserscript() {
 export default {
   async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.46.js') {
+    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.47.js') {
       return new Response(await buildUserscript(), { headers: { 'content-type': 'application/javascript; charset=utf-8' } });
     }
     if (path === '/android-generic-autopager.meta.js') {
