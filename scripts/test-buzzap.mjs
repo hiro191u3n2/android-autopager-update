@@ -2,7 +2,7 @@
 // Do not describe byte-preservation checks as live-site playback/browser tests.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, END, VERSION } from '../worker/index.js';
+import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, END, VERSION } from '../worker/index.js';
 
 const base = await readFile(new URL('../Android_Generic_AutoPager_v6.44.js', import.meta.url), 'utf8');
 const output = await buildUserscript();
@@ -14,6 +14,13 @@ const prefix = `\n\n${realtime}\n${gallery}\n`;
 const executable = output.slice(output.indexOf(END) + END.length);
 assert(executable.startsWith(prefix), 'Runtime module ordering changed');
 let restored = executable.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
+const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
+assert.equal(restored.split(googleLayout).length, 2);
+restored = restored.replace(googleLayout + '\n', '');
+for (const [from, to] of GOOGLE_LAYOUT_REPLACEMENTS) {
+  assert.equal(restored.split(to).length, 2);
+  restored = restored.replace(to, from);
+}
 for (const [from, to] of COMMERCE_IMAGE_REPLACEMENTS) {
   assert.equal(restored.split(to).length, 2);
   restored = restored.replace(to, from);
