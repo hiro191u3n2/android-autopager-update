@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.48.0
-// @description  Google検索の補正案内・地域選択帯・AI概要（生成不可を含む）を非表示。検索語変更・動的追加・戻る操作にも再適用。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.49.0
+// @description  Google検索の補正案内・現在地だけの帯・AI概要（生成不可を含む）を非表示。モバイル固有の要素と検索結果外の案内にも対応。検索語変更・動的追加・戻る操作にも再適用。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -32,12 +32,12 @@
   const MARK = 'data-generic-google-cleanup-v648';
   const ACTIVE = 'data-generic-google-cleanup-active-v648';
   const STYLE_ID = 'generic-google-cleanup-style-v648';
-  const AREA = '#rso,#search,#main,#center_col,#taw,#topstuff,[role="main"]';
   const BOUNDARY = 'html,body,main,#rso,#search,#main,#center_col,#taw,#topstuff,[role="main"]';
-  const PROTECTED = 'nav,header,footer,form,[role="navigation"],[role="dialog"],[role="listbox"],.related-question-pair,[data-initq],[data-q],[data-attrid*="people_also_ask"],.g,.tF2Cxc';
-  const AI_ROOT = '[data-attnms],[data-aquarium],[data-subtree="mfc"],[data-attrid="AIOverview"],[data-async-type="folsrch"]';
+  // .g and .tF2Cxc are reused for UI wrappers on mobile; only real linked
+  // result headings protect a result card. Notices can precede #search/#rso.
+  const PROTECTED = 'nav,header,footer,aside,#rhs,input,textarea,select,[contenteditable="true"],[role="complementary"],[role="navigation"],[role="dialog"],[role="listbox"],.related-question-pair,[jscontroller="Da4hkd"],[data-initq],[data-q],[data-attrid*="people_also_ask"],[data-ssid="lcl_legacy_tile"]';
+  const AI_ROOT = '[data-attnms],[data-aquarium],[data-subtree="mfc"],[data-attrid="AIOverview"],[data-async-type="folsrch"],[data-mg-cp="YzCcne"]';
   const AI_CONTAINER = AI_ROOT + ',[data-mcpr],[data-mcp]';
-  const TEXT_TAGS = /^(DIV|SPAN|P|SECTION|H1|H2|H3|A|BUTTON)$/;
   const jobs = [];
   const queued = new Set();
   let scheduled = false;
@@ -81,7 +81,7 @@
   function shortText(element, limit) {
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
-        return node.parentElement && node.parentElement.closest('script,style,noscript,template') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        return node.parentElement && node.parentElement.closest('script,style,noscript,template,svg,input,textarea,select') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
       }
     });
     let text = '', node, count = 0;
@@ -110,7 +110,9 @@
   }
 
   function eligible(element, strongAI) {
-    if (!element || !element.isConnected || element.matches(BOUNDARY) || !element.closest(AREA) || element.closest(PROTECTED)) return false;
+    if (!element || !element.isConnected || element.matches(BOUNDARY) || !document.body?.contains(element) || element.closest(PROTECTED)) return false;
+    const enclosingLink = element.closest('a[href]');
+    if (enclosingLink && isExternalLink(enclosingLink)) return false;
     if (!strongAI && hasResultHeading(element)) return false;
     // A notice quoted inside its own result/question card is content. A result
     // in a separate sibling card does not disqualify a notice in a shared div.
@@ -145,8 +147,59 @@
 
   function aiError(text) {
     const compact = text.replace(/\s/g, '');
-    return /^(?:現在[、,]?)?AI(?:による)?概要(?:を|は|が).*(?:生成できません|表示できません|利用できません)/.test(compact) ||
-      /^(?:(?:An? )?AI Overview (?:is not available|isn't available|couldn't be generated)|Can't generate an AI overview|Unable to generate an AI overview|We can't generate an AI overview)/i.test(text);
+    return compact.length <= 350 && (/AI(?:による)?概要(?:を|は|が).{0,70}(?:生成できません|表示できません|利用できません)/.test(compact) ||
+      /(?:(?:An? )?AI Overview (?:is not available|isn't available|couldn't be generated)|Can't generate an AI overview|Unable to generate an AI overview|We can't generate an AI overview)/i.test(text));
+  }
+
+  function beforeResults(element) {
+    // Location inference is only for the strip before the first actual result.
+    // In particular, addresses and menus inside the Places widget stay intact.
+    for (const result of document.querySelectorAll('h3,[data-ssid="lcl_legacy_tile"]')) {
+      if (result.closest('header,nav,footer,aside,' + AI_ROOT)) continue;
+      const link = result.closest('a[href]') || result.querySelector('a[href]');
+      if (result.tagName === 'H3' && (!link || !isExternalLink(link))) continue;
+      if (element.contains(result) || !(element.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+      return true;
+    }
+    // Streaming markup may not have a result yet. Only consider the top band.
+    const rect = element.getBoundingClientRect();
+    return rect.top + scrollY < 650;
+  }
+
+  function locationBand(element, text) {
+    if (!text || text.length > 160 || !eligible(element, false)) return false;
+    if (element.querySelector('h1,h2,h3,img,iframe,video,canvas,input,textarea,select,[data-ssid="lcl_legacy_tile"]')) return false;
+    if (Array.from(element.querySelectorAll('a[href]')).some(isExternalLink)) return false;
+    const nativeLocation = element.matches('update-location') ||
+      (element.matches('dynamic-visibility-control') && element.querySelector('update-location'));
+    if (nativeLocation) return beforeResults(element);
+    const controls = Array.from(element.querySelectorAll('button,[role="button"],[aria-haspopup]'));
+    if (!controls.length || controls.length > 3) return false;
+    const menu = controls.find(control => /(?:その他|メニュー|オプション|more|options|menu)/i.test(control.getAttribute('aria-label') || '') ||
+      /^[⋮⋯︙…]+$/.test(normalize(control.textContent)) || control.querySelector('svg'));
+    if (!menu) return false;
+    // The screenshot's location variant has an icon and a trailing middle dot,
+    // with no 'Choose area' label. This is independent of the municipality.
+    const label = normalize(text.replace(normalize(menu.textContent), '')).replace(/[⋮⋯︙…]+$/g, '').trim();
+    if (!/[・·•]\s*$/.test(label)) return false;
+    const icons = Array.from(element.querySelectorAll('svg,[aria-label],[data-icon],.material-icons'));
+    const locationIcon = icons.some(icon => !menu.contains(icon) &&
+      (/(?:現在地|自宅|位置情報|current location|^home$|location_on|^place$)/i.test((icon.getAttribute('aria-label') || '') + (icon.getAttribute('data-icon') || '') + normalize(icon.textContent)) ||
+       (icon.tagName.toLowerCase() === 'svg' && Array.from(icon.querySelectorAll('path')).some(path => {
+         const d = (path.getAttribute('d') || '').replace(/[\s,]/g, '').toLowerCase();
+         return d.startsWith('m1020v-6h4v6') || d.startsWith('m1010v') || d.startsWith('m122c') || d.startsWith('m122a');
+       }))));
+    if (!locationIcon || !beforeResults(element)) return false;
+    const rect = element.getBoundingClientRect();
+    return rect.width >= Math.min(180, innerWidth * 0.4) && rect.height > 0 && rect.height <= 112;
+  }
+
+  function aiTarget(seed) {
+    const module = seed.closest('.MjjYud,section,g-section-with-header');
+    if (!module || module === seed || !eligible(module, true)) return seed;
+    if (module.querySelector('[data-ssid="lcl_legacy_tile"],.related-question-pair,[jscontroller="Da4hkd"]')) return seed;
+    if (Array.from(module.querySelectorAll('h3')).some(h => !seed.contains(h))) return seed;
+    return module;
   }
 
   function safelyPromote(seed, kind) {
@@ -155,7 +208,7 @@
       if (!eligible(parent, false) || parent.querySelector('input,textarea,select,iframe,video,canvas,img,nav,[role="navigation"],.related-question-pair,[data-initq],[data-q]')) break;
       const text = shortText(parent, kind === 'correction' ? 700 : 360);
       if (!text) break;
-      if (kind === 'location' && !locationText(text)) break;
+      if (kind === 'location' && !locationText(text) && !locationBand(parent, text)) break;
       if (kind === 'correction' && !correctionText(text)) break;
       if (kind === 'ai' && !aiError(text) && !aiHeading(text)) break;
       if (Array.from(parent.querySelectorAll('a[href]')).some(isExternalLink)) break;
@@ -181,12 +234,17 @@
   }
 
   function inspect(element) {
-    if (!enabled || element.closest('[' + MARK + ']') || !element.closest(AREA)) return;
+    if (!enabled || element.closest('[' + MARK + ']')) return;
     if (element.matches(AI_ROOT) && eligible(element, true)) {
-      mark(element, 'ai');
+      mark(aiTarget(element), 'ai');
       return;
     }
-    if (!TEXT_TAGS.test(element.tagName) || element.children.length > 8) return;
+    // Google's g-inner-card/update-location custom elements may own text
+    // directly. A tag-name whitelist skipped them entirely in v6.48.
+    if (element.namespaceURI !== 'http://www.w3.org/1999/xhtml') return;
+    // A form or another shared parent can contain both a search field and a
+    // notice. Inspect the child notice without hiding the shared controls.
+    if (element.querySelector('input,textarea,select,nav,[role="navigation"]')) return;
     const text = shortText(element, 700);
     if (!text) return;
     if (element.matches('h1,h2,[role="heading"]') && aiHeading(text)) {
@@ -197,6 +255,10 @@
       }
     }
     if (!eligible(element, false)) return;
+    if (locationBand(element, text)) {
+      mark(safelyPromote(element, 'location'), 'location');
+      return;
+    }
     if (correctionText(text) && (element.id === 'fprs' || element.querySelector('a[href*="/search"],a[href*="nfpr="]'))) {
       mark(safelyPromote(element, 'correction'), 'correction');
       return;
@@ -282,7 +344,7 @@
       if (!target.matches(BOUNDARY)) inspect(target);
     }
   });
-  observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['id', 'class', 'role', 'data-attnms', 'data-aquarium', 'data-subtree', 'data-attrid', 'data-async-type'] });
+  observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['id', 'class', 'role', 'aria-label', 'data-attnms', 'data-aquarium', 'data-subtree', 'data-attrid', 'data-async-type', 'data-mg-cp'] });
   for (const method of ['pushState', 'replaceState']) {
     const original = history[method];
     try {
