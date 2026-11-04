@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.49.0
-// @description  Google検索の補正案内・現在地だけの帯・AI概要（生成不可を含む）を非表示。モバイル固有の要素と検索結果外の案内にも対応。検索語変更・動的追加・戻る操作にも再適用。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.50.0
+// @description  Google検索の不要案内を描画前に非表示。後から追加される補正案内・現在地帯・AI概要の瞬間表示を抑止。CSSアイコン・疑似要素の区切り点・上部領域内の地名帯にも対応。検索語変更・動的追加・戻る操作にも再適用。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -36,6 +36,10 @@
   // .g and .tF2Cxc are reused for UI wrappers on mobile; only real linked
   // result headings protect a result card. Notices can precede #search/#rso.
   const PROTECTED = 'nav,header,footer,aside,#rhs,input,textarea,select,[contenteditable="true"],[role="complementary"],[role="navigation"],[role="dialog"],[role="listbox"],.related-question-pair,[jscontroller="Da4hkd"],[data-initq],[data-q],[data-attrid*="people_also_ask"],[data-ssid="lcl_legacy_tile"]';
+  // A current-location strip may be a child of the search header or Places
+  // container. Walk those parents, but only the location-specific path may
+  // cross their protection; ordinary text/content remains protected.
+  const HARD_PROTECTED = PROTECTED.split(',').filter(selector => selector !== 'header' && selector !== '[data-ssid="lcl_legacy_tile"]').join(',');
   const AI_ROOT = '[data-attnms],[data-aquarium],[data-subtree="mfc"],[data-attrid="AIOverview"],[data-async-type="folsrch"],[data-mg-cp="YzCcne"]';
   const AI_CONTAINER = AI_ROOT + ',[data-mcpr],[data-mcp]';
   const jobs = [];
@@ -43,12 +47,19 @@
   let scheduled = false;
   let enabled = false;
   let currentHref = '';
+  const beforePaint = typeof queueMicrotask === 'function' ? queueMicrotask : callback => Promise.resolve().then(callback);
 
   function ensureStyle() {
     if (!document.documentElement || document.getElementById(STYLE_ID)) return;
     const style = document.createElement('style');
     style.id = STYLE_ID;
-    style.textContent = 'html[' + ACTIVE + '] [' + MARK + ']{display:none!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important}';
+    const active = 'html[' + ACTIVE + '] ';
+    const safe = ':not(:is(' + PROTECTED + ')):not(:is(' + PROTECTED + ') *)';
+    // Native CSS can suppress known payloads as soon as the parser inserts
+    // them. Semantic fallback runs in the same pre-paint microtask checkpoint.
+    const early = ['#fprs' + safe, ':is(' + AI_ROOT + ')' + safe];
+    style.textContent = [active + '[' + MARK + ']', ...early.map(selector => active + selector)].join(',') +
+      '{display:none!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important}';
     (document.head || document.documentElement).appendChild(style);
   }
 
@@ -67,7 +78,9 @@
     currentHref = location.href;
     enabled = routeEnabled();
     if (document.documentElement) document.documentElement.toggleAttribute(ACTIVE, enabled);
-    for (const element of document.querySelectorAll('[' + MARK + ']')) element.removeAttribute(MARK);
+    // Never briefly reveal old notices on pageshow or a new query. Recycled
+    // nodes are revalidated by the mutation path; leaving search releases all.
+    if (!enabled) for (const element of document.querySelectorAll('[' + MARK + ']')) element.removeAttribute(MARK);
     jobs.length = 0;
     queued.clear();
     if (enabled && document.documentElement) enqueue(document.documentElement);
@@ -109,8 +122,8 @@
     return false;
   }
 
-  function eligible(element, strongAI) {
-    if (!element || !element.isConnected || element.matches(BOUNDARY) || !document.body?.contains(element) || element.closest(PROTECTED)) return false;
+  function eligible(element, strongAI, locationOnly = false) {
+    if (!element || !element.isConnected || (element.matches(BOUNDARY) && !(locationOnly && element.matches('#taw,#topstuff'))) || !document.body?.contains(element) || element.closest(locationOnly ? HARD_PROTECTED : PROTECTED)) return false;
     const enclosingLink = element.closest('a[href]');
     if (enclosingLink && isExternalLink(enclosingLink)) return false;
     if (!strongAI && hasResultHeading(element)) return false;
@@ -156,6 +169,9 @@
     // In particular, addresses and menus inside the Places widget stay intact.
     for (const result of document.querySelectorAll('h3,[data-ssid="lcl_legacy_tile"]')) {
       if (result.closest('header,nav,footer,aside,' + AI_ROOT)) continue;
+      // The location strip may live above the map inside this same wrapper.
+      // Use the first actual linked result inside it as the ordering boundary.
+      if (result.contains(element)) continue;
       const link = result.closest('a[href]') || result.querySelector('a[href]');
       if (result.tagName === 'H3' && (!link || !isExternalLink(link))) continue;
       if (element.contains(result) || !(element.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
@@ -167,29 +183,41 @@
   }
 
   function locationBand(element, text) {
-    if (!text || text.length > 160 || !eligible(element, false)) return false;
-    if (element.querySelector('h1,h2,h3,img,iframe,video,canvas,input,textarea,select,[data-ssid="lcl_legacy_tile"]')) return false;
+    if (!text || text.length > 160 || !eligible(element, false, true)) return false;
+    if (element.querySelector('h1,h2,h3,iframe,video,canvas,input,textarea,select,[data-ssid="lcl_legacy_tile"]')) return false;
     if (Array.from(element.querySelectorAll('a[href]')).some(isExternalLink)) return false;
     const nativeLocation = element.matches('update-location') ||
       (element.matches('dynamic-visibility-control') && element.querySelector('update-location'));
     if (nativeLocation) return beforeResults(element);
-    const controls = Array.from(element.querySelectorAll('button,[role="button"],[aria-haspopup]'));
-    if (!controls.length || controls.length > 3) return false;
+    const controls = Array.from(element.querySelectorAll('button,[role="button"],[aria-haspopup],[jsaction],[tabindex],g-menu-button,g-popup'));
+    // Google nests several jsaction owners around the same overflow menu.
+    // Prefer its label/dots, never a broad clickable parent containing the name.
     const menu = controls.find(control => /(?:その他|メニュー|オプション|more|options|menu)/i.test(control.getAttribute('aria-label') || '') ||
-      /^[⋮⋯︙…]+$/.test(normalize(control.textContent)) || control.querySelector('svg'));
+      /^[⋮⋯︙…]+$/.test(normalize(control.textContent))) ||
+      Array.from(element.querySelectorAll('span')).find(span => /^[⋮⋯︙…]+$/.test(normalize(span.textContent))) ||
+      controls.slice().reverse().find(control => control.querySelector('svg') && normalize(control.textContent).length < 12);
     if (!menu) return false;
-    // The screenshot's location variant has an icon and a trailing middle dot,
-    // with no 'Choose area' label. This is independent of the municipality.
+    // The icon can be an image, CSS background/mask, SVG use, or a path. The
+    // middle dot may be generated by ::after and therefore absent in textContent.
     const label = normalize(text.replace(normalize(menu.textContent), '')).replace(/[⋮⋯︙…]+$/g, '').trim();
-    if (!/[・·•]\s*$/.test(label)) return false;
-    const icons = Array.from(element.querySelectorAll('svg,[aria-label],[data-icon],.material-icons'));
-    const locationIcon = icons.some(icon => !menu.contains(icon) &&
-      (/(?:現在地|自宅|位置情報|current location|^home$|location_on|^place$)/i.test((icon.getAttribute('aria-label') || '') + (icon.getAttribute('data-icon') || '') + normalize(icon.textContent)) ||
-       (icon.tagName.toLowerCase() === 'svg' && Array.from(icon.querySelectorAll('path')).some(path => {
-         const d = (path.getAttribute('d') || '').replace(/[\s,]/g, '').toLowerCase();
-         return d.startsWith('m1020v-6h4v6') || d.startsWith('m1010v') || d.startsWith('m122c') || d.startsWith('m122a');
-       }))));
+    const pieces = [element, ...element.querySelectorAll('span,b,strong,i,svg,img,[aria-label],[data-icon]')].slice(0, 40);
+    const generatedDot = !/[・·•]\s*$/.test(label) && pieces.some(piece => !menu.contains(piece) &&
+      ['::before', '::after'].some(pseudo => /^["']?[・·•]["']?$/.test(getComputedStyle(piece, pseudo).content.trim())));
+    if (!/[・·•]\s*$/.test(label) && !generatedDot) return false;
+    const locationIcon = pieces.some(icon => {
+      if (icon === element || menu.contains(icon)) return false;
+      const rect = icon.getBoundingClientRect();
+      if (rect.width < 5 || rect.height < 5 || rect.width > 40 || rect.height > 40) return false;
+      const meaning = [icon.getAttribute('aria-label'), icon.getAttribute('alt'), icon.getAttribute('data-icon'), normalize(icon.textContent)].filter(Boolean).join(' ');
+      if (/(?:現在地|自宅|位置情報|current location|\bhome\b|location_on|\bplace\b)/i.test(meaning)) return true;
+      const tag = icon.tagName.toLowerCase(), style = getComputedStyle(icon);
+      const picture = tag === 'svg' || tag === 'img' || style.backgroundImage !== 'none' || (style.maskImage && style.maskImage !== 'none');
+      // Generic small icons are accepted only beside a short geographic label
+      // in this pre-result strip; business cards and navigation are excluded.
+      return picture && label.length <= 70 && /[都道府県市区町村郡]|[A-Za-z]{2}/.test(label);
+    });
     if (!locationIcon || !beforeResults(element)) return false;
+    if (Array.from(element.querySelectorAll('img')).some(img => { const r = img.getBoundingClientRect(); return r.width > 40 || r.height > 40; })) return false;
     const rect = element.getBoundingClientRect();
     return rect.width >= Math.min(180, innerWidth * 0.4) && rect.height > 0 && rect.height <= 112;
   }
@@ -205,7 +233,7 @@
   function safelyPromote(seed, kind) {
     let target = seed;
     for (let depth = 0, parent = seed.parentElement; parent && depth < 7; depth++, parent = parent.parentElement) {
-      if (!eligible(parent, false) || parent.querySelector('input,textarea,select,iframe,video,canvas,img,nav,[role="navigation"],.related-question-pair,[data-initq],[data-q]')) break;
+      if (!eligible(parent, false, kind === 'location') || parent.querySelector('input,textarea,select,iframe,video,canvas,img,nav,[role="navigation"],.related-question-pair,[data-initq],[data-q]')) break;
       const text = shortText(parent, kind === 'correction' ? 700 : 360);
       if (!text) break;
       if (kind === 'location' && !locationText(text) && !locationBand(parent, text)) break;
@@ -218,7 +246,7 @@
   }
 
   function mark(element, kind) {
-    if (!element || element.matches(BOUNDARY)) return;
+    if (!element || (element.matches(BOUNDARY) && !(kind === 'location' && element.matches('#taw,#topstuff')))) return;
     element.setAttribute(MARK, kind);
     // Collapse only transparent wrappers: no sibling text, controls, or result
     // content may be swallowed to remove padding/dividers around a notice.
@@ -254,11 +282,11 @@
         return;
       }
     }
-    if (!eligible(element, false)) return;
     if (locationBand(element, text)) {
       mark(safelyPromote(element, 'location'), 'location');
       return;
     }
+    if (!eligible(element, false)) return;
     if (correctionText(text) && (element.id === 'fprs' || element.querySelector('a[href*="/search"],a[href*="nfpr="]'))) {
       mark(safelyPromote(element, 'correction'), 'correction');
       return;
@@ -292,7 +320,7 @@
     for (const job of jobs) if (!job.walker && job.root.contains(root)) return;
     queued.add(root);
     jobs.push({ root, walker: null });
-    if (!scheduled) { scheduled = true; setTimeout(drain, 0); }
+    if (!scheduled) { scheduled = true; beforePaint(drain); }
   }
 
   function drain() {
@@ -308,7 +336,7 @@
         inspect(job.root);
         job.walker = document.createTreeWalker(job.root, NodeFilter.SHOW_ELEMENT, {
           acceptNode(node) {
-            return node.matches('script,style,noscript,template,svg,[' + MARK + ']') || node.matches(PROTECTED) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+            return node.matches('script,style,noscript,template,svg,[' + MARK + ']') || node.matches(HARD_PROTECTED) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
           }
         });
       }
@@ -317,7 +345,7 @@
       if (node) inspect(node);
       else { jobs.shift(); queued.delete(job.root); }
     }
-    if (jobs.length && !scheduled) { scheduled = true; setTimeout(drain, 16); }
+    if (jobs.length && !scheduled) { scheduled = true; beforePaint(drain); }
   }
 
   const observer = new MutationObserver(records => {
