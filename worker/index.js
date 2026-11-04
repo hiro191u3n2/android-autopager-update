@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.47.0';
+export const VERSION = '6.48.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -68,7 +68,9 @@ export async function buildUserscript() {
   const module = await readFile(new URL('src/yahoo-realtime-autopager.js', root), 'utf8');
   assert(module.includes('__genericYahooRealtimeAutoPagerV645'));
   const gallery = await readFile(new URL('src/cityhill-gallery-compat.js', root), 'utf8');
-  const output = `${header}\n\n${module.trim()}\n${gallery.trim()}\n${body}`;
+  const googleCleanup = await readFile(new URL('src/google-search-cleanup.js', root), 'utf8');
+  header = header.replace('// @description  ', '// @description  Google検索の補正案内・地域選択帯・AI概要（生成不可を含む）を非表示。検索語変更・動的追加・戻る操作にも再適用。');
+  const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
 }
@@ -76,7 +78,7 @@ export async function buildUserscript() {
 export default {
   async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.47.js') {
+    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.48.js') {
       return new Response(await buildUserscript(), { headers: { 'content-type': 'application/javascript; charset=utf-8' } });
     }
     if (path === '/android-generic-autopager.meta.js') {
