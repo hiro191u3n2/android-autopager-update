@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.50.0';
+export const VERSION = '6.51.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -69,7 +69,7 @@ export async function buildUserscript() {
   assert(module.includes('__genericYahooRealtimeAutoPagerV645'));
   const gallery = await readFile(new URL('src/cityhill-gallery-compat.js', root), 'utf8');
   const googleCleanup = await readFile(new URL('src/google-search-cleanup.js', root), 'utf8');
-  header = header.replace('// @description  ', '// @description  Google検索の不要案内を描画前に非表示。後から追加される補正案内・現在地帯・AI概要の瞬間表示を抑止。CSSアイコン・疑似要素の区切り点・上部領域内の地名帯にも対応。検索語変更・動的追加・戻る操作にも再適用。');
+  header = header.replace('// @description  ', '// @description  Google検索の現在地帯を意味ラベルから行全体で非表示。隠れた説明欄・共有枠・表示設定の上書きにも対応。補正案内・AI概要は描画前に非表示。検索語変更・動的追加・戻る操作にも再適用。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
@@ -78,7 +78,7 @@ export async function buildUserscript() {
 export default {
   async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.50.js') {
+    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.51.js') {
       return new Response(await buildUserscript(), { headers: { 'content-type': 'application/javascript; charset=utf-8' } });
     }
     if (path === '/android-generic-autopager.meta.js') {
