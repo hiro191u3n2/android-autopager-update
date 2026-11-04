@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/test-buzzap.mjs && node tests/test_yahoo_realtime.mjs && node tests/test_fashion_performance.mjs && node tests/test_cityhill_gallery.mjs && node tests/test_generic_commerce_images.mjs && node tests/test_google_layout.mjs",
-    "release:check": "bash scripts/validate-project.sh 6.47.0"
+    "test": "node scripts/test-buzzap.mjs && node tests/test_yahoo_realtime.mjs && node tests/test_fashion_performance.mjs && node tests/test_cityhill_gallery.mjs && node tests/test_generic_commerce_images.mjs && node tests/test_google_layout.mjs && node tests/test_google_cleanup.mjs",
+    "release:check": "bash scripts/validate-project.sh 6.48.0"
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "15.0.0",
