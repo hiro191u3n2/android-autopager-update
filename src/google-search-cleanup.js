@@ -22,6 +22,12 @@
   const HARD_PROTECTED = PROTECTED.split(',').filter(selector => selector !== 'header' && selector !== '[data-ssid="lcl_legacy_tile"]').join(',');
   const AI_ROOT = '[data-attnms],[data-aquarium],[data-subtree="mfc"],[data-attrid="AIOverview"],[data-async-type="folsrch"],[data-mg-cp="YzCcne"]';
   const AI_CONTAINER = AI_ROOT + ',[data-mcpr],[data-mcp]';
+  // Observed on Google's live location strip. These describe the UI's purpose,
+  // unlike an icon's pixels, a generated separator, or the chosen city name.
+  const LOCATION_SEED = 'update-location,[aria-label="検索の場所:"],[aria-label="現在地情報の使用方法"],[aria-label="Search location:"],[aria-label="How your location is used"]';
+  const LOCATION_AUX = 'g-dialog,[role="dialog"],g-snackbar,location-snackbar-with-learn-more';
+  const LOCATION_EXCLUDED = 'footer,aside,#rhs,form,nav,[role="navigation"],[role="complementary"],' + LOCATION_AUX + ',.related-question-pair,[jscontroller="Da4hkd"],[data-attrid*="people_also_ask"]';
+  const savedDisplay = new WeakMap();
   const jobs = [];
   const queued = new Set();
   let scheduled = false;
@@ -60,7 +66,7 @@
     if (document.documentElement) document.documentElement.toggleAttribute(ACTIVE, enabled);
     // Never briefly reveal old notices on pageshow or a new query. Recycled
     // nodes are revalidated by the mutation path; leaving search releases all.
-    if (!enabled) for (const element of document.querySelectorAll('[' + MARK + ']')) element.removeAttribute(MARK);
+    if (!enabled) for (const element of document.querySelectorAll('[' + MARK + ']')) unmark(element);
     jobs.length = 0;
     queued.clear();
     if (enabled && document.documentElement) enqueue(document.documentElement);
@@ -162,6 +168,46 @@
     return rect.top + scrollY < 650;
   }
 
+  function locationContent(element, selector) {
+    return Array.from(element.querySelectorAll(selector)).filter(node => !node.closest(LOCATION_AUX));
+  }
+
+  function nativeLocationTarget(seed) {
+    if (!seed.isConnected || !document.body?.contains(seed) || seed.closest(LOCATION_EXCLUDED)) return null;
+    for (let element = seed, depth = 0; element && depth < 10; element = element.parentElement, depth++) {
+      if (element.matches(BOUNDARY)) break;
+      if (element.closest(LOCATION_EXCLUDED) || element.closest('a[href]') && isExternalLink(element.closest('a[href]'))) break;
+      // Do not absorb the following map/results or a search/navigation control.
+      // Hidden location dialogs are ancillary to the strip, not result content.
+      if (locationContent(element, 'h1,h3,iframe,video,canvas,input,textarea,select,nav,[role="navigation"],[data-ssid="lcl_legacy_tile"]').length) break;
+      if (locationContent(element, 'a[href]').some(isExternalLink)) break;
+      const headingMarkers = locationContent(element, '[aria-label="検索の場所:"],[aria-label="Search location:"],.BBwThe');
+      if (!headingMarkers.length) continue;
+      const otherHeading = locationContent(element, 'h2,[role="heading"]').some(node => !headingMarkers.some(marker => node.contains(marker)));
+      if (otherHeading) break;
+      const menu = locationContent(element, '[aria-label="現在地情報の使用方法"],[aria-label="How your location is used"]')[0];
+      const nativeOwner = element.matches('dynamic-visibility-control') && element.querySelector('update-location');
+      // Known row classes are only used together with a location-specific
+      // marker. They let streamed markup be suppressed before the menu arrives.
+      if ((menu || nativeOwner || element.matches('.vqkKIe,.O4T6Pe')) && beforeResults(element)) return element;
+    }
+    return null;
+  }
+
+  function scanNativeLocations(root) {
+    // This narrow semantic scan intentionally precedes the generic walker.
+    // Google can put the strip in a shared data-q/.MjjYud wrapper, which must
+    // remain protected from the broad text-based removal paths below.
+    const scope = root.closest('.vqkKIe,.O4T6Pe,dynamic-visibility-control') || root;
+    const seeds = [...scope.querySelectorAll(LOCATION_SEED)];
+    if (scope.matches(LOCATION_SEED)) seeds.unshift(scope);
+    for (const seed of seeds) {
+      if (seed.closest('[' + MARK + ']')) continue;
+      const target = nativeLocationTarget(seed);
+      if (target) mark(target, 'location');
+    }
+  }
+
   function locationBand(element, text) {
     if (!text || text.length > 160 || !eligible(element, false, true)) return false;
     if (element.querySelector('h1,h2,h3,iframe,video,canvas,input,textarea,select,[data-ssid="lcl_legacy_tile"]')) return false;
@@ -225,9 +271,32 @@
     return target;
   }
 
+  function hide(element, kind) {
+    element.setAttribute(MARK, kind);
+    if (!savedDisplay.has(element)) savedDisplay.set(element, {
+      value: element.style.getPropertyValue('display'),
+      priority: element.style.getPropertyPriority('display')
+    });
+    // Author inline !important declarations outrank our stylesheet. Preserve
+    // the original display value so recycled nodes and non-search routes work.
+    if (element.style.getPropertyValue('display') !== 'none' || element.style.getPropertyPriority('display') !== 'important') {
+      element.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  function unmark(element) {
+    element.removeAttribute(MARK);
+    const old = savedDisplay.get(element);
+    savedDisplay.delete(element);
+    if (!old) return;
+    if (element.style.getPropertyValue('display') !== 'none' || element.style.getPropertyPriority('display') !== 'important') return;
+    if (old.value) element.style.setProperty('display', old.value, old.priority);
+    else element.style.removeProperty('display');
+  }
+
   function mark(element, kind) {
     if (!element || (element.matches(BOUNDARY) && !(kind === 'location' && element.matches('#taw,#topstuff')))) return;
-    element.setAttribute(MARK, kind);
+    hide(element, kind);
     // Collapse only transparent wrappers: no sibling text, controls, or result
     // content may be swallowed to remove padding/dividers around a notice.
     let current = element;
@@ -236,7 +305,7 @@
       if (!parent || !eligible(parent, kind === 'ai') || parent.matches(BOUNDARY)) break;
       const siblings = Array.from(parent.childNodes).filter(n => n !== current && !(n.nodeType === 3 && !n.data.trim()) && !(n.nodeType === 1 && n.matches('script,style,template')));
       if (siblings.length) break;
-      parent.setAttribute(MARK, kind);
+      hide(parent, kind);
       current = parent;
     }
   }
@@ -313,6 +382,7 @@
       const job = jobs[0];
       if (!job.root.isConnected) { jobs.shift(); queued.delete(job.root); continue; }
       if (!job.walker) {
+        scanNativeLocations(job.root);
         inspect(job.root);
         job.walker = document.createTreeWalker(job.root, NodeFilter.SHOW_ELEMENT, {
           acceptNode(node) {
@@ -334,13 +404,21 @@
     for (const record of records) {
       const target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
       if (!target || target.closest('script,style,noscript,template,svg')) continue;
+      if (record.type === 'attributes' && record.attributeName === 'style' && savedDisplay.has(target)) {
+        // Ignore our own hide writes. If Google reasserts inline display on a
+        // classified node, retain that new original value and suppress it again.
+        if (target.style.getPropertyValue('display') === 'none' && target.style.getPropertyPriority('display') === 'important') continue;
+        savedDisplay.set(target, { value: target.style.getPropertyValue('display'), priority: target.style.getPropertyPriority('display') });
+        hide(target, target.getAttribute(MARK));
+        continue;
+      }
       const marked = target.closest('[' + MARK + ']');
       if (marked) {
         // Google may recycle a notice node for ordinary content on navigation.
         let outer = marked;
         while (outer.parentElement && outer.parentElement.hasAttribute(MARK)) outer = outer.parentElement;
-        outer.removeAttribute(MARK);
-        for (const old of outer.querySelectorAll('[' + MARK + ']')) old.removeAttribute(MARK);
+        unmark(outer);
+        for (const old of outer.querySelectorAll('[' + MARK + ']')) unmark(old);
         enqueue(outer);
       }
       if (record.type === 'characterData' || record.type === 'attributes') enqueue(target);
@@ -352,7 +430,7 @@
       if (!target.matches(BOUNDARY)) inspect(target);
     }
   });
-  observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['id', 'class', 'role', 'aria-label', 'data-attnms', 'data-aquarium', 'data-subtree', 'data-attrid', 'data-async-type', 'data-mg-cp'] });
+  observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['id', 'class', 'style', 'role', 'aria-label', 'data-attnms', 'data-aquarium', 'data-subtree', 'data-attrid', 'data-async-type', 'data-mg-cp'] });
   for (const method of ['pushState', 'replaceState']) {
     const original = history[method];
     try {
