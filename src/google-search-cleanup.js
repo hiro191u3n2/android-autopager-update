@@ -12,6 +12,7 @@
   const MARK = 'data-generic-google-cleanup-v648';
   const ACTIVE = 'data-generic-google-cleanup-active-v648';
   const STYLE_ID = 'generic-google-cleanup-style-v648';
+  const SHIELD = 'data-generic-google-cleanup-shield-v648';
   const BOUNDARY = 'html,body,main,#rso,#search,#main,#center_col,#taw,#topstuff,[role="main"]';
   // .g and .tF2Cxc are reused for UI wrappers on mobile; only real linked
   // result headings protect a result card. Notices can precede #search/#rso.
@@ -28,6 +29,9 @@
   const LOCATION_AUX = 'g-dialog,[role="dialog"],g-snackbar,location-snackbar-with-learn-more';
   const LOCATION_EXCLUDED = 'footer,aside,#rhs,form,nav,[role="navigation"],[role="complementary"],' + LOCATION_AUX + ',.related-question-pair,[jscontroller="Da4hkd"],[data-attrid*="people_also_ask"]';
   const savedDisplay = new WeakMap();
+  const displayRewrites = new WeakMap();
+  const mutationRecords = [];
+  let mutationScheduled = false;
   const jobs = [];
   const queued = new Set();
   let scheduled = false;
@@ -40,12 +44,11 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     const active = 'html[' + ACTIVE + '] ';
-    const safe = ':not(:is(' + PROTECTED + ')):not(:is(' + PROTECTED + ') *)';
-    // Native CSS can suppress known payloads as soon as the parser inserts
-    // them. Semantic fallback runs in the same pre-paint microtask checkpoint.
-    const early = ['#fprs' + safe, ':is(' + AI_ROOT + ')' + safe];
-    style.textContent = [active + '[' + MARK + ']', ...early.map(selector => active + selector)].join(',') +
-      '{display:none!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important}';
+    // Attribute hints alone do not establish a node's scope. Never let CSS
+    // bypass the JavaScript guards that protect shared page/search shells.
+    style.textContent = active + '[' + MARK + ']' +
+      '{display:none!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important}' +
+      active + '[' + SHIELD + ']{position:absolute!important;visibility:hidden!important;clip-path:inset(50%)!important;max-width:0!important;max-height:0!important;overflow:hidden!important;pointer-events:none!important}';
     (document.head || document.documentElement).appendChild(style);
   }
 
@@ -66,7 +69,7 @@
     if (document.documentElement) document.documentElement.toggleAttribute(ACTIVE, enabled);
     // Never briefly reveal old notices on pageshow or a new query. Recycled
     // nodes are revalidated by the mutation path; leaving search releases all.
-    if (!enabled) for (const element of document.querySelectorAll('[' + MARK + ']')) unmark(element);
+    if (!enabled) for (const element of document.querySelectorAll('[' + MARK + ']')) unmark(element, true);
     jobs.length = 0;
     queued.clear();
     if (enabled && document.documentElement) enqueue(document.documentElement);
@@ -110,6 +113,9 @@
 
   function eligible(element, strongAI, locationOnly = false) {
     if (!element || !element.isConnected || (element.matches(BOUNDARY) && !(locationOnly && element.matches('#taw,#topstuff'))) || !document.body?.contains(element) || element.closest(locationOnly ? HARD_PROTECTED : PROTECTED)) return false;
+    // An AI hint must never make a shared page/search container disposable.
+    // Citations inside an isolated AI module are still allowed below.
+    if (strongAI && element.querySelector(BOUNDARY + ',header,nav,form,input,textarea,select,[role="navigation"],[role="search"]')) return false;
     const enclosingLink = element.closest('a[href]');
     if (enclosingLink && isExternalLink(enclosingLink)) return false;
     if (!strongAI && hasResultHeading(element)) return false;
@@ -271,27 +277,58 @@
     return target;
   }
 
+  function queueMutationRecords(records) {
+    if (!records.length) return;
+    for (const record of records) mutationRecords.push(record);
+    if (!mutationScheduled) {
+      mutationScheduled = true;
+      beforePaint(processMutations);
+    }
+  }
+
+  function writeDisplay(element, value, priority = '') {
+    // Remove only this synchronous style write from our observer's queue.
+    // Earlier page mutations and synchronous custom-element reactions are
+    // retained. A restored child's style must not invalidate its hidden parent.
+    queueMutationRecords(observer.takeRecords());
+    const previous = element.getAttribute('style');
+    if (value) element.style.setProperty('display', value, priority);
+    else element.style.removeProperty('display');
+    let consumed = false;
+    queueMutationRecords(observer.takeRecords().filter(record => {
+      if (!consumed && record.type === 'attributes' && record.target === element && record.attributeName === 'style' && record.oldValue === previous) {
+        consumed = true;
+        return false;
+      }
+      return true;
+    }));
+  }
+
   function hide(element, kind) {
     element.setAttribute(MARK, kind);
     if (!savedDisplay.has(element)) savedDisplay.set(element, {
       value: element.style.getPropertyValue('display'),
       priority: element.style.getPropertyPriority('display')
     });
+    if ((displayRewrites.get(element) || 0) >= 3 && !element.hasAttribute(SHIELD)) element.setAttribute(SHIELD, '');
     // Author inline !important declarations outrank our stylesheet. Preserve
     // the original display value so recycled nodes and non-search routes work.
-    if (element.style.getPropertyValue('display') !== 'none' || element.style.getPropertyPriority('display') !== 'important') {
-      element.style.setProperty('display', 'none', 'important');
+    if (!element.hasAttribute(SHIELD) && (element.style.getPropertyValue('display') !== 'none' || element.style.getPropertyPriority('display') !== 'important')) {
+      writeDisplay(element, 'none', 'important');
     }
   }
 
-  function unmark(element) {
+  function unmark(element, leavingSearch = false) {
     element.removeAttribute(MARK);
+    element.removeAttribute(SHIELD);
+    // Attribute/text revalidation must not reset the conflict budget. A page
+    // renderer can rewrite class/ARIA together with display on every attempt.
+    if (leavingSearch) displayRewrites.delete(element);
     const old = savedDisplay.get(element);
     savedDisplay.delete(element);
     if (!old) return;
     if (element.style.getPropertyValue('display') !== 'none' || element.style.getPropertyPriority('display') !== 'important') return;
-    if (old.value) element.style.setProperty('display', old.value, old.priority);
-    else element.style.removeProperty('display');
+    writeDisplay(element, old.value, old.priority);
   }
 
   function mark(element, kind) {
@@ -398,7 +435,9 @@
     if (jobs.length && !scheduled) { scheduled = true; beforePaint(drain); }
   }
 
-  const observer = new MutationObserver(records => {
+  function processMutations() {
+    mutationScheduled = false;
+    const records = mutationRecords.splice(0);
     syncRoute(false);
     if (!enabled) return;
     for (const record of records) {
@@ -409,7 +448,14 @@
         // classified node, retain that new original value and suppress it again.
         if (target.style.getPropertyValue('display') === 'none' && target.style.getPropertyPriority('display') === 'important') continue;
         savedDisplay.set(target, { value: target.style.getPropertyValue('display'), priority: target.style.getPropertyPriority('display') });
-        hide(target, target.getAttribute(MARK));
+        const rewrites = (displayRewrites.get(target) || 0) + 1;
+        displayRewrites.set(target, rewrites);
+        // Do not fight another style observer forever in the pre-paint queue.
+        // Collapse/clip only this classified notice through CSS instead.
+        if (rewrites >= 3) {
+          if (!target.hasAttribute(SHIELD)) target.setAttribute(SHIELD, '');
+        }
+        else hide(target, target.getAttribute(MARK));
         continue;
       }
       const marked = target.closest('[' + MARK + ']');
@@ -429,8 +475,9 @@
       // the subtree itself is scanned only through the bounded queue above.
       if (!target.matches(BOUNDARY)) inspect(target);
     }
-  });
-  observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['id', 'class', 'style', 'role', 'aria-label', 'data-attnms', 'data-aquarium', 'data-subtree', 'data-attrid', 'data-async-type', 'data-mg-cp'] });
+  }
+  const observer = new MutationObserver(queueMutationRecords);
+  observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeOldValue: true, attributeFilter: ['id', 'class', 'style', 'role', 'aria-label', 'data-attnms', 'data-aquarium', 'data-subtree', 'data-attrid', 'data-async-type', 'data-mg-cp'] });
   for (const method of ['pushState', 'replaceState']) {
     const original = history[method];
     try {
