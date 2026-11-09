@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.52.0
-// @description  Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.53.0
+// @description  Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -48,6 +48,13 @@
   const LOCATION_SEED = 'update-location,[aria-label="検索の場所:"],[aria-label="現在地情報の使用方法"],[aria-label="Search location:"],[aria-label="How your location is used"]';
   const LOCATION_AUX = 'g-dialog,[role="dialog"],g-snackbar,location-snackbar-with-learn-more';
   const LOCATION_EXCLUDED = 'footer,aside,#rhs,form,nav,[role="navigation"],[role="complementary"],' + LOCATION_AUX + ',.related-question-pair,[jscontroller="Da4hkd"],[data-attrid*="people_also_ask"]';
+  // A TreeWalker does not filter its root or its root's ancestors. Ignore
+  // editing/suggestion subtrees before creating any walker, including when a
+  // candidate is supplied directly as a mutation root. Keep shared data-q
+  // wrappers available to the separate native-location scan.
+  const INPUT_SCOPE = 'input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="searchbox"],[role="combobox"],[role="listbox"],[role="option"]';
+  const EDITOR = 'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),textarea,[contenteditable]:not([contenteditable="false"]),[role="searchbox"]';
+  const PAGE_ROOT = 'html,body,main,#rso,#search,#main,#center_col,[role="main"]';
   const savedDisplay = new WeakMap();
   const displayRewrites = new WeakMap();
   const mutationRecords = [];
@@ -57,7 +64,74 @@
   let scheduled = false;
   let enabled = false;
   let currentHref = '';
+  let currentSearch = '';
+  let editing = false;
+  let editor = null;
+  let editHoldUntil = 0;
+  let resumeTimer = 0;
+  let mutationOverflow = false;
   const beforePaint = typeof queueMicrotask === 'function' ? queueMicrotask : callback => Promise.resolve().then(callback);
+
+  function inputScope(element) {
+    return !!element?.closest(INPUT_SCOPE);
+  }
+
+  function inputPaused() {
+    return editing && (performance.now() < editHoldUntil || editor?.isConnected && document.activeElement === editor);
+  }
+
+  function scheduleDrain(yieldToPage = false) {
+    if (scheduled || !jobs.length || inputPaused()) return;
+    scheduled = true;
+    if (yieldToPage) setTimeout(drain, 0);
+    else beforePaint(drain);
+  }
+
+  function scheduleMutations(yieldToPage = false) {
+    if (mutationScheduled || !mutationRecords.length || inputPaused()) return;
+    mutationScheduled = true;
+    if (yieldToPage) setTimeout(processMutations, 0);
+    else beforePaint(processMutations);
+  }
+
+  function resumeInputWork() {
+    resumeTimer = 0;
+    if (inputPaused()) return;
+    editing = false;
+    editor = null;
+    if (mutationOverflow) {
+      mutationOverflow = false;
+      mutationRecords.length = 0;
+      jobs.length = 0;
+      queued.clear();
+      // A long edit must not retain an unbounded MutationRecord queue. A
+      // single recovery scan also releases notices recycled during that edit.
+      revalidateHiddenNotices();
+      if (enabled && document.documentElement) enqueue(document.documentElement);
+    }
+    scheduleMutations();
+    scheduleDrain();
+  }
+
+  function holdInput(event) {
+    const control = event.target?.nodeType === 1 ? event.target.closest(EDITOR) : null;
+    if (!enabled || !control) return;
+    editing = true;
+    editor = control;
+    // pointerdown runs before Google's focus/overlay handlers. The short hold
+    // also spans temporary blur/replacement of the field during Japanese IME.
+    editHoldUntil = performance.now() + 180;
+    clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(resumeInputWork, 200);
+  }
+
+  function releaseInput() {
+    editing = false;
+    editor = null;
+    editHoldUntil = 0;
+    clearTimeout(resumeTimer);
+    resumeTimer = 0;
+  }
 
   function ensureStyle() {
     if (!document.documentElement || document.getElementById(STYLE_ID)) return;
@@ -79,17 +153,38 @@
     } catch (_) { return false; }
   }
 
+  function searchIdentity() {
+    try {
+      const url = new URL(location.href);
+      return JSON.stringify([url.pathname, ...['q', 'udm', 'tbm', 'start'].map(key => url.searchParams.get(key))]);
+    } catch (_) { return location.href; }
+  }
+
   function syncRoute(force) {
     ensureStyle();
     // documentElement can be created after the document-start invocation.
     if (document.documentElement) document.documentElement.toggleAttribute(ACTIVE, enabled);
     if (!force && currentHref === location.href) return;
+    // A submitted SPA search can retain focus on the same input node. Resume
+    // for the new results even when the browser does not emit focusout.
+    const nextSearch = searchIdentity();
+    const changedSearch = currentSearch !== nextSearch;
+    if (currentHref && changedSearch) releaseInput();
     currentHref = location.href;
+    currentSearch = nextSearch;
     enabled = routeEnabled();
     if (document.documentElement) document.documentElement.toggleAttribute(ACTIVE, enabled);
+    if (!editing && mutationOverflow) {
+      mutationOverflow = false;
+      mutationRecords.length = 0;
+      revalidateHiddenNotices();
+    }
     // Never briefly reveal old notices on pageshow or a new query. Recycled
     // nodes are revalidated by the mutation path; leaving search releases all.
     if (!enabled) for (const element of document.querySelectorAll('[' + MARK + ']')) unmark(element, true);
+    // Suggestion UI can change a fragment or tracking parameter while the
+    // actual search is unchanged. That must not end an ongoing edit or scan.
+    if (!force && !changedSearch) return;
     jobs.length = 0;
     queued.clear();
     if (enabled && document.documentElement) enqueue(document.documentElement);
@@ -235,12 +330,12 @@
   }
 
   function locationBand(element, text) {
-    if (!text || text.length > 160 || !eligible(element, false, true)) return false;
+    if (!text || text.length > 160) return false;
     if (element.querySelector('h1,h2,h3,iframe,video,canvas,input,textarea,select,[data-ssid="lcl_legacy_tile"]')) return false;
     if (Array.from(element.querySelectorAll('a[href]')).some(isExternalLink)) return false;
     const nativeLocation = element.matches('update-location') ||
       (element.matches('dynamic-visibility-control') && element.querySelector('update-location'));
-    if (nativeLocation) return beforeResults(element);
+    if (nativeLocation) return eligible(element, false, true) && beforeResults(element);
     const controls = Array.from(element.querySelectorAll('button,[role="button"],[aria-haspopup],[jsaction],[tabindex],g-menu-button,g-popup'));
     // Google nests several jsaction owners around the same overflow menu.
     // Prefer its label/dots, never a broad clickable parent containing the name.
@@ -248,7 +343,7 @@
       /^[⋮⋯︙…]+$/.test(normalize(control.textContent))) ||
       Array.from(element.querySelectorAll('span')).find(span => /^[⋮⋯︙…]+$/.test(normalize(span.textContent))) ||
       controls.slice().reverse().find(control => control.querySelector('svg') && normalize(control.textContent).length < 12);
-    if (!menu) return false;
+    if (!menu || !eligible(element, false, true)) return false;
     // The icon can be an image, CSS background/mask, SVG use, or a path. The
     // middle dot may be generated by ::after and therefore absent in textContent.
     const label = normalize(text.replace(normalize(menu.textContent), '')).replace(/[⋮⋯︙…]+$/g, '').trim();
@@ -299,11 +394,27 @@
 
   function queueMutationRecords(records) {
     if (!records.length) return;
-    for (const record of records) mutationRecords.push(record);
-    if (!mutationScheduled) {
-      mutationScheduled = true;
-      beforePaint(processMutations);
+    for (const record of records) {
+      const target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+      if (!target) continue;
+      if (inputScope(target)) {
+        restoreInputScope(target);
+        continue;
+      }
+      // Opening the keyboard/overlay changes page scroll-lock styles/classes;
+      // it does not change the notices' content. Never rescan all results for
+      // these changes. Actual inserted/text/semantic-attribute changes remain.
+      if (record.type === 'attributes' && /^(?:style|class)$/.test(record.attributeName) && target.matches(PAGE_ROOT) && !savedDisplay.has(target)) continue;
+      if (mutationOverflow) continue;
+      if (inputPaused() && mutationRecords.length >= 200) {
+        mutationRecords.length = 0;
+        mutationOverflow = true;
+        continue;
+      }
+      mutationRecords.push(record);
     }
+    if (editing && !inputPaused() && !resumeTimer) resumeTimer = setTimeout(resumeInputWork, 0);
+    scheduleMutations();
   }
 
   function writeDisplay(element, value, priority = '') {
@@ -351,6 +462,29 @@
     writeDisplay(element, old.value, old.priority);
   }
 
+  function restoreInputScope(element) {
+    // A page can recycle an AI container into the search candidate list. Such
+    // a control must be released even while ordinary cleanup is paused.
+    let marked = element.closest('[' + MARK + ']');
+    if (!marked && !savedDisplay.has(element)) return;
+    while (marked) {
+      unmark(marked);
+      marked = element.closest('[' + MARK + ']');
+    }
+    for (const child of element.querySelectorAll('[' + MARK + ']')) unmark(child);
+  }
+
+  function revalidateHiddenNotices() {
+    const roots = Array.from(document.querySelectorAll('[' + MARK + ']')).filter(element => !element.parentElement?.closest('[' + MARK + ']'));
+    for (const root of roots) {
+      unmark(root);
+      for (const child of root.querySelectorAll('[' + MARK + ']')) unmark(child);
+      // Reclassify existing hidden nodes before yielding a bulk recovery scan;
+      // otherwise a notice near the end of a long page would flash on resume.
+      enqueue(root);
+    }
+  }
+
   function mark(element, kind) {
     if (!element || (element.matches(BOUNDARY) && !(kind === 'location' && element.matches('#taw,#topstuff')))) return;
     hide(element, kind);
@@ -368,7 +502,7 @@
   }
 
   function inspect(element) {
-    if (!enabled || element.closest('[' + MARK + ']')) return;
+    if (!enabled || inputScope(element) || element.closest('[' + MARK + ']')) return;
     if (element.matches(AI_ROOT) && eligible(element, true)) {
       mark(aiTarget(element), 'ai');
       return;
@@ -392,23 +526,26 @@
       mark(safelyPromote(element, 'location'), 'location');
       return;
     }
-    if (!eligible(element, false)) return;
-    if (correctionText(text) && (element.id === 'fprs' || element.querySelector('a[href*="/search"],a[href*="nfpr="]'))) {
+    const correction = correctionText(text), location = locationText(text), error = aiError(text), heading = aiHeading(text);
+    // Ordinary result text is overwhelmingly common. Do the inexpensive text
+    // checks before walking result/PAA ancestors for a possible notice.
+    if (!(correction || location || error || heading) || !eligible(element, false)) return;
+    if (correction && (element.id === 'fprs' || element.querySelector('a[href*="/search"],a[href*="nfpr="]'))) {
       mark(safelyPromote(element, 'correction'), 'correction');
       return;
     }
-    if (locationText(text)) {
+    if (location) {
       const controls = element.matches('a,button,[role="button"]') ? [element] : element.querySelectorAll('a,button,[role="button"]');
       if (Array.from(controls).some(control => /^(?:地域を選択|場所を選択|Choose area|Choose location)$/i.test(normalize(control.textContent)) && !isExternalLink(control))) {
         mark(safelyPromote(element, 'location'), 'location');
         return;
       }
     }
-    if (aiError(text)) {
+    if (error) {
       mark(safelyPromote(element, 'ai'), 'ai');
       return;
     }
-    if (aiHeading(text)) {
+    if (heading) {
       // The complete answer can be long. Only an identified module, with the
       // AI label as its own heading, is eligible for whole-module removal.
       const container = element.closest(AI_CONTAINER);
@@ -418,7 +555,15 @@
   }
 
   function enqueue(root) {
-    if (!enabled || !root || root.nodeType !== 1 || !root.isConnected || queued.has(root)) return;
+    if (!enabled || !root || root.nodeType !== 1 || !root.isConnected || inputScope(root)) return;
+    // Inspect the changed root immediately, before merging it into a pending
+    // large traversal. Notices inserted beside result lists must not wait for
+    // an overflow task, while their bulk descendants may safely yield.
+    if (!inputPaused()) {
+      scanNativeLocations(root);
+      inspect(root);
+    }
+    if (queued.has(root) || root.closest('[' + MARK + ']')) return;
     // Merge only overlapping work. Never replace unrelated mutation roots with
     // a repeated body-wide scan, even during a burst of Google updates.
     // A running walker may already have passed the insertion point. Only a
@@ -426,24 +571,23 @@
     for (const job of jobs) if (!job.walker && job.root.contains(root)) return;
     queued.add(root);
     jobs.push({ root, walker: null });
-    if (!scheduled) { scheduled = true; beforePaint(drain); }
+    scheduleDrain();
   }
 
   function drain() {
-    scheduled = false;
     if (currentHref !== location.href) syncRoute(false);
-    if (!enabled) return;
+    if (!enabled || inputPaused()) { scheduled = false; return; }
     const started = performance.now();
     let count = 0;
     while (jobs.length && count < 600 && performance.now() - started < 10) {
       const job = jobs[0];
-      if (!job.root.isConnected) { jobs.shift(); queued.delete(job.root); continue; }
+      if (!job.root.isConnected || inputScope(job.root)) { jobs.shift(); queued.delete(job.root); continue; }
       if (!job.walker) {
         scanNativeLocations(job.root);
         inspect(job.root);
         job.walker = document.createTreeWalker(job.root, NodeFilter.SHOW_ELEMENT, {
           acceptNode(node) {
-            return node.matches('script,style,noscript,template,svg,[' + MARK + ']') || node.matches(HARD_PROTECTED) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+            return node.matches('script,style,noscript,template,svg,[' + MARK + ']') || node.matches(INPUT_SCOPE) || node.matches(HARD_PROTECTED) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
           }
         });
       }
@@ -452,17 +596,24 @@
       if (node) inspect(node);
       else { jobs.shift(); queued.delete(job.root); }
     }
-    if (jobs.length && !scheduled) { scheduled = true; beforePaint(drain); }
+    scheduled = false;
+    // Another microtask would run in the same checkpoint and still starve
+    // native input/paint. Only the first bounded pass runs before paint.
+    scheduleDrain(true);
   }
 
   function processMutations() {
-    mutationScheduled = false;
-    const records = mutationRecords.splice(0);
     syncRoute(false);
-    if (!enabled) return;
-    for (const record of records) {
+    if (!enabled) mutationRecords.length = 0;
+    if (!enabled || inputPaused()) { mutationScheduled = false; return; }
+    const started = performance.now();
+    let count = 0;
+    while (mutationRecords.length && count++ < 80 && performance.now() - started < 8) {
+      const record = mutationRecords.shift();
       const target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
-      if (!target || target.closest('script,style,noscript,template,svg')) continue;
+      if (!target) continue;
+      if (inputScope(target)) { restoreInputScope(target); continue; }
+      if (target.closest('script,style,noscript,template,svg')) continue;
       if (record.type === 'attributes' && record.attributeName === 'style' && savedDisplay.has(target)) {
         // Ignore our own hide writes. If Google reasserts inline display on a
         // classified node, retain that new original value and suppress it again.
@@ -495,9 +646,14 @@
       // the subtree itself is scanned only through the bounded queue above.
       if (!target.matches(BOUNDARY)) inspect(target);
     }
+    mutationScheduled = false;
+    scheduleMutations(true);
   }
   const observer = new MutationObserver(queueMutationRecords);
   observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeOldValue: true, attributeFilter: ['id', 'class', 'style', 'role', 'aria-label', 'data-attnms', 'data-aquarium', 'data-subtree', 'data-attrid', 'data-async-type', 'data-mg-cp'] });
+  for (const event of ['pointerdown', 'touchstart', 'focusin', 'focusout', 'beforeinput', 'input', 'compositionstart', 'compositionupdate', 'compositionend']) {
+    document.addEventListener(event, holdInput, { capture: true, passive: true });
+  }
   for (const method of ['pushState', 'replaceState']) {
     const original = history[method];
     try {
