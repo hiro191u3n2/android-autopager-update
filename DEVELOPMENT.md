@@ -1,5 +1,43 @@
 # Recovered development source
 
+v6.53 fixes search editing work in the Google cleanup module. Keyboard/overlay
+class and style changes on shared page roots no longer restart result-wide
+traversal. Input, combobox and suggestion descendants are excluded before a
+walker is created, including directly supplied mutation roots. Capturing input,
+focus, pointer and composition events pauses cleanup while editing without
+changing events, query text, selection or focus. Up to 200 non-input mutations
+are deferred; overflow uses one recovery scan and revalidates existing hidden
+notices first so they do not flash behind a long result list. Nodes recycled as
+input/suggestion controls are immediately released from previous hiding.
+
+An actual search change (path, q, udm, tbm or start) resumes cleanup even if the
+input retains focus. Fragment and tracking-parameter changes retain the pause.
+Blur resumes after a short settling delay. Bounded mutation/traversal chunks
+now yield through tasks instead of chaining microtasks until the entire page
+has been scanned. Changed roots and native location notices are classified
+before bulk traversal so existing first-paint suppression is retained. Cheap
+text/structure checks also precede expensive result-protection walks. The
+legacy pager and every unrelated feature remain byte-preserved.
+
+The supplied recording showed Google results for 渋谷, an apparent delay while
+opening its query editor, and repeated IME/candidate updates for 渋谷駅 and
+渋谷 スナイデル. It did not include an installed version, an OFF comparison, or
+device profiling. The frozen v6.52 Chromium fixture reproduced 24 result-wide
+walkers and 5,644 total walkers after four keyboard-style/class changes, and
+209 candidate-subtree walkers for a 50-option update. v6.53 performs zero of
+those walks. These are controlled DOM operation counts, not Berry timing or
+an Android speed-up claim. tests/test_google_input_performance.mjs covers the
+module and complete package, IME/caret/focus preservation, blur/SPA recovery,
+hash/tracking updates, recycled controls, bounded-buffer recovery without
+flashing old notices, and task progress before a large scan finishes.
+
+This session restored the public canonical GitHub main at
+0945001bd2c6297e462003d46982e0b0f88e7fb7. The untouched worker output matched
+both repository v6.52 and the live Pages script byte-for-byte (SHA-256
+e8747a19b61eaef9a6dae2c1947c6cffe692d532b4f1404a008443a69203e3d1).
+Use the migrated repository validator with `bash scripts/validate-project.sh
+6.53.0`. The obsolete Sites identity and retired host remain unused.
+
 v6.52 fixes two reproduced blank-page failure paths. A competing page MutationObserver can reassert a notice's inline display after each hide; the frozen v6.51 module then starves renderer tasks indefinitely. Inline reassertions now have a three-attempt limit, after which only the classified notice is collapsed/clipped through a CSS shield, avoiding further display writes. Cleanup's own synchronous display mutations are removed from its observer queue while earlier external records and synchronous custom-element reactions are preserved. Leaving search/recycling nodes removes the shield and restores the latest page display value.
 
 Blanket early CSS for AI attribute hints was removed: it could hide body or shared search roots despite the JavaScript guard rejecting them. Strong AI classification also refuses containers holding search roots, page controls or navigation. Isolated AI modules with citations remain eligible. The liveness suite uses a separate Node process watchdog and a frozen v6.51 failure control; it verifies continuing timers/frames, displayed results, streamed correction/location/AI notices, updates and unrelated style mutations. The boundary suite covers six AI attributes on body/shared shells, eight known root shapes and the complete packaged userscript.
