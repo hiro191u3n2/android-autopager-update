@@ -1,5 +1,50 @@
 # Recovered development source
 
+v6.54 preserves Google result dividers when importing later pages. The v6.47
+layout snapshot replaced every non-media in-flow element's height with auto
+and min-height with zero, collapsing short empty background strips. It also
+did not capture generated ::before/::after paint. Normal borders survived,
+which explains why the previous all-border layout fixtures missed both paths.
+
+The snapshot now retains width/height/min-height for painted, empty, horizontal
+decorative leaf elements. It captures only empty-content, short, wide painted
+pseudo elements and restores their computed declarations through unique
+attributes on imported nodes. These rules live in the document head because
+the legacy import cleanup removes style elements inside result subtrees. No
+source stylesheet or general title-based boundary rule is inserted. Existing
+border dividers, nested result groups, sitelinks and carousels retain their
+structure. Edge-anchored absolute pseudo dividers keep one auto inset so they
+follow title growth instead of retaining a stale vertical position. Normal
+text/card heights remain flexible. This adds work only to the existing one-time
+page snapshot; no observer, input handler, scrolling task or timer is added.
+
+tests/test_google_separators.mjs uses actual iframe imports and painted-pixel
+checks with the frozen v6.53 package as a failure control. It covers generated
+before/after/background/border strips, empty height/min-height elements,
+ordinary borders, grouped results and title growth on pages 2/3 at 360/412px in
+light/dark themes. Parent CSS intentionally gives the same pseudo classes a
+different shape/color to detect leaking rules or duplicate paint. These are
+controlled Chromium fixtures, not captured Berry DOM. Live mobile Google
+returned HTTP 429; native Android/Berry verification remains unavailable.
+
+The initial checkout at 61ffb0d8265bb5b9fe2f6aca8458862fbc8d32aa was clean.
+Its worker output matched both repository v6.53 and live GitHub Pages exactly
+(SHA-256 faa9a21914d1c4bdaf8528c8c283898ed42e35c1cfcd2c61e4f09dd5ad5ebd33).
+The retired Sites identity remains unused; the canonical source and migrated
+validator remain bound to the existing GitHub repository. The local execution
+environment blocks Chromium's process-singleton socket, so browser regressions
+run on the read-only GitHub Actions validation job in fix/google-separators-6.54.
+The job also builds and verifies the release package before production writes.
+Local syntax, source identity, frozen-baseline preservation, offline DOM/event
+checks and package checks use the same source. The complete local entry point
+in a browser-capable environment is `bash scripts/validate-project.sh 6.54.0`.
+
+Validation passed at candidate 88d7f2222c27a652abbea8ac9d54ed8c56be74da:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43091508379
+The complete regression suite and release-package checks passed. The CI-built
+userscript matches the local package exactly (SHA-256
+01050b7437f329dd4206fc05b6eafc9e900e8a9c2388237613f823a4ef3573bb).
+
 v6.53 fixes search editing work in the Google cleanup module. Keyboard/overlay
 class and style changes on shared page roots no longer restart result-wide
 traversal. Input, combobox and suggestion descendants are excluded before a
