@@ -178,8 +178,9 @@ function captureGenericGoogleLayoutV647(root) {
       const separators = captureGenericGoogleSeparatorsV654(node, computed, rectangle, view);
       // Computed width/height are used pixels even when the author's rule was
       // auto. Copying those pixels onto text prevents wrapping when a restored
-      // YouTube title grows. Keep fixed dimensions only for media and overlays.
-      values.push(['width', positioned || media ? computed.width : 'auto']);
+      // YouTube title grows. Keep dimensions for media, overlays and empty
+      // dividers; an inline-block divider would otherwise shrink to zero width.
+      values.push(['width', positioned || media || separators.preserveHeight ? computed.width : 'auto']);
       values.push(['height', positioned || media || separators.preserveHeight ? computed.height : 'auto']);
       if (!positioned && !media) {
         if (!separators.preserveHeight) values.push(['min-height', '0']);
