@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.53.0
-// @description  Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.54.0
+// @description  Google検索の2ページ目以降で一部の結果間の区切りが消える問題を修正。灰色帯の高さとCSSで描かれた区切りを取得元どおりに保存。まとめられた検索結果の内部も対応し、入力の軽量化を維持。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -4024,6 +4024,8 @@ const genericGoogleLayoutSourcesV647 = new WeakMap();
 const genericGoogleLayoutClonesV647 = new WeakSet();
 const genericGoogleLayoutMarkerV647 = 'data-generic-google-layout-v647';
 const genericGoogleLayoutLimitV647 = 5000;
+const genericGoogleSeparatorMarkerV654 = 'data-generic-google-separator-v654';
+let genericGoogleSeparatorSequenceV654 = 0;
 const genericGoogleLayoutPropertiesV647 = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'float', 'clear',
   'box-sizing', 'min-width', 'max-width', 'min-height', 'max-height',
@@ -4066,6 +4068,79 @@ function isGenericGoogleLayoutSourceV647(root) {
   } catch {
     return false;
   }
+}
+
+function isGenericGoogleSeparatorPaintV654(style) {
+  const visibleColor = value => Boolean(value) && value !== 'transparent' &&
+    !/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(value);
+  if (style.display === 'none' || /^(?:hidden|collapse)$/.test(style.visibility) ||
+      Number.parseFloat(style.opacity) === 0) return false;
+  if (visibleColor(style.backgroundColor) || style.backgroundImage !== 'none' && style.backgroundImage) return true;
+  return ['top', 'bottom'].some(edge =>
+    Number.parseFloat(style.getPropertyValue(`border-${edge}-width`)) > 0 &&
+    !/^(?:none|hidden)$/.test(style.getPropertyValue(`border-${edge}-style`)) &&
+    visibleColor(style.getPropertyValue(`border-${edge}-color`)));
+}
+
+function captureGenericGoogleSeparatorsV654(node, computed, rectangle, view) {
+  const empty = node.childElementCount === 0 && !node.textContent.trim() &&
+    !node.matches('input,textarea,select,button,iframe,object,embed,img,video,canvas,svg');
+  const rect = rectangle(node);
+  const preserveHeight = empty && rect.width >= 120 && rect.height > 0 && rect.height <= 24 &&
+    rect.width >= rect.height * 5 && isGenericGoogleSeparatorPaintV654(computed);
+  const pseudos = [];
+  // Only paint a source divider, never synthesize result boundaries from titles.
+  // This also preserves grouped results without splitting sitelinks/carousels.
+  if (rect.width >= 120 && computed.display !== 'none' && computed.visibility === 'visible') {
+    for (const pseudo of ['::before', '::after']) {
+      const style = view.getComputedStyle(node, pseudo);
+      if (!/^(?:""|'')$/.test(style.content) || !isGenericGoogleSeparatorPaintV654(style)) continue;
+      const pixels = property => Number.parseFloat(style.getPropertyValue(property)) || 0;
+      const border = pixels('border-top-width') + pixels('border-bottom-width');
+      const padding = pixels('padding-top') + pixels('padding-bottom');
+      const contentHeight = Math.max(pixels('height'), pixels('min-height'));
+      const height = style.boxSizing === 'border-box' ? Math.max(contentHeight, border + padding) : contentHeight + border + padding;
+      const width = /px$/.test(style.width) ? pixels('width') :
+        /^(?:block|flex|grid|flow-root)$/.test(style.display) || /^(?:absolute|fixed)$/.test(style.position) ?
+          rect.width - (Number.parseFloat(computed.paddingLeft) || 0) - (Number.parseFloat(computed.paddingRight) || 0) : 0;
+      if (height <= 0 || height > 24 || width < 120 || width < rect.width * 0.75) continue;
+      const values = genericGoogleLayoutPropertiesV647.map(property => [property, style.getPropertyValue(property)]).filter(([, value]) => value);
+      values.push(['content', style.content], ['width', style.width], ['height', style.height]);
+      if (/^(?:absolute|fixed)$/.test(style.position)) {
+        // CSSOM resolves an auto inset into the old pixel position. Restore the
+        // nearby edge anchor so a divider follows a growing YouTube title.
+        const top = Number.parseFloat(style.top), bottom = Number.parseFloat(style.bottom);
+        if (Math.abs(bottom) <= 24 && Math.abs(top) > 24) values.push(['top', 'auto']);
+        else if (Math.abs(top) <= 24 && Math.abs(bottom) > 24) values.push(['bottom', 'auto']);
+      }
+      pseudos.push({ pseudo, values });
+    }
+  }
+  return { preserveHeight, pseudos };
+}
+
+function applyGenericGoogleSeparatorsV654(nodes, styles) {
+  const document = nodes[0].ownerDocument;
+  const rules = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const pseudos = styles[i]?.separators;
+    if (!pseudos?.length) continue;
+    const token = String(++genericGoogleSeparatorSequenceV654);
+    nodes[i].setAttribute(genericGoogleSeparatorMarkerV654, token);
+    for (const { pseudo, values } of pseudos) {
+      const declaration = document.createElement('span').style;
+      for (const [property, value] of values) declaration.setProperty(property, value, 'important');
+      // Scope to this imported node; same-class rules on page one remain intact.
+      rules.push(`[${genericGoogleSeparatorMarkerV654}="${token}"]${pseudo}{${declaration.cssText}}`);
+    }
+  }
+  if (!rules.length) return;
+  const sheet = document.createElement('style');
+  sheet.setAttribute('data-generic-google-separators-v654', '');
+  sheet.textContent = rules.join('\n');
+  // Import cleanup removes style tags from result subtrees. Keep the strictly
+  // scoped rules in the document head so subsequent result cleanup retains them.
+  (document.head || document.documentElement).appendChild(sheet);
 }
 
 function captureGenericGoogleLayoutV647(root) {
@@ -4118,13 +4193,15 @@ function captureGenericGoogleLayoutV647(root) {
       }
       const positioned = /^(?:absolute|fixed)$/.test(computed.position);
       const media = mediaFrames.has(node) || node.matches('img,video,canvas,svg');
+      const separators = captureGenericGoogleSeparatorsV654(node, computed, rectangle, view);
       // Computed width/height are used pixels even when the author's rule was
       // auto. Copying those pixels onto text prevents wrapping when a restored
-      // YouTube title grows. Keep fixed dimensions only for media and overlays.
-      values.push(['width', positioned || media ? computed.width : 'auto']);
-      values.push(['height', positioned || media ? computed.height : 'auto']);
+      // YouTube title grows. Keep dimensions for media, overlays and empty
+      // dividers; an inline-block divider would otherwise shrink to zero width.
+      values.push(['width', positioned || media || separators.preserveHeight ? computed.width : 'auto']);
+      values.push(['height', positioned || media || separators.preserveHeight ? computed.height : 'auto']);
       if (!positioned && !media) {
-        values.push(['min-height', '0']);
+        if (!separators.preserveHeight) values.push(['min-height', '0']);
         const clamped = Number.parseInt(computed.getPropertyValue('-webkit-line-clamp'), 10) > 0;
         if (titleContainers.has(node) && !clamped) values.push(['max-height', 'none']);
         if (/^(?:inline-)?grid$/.test(computed.display) && node.textContent.trim()) {
@@ -4142,6 +4219,7 @@ function captureGenericGoogleLayoutV647(root) {
         values,
         hidden: node.hasAttribute('hidden'),
         ariaHidden: node.getAttribute('aria-hidden'),
+        separators: separators.pseudos,
       };
     });
     genericGoogleLayoutSourcesV647.set(root, { nodes, styles });
@@ -4165,6 +4243,7 @@ function applyGenericGoogleLayoutV647(source, clone) {
     if (entry.hidden) node.setAttribute('hidden', '');
     if (entry.ariaHidden !== null) node.setAttribute('aria-hidden', entry.ariaHidden);
   }
+  applyGenericGoogleSeparatorsV654(nodes, snapshot.styles);
   clone.setAttribute(genericGoogleLayoutMarkerV647, '1');
   genericGoogleLayoutClonesV647.add(clone);
   genericGoogleLayoutSourcesV647.delete(source);
