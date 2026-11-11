@@ -65,7 +65,7 @@ function isGenericGoogleSeparatorPaintV654(style) {
 }
 
 function captureGenericGoogleSeparatorsV654(node, computed, rectangle, view) {
-  const empty = !node.textContent.trim() && node.childElementCount === 0 &&
+  const empty = node.childElementCount === 0 && !node.textContent.trim() &&
     !node.matches('input,textarea,select,button,iframe,object,embed,img,video,canvas,svg');
   const rect = rectangle(node);
   const preserveHeight = empty && rect.width >= 120 && rect.height > 0 && rect.height <= 24 &&
@@ -88,6 +88,13 @@ function captureGenericGoogleSeparatorsV654(node, computed, rectangle, view) {
       if (height <= 0 || height > 24 || width < 120 || width < rect.width * 0.75) continue;
       const values = genericGoogleLayoutPropertiesV647.map(property => [property, style.getPropertyValue(property)]).filter(([, value]) => value);
       values.push(['content', style.content], ['width', style.width], ['height', style.height]);
+      if (/^(?:absolute|fixed)$/.test(style.position)) {
+        // CSSOM resolves an auto inset into the old pixel position. Restore the
+        // nearby edge anchor so a divider follows a growing YouTube title.
+        const top = Number.parseFloat(style.top), bottom = Number.parseFloat(style.bottom);
+        if (Math.abs(bottom) <= 24 && Math.abs(top) > 24) values.push(['top', 'auto']);
+        else if (Math.abs(top) <= 24 && Math.abs(bottom) > 24) values.push(['bottom', 'auto']);
+      }
       pseudos.push({ pseudo, values });
     }
   }
