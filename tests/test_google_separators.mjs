@@ -52,7 +52,8 @@ function fixture(start, dark = false) {
     .pseudo-before::before,.pseudo-after::after{content:"";display:block;width:100%;height:8px;background:${line};pointer-events:none}
     .pseudo-border::after{content:"";display:block;width:100%;height:0;border-bottom:8px solid ${line};pointer-events:none}
     .anchored-line{padding-bottom:8px}.anchored-line::after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;background:${line};pointer-events:none}
-    .empty-line{display:block;width:100%;height:8px;background:${line}}.minheight-line{display:block;width:100%;min-height:8px;background:${line}}
+    .MjjYud[data-group^="empty-"]{display:flex;flex-direction:column;align-items:flex-start}.MjjYud[data-group^="empty-"]>.result{align-self:stretch}
+    .empty-line{display:inline-block;width:100%;height:8px;background:${line}}.minheight-line{display:block;width:100%;min-height:8px;background:${line}}
     .border-line{border-bottom:8px solid ${line}}
     .sitelinks{display:block;padding:6px 0}.sitelinks h3{font-size:15px;line-height:20px;margin:0;padding:4px 0}
     .carousel{display:flex;gap:12px;overflow:hidden}.carousel>a{flex:0 0 120px;min-width:0}.carousel h3{font-size:14px;line-height:20px;margin:0;padding:6px 0}
@@ -106,7 +107,7 @@ async function measure(page, start, dark) {
   // Read the painted rows, so preservation via native pseudo elements, concrete
   // decorative elements, or a border is equally acceptable. A gray DOM node
   // with zero height, wrong width, or no actual paint must not count as a line.
-  const png = await page.screenshot({ fullPage: true, animations: 'disabled' });
+  const png = await page.screenshot({ fullPage: true, animations: 'disabled', style: '#generic-autopager-status-v2{visibility:hidden!important}' });
   if (process.env.GOOGLE_SEPARATOR_SCREENSHOT) await writeFile(process.env.GOOGLE_SEPARATOR_SCREENSHOT, png);
   const rows = await page.evaluate(async ({ png, geometry, color }) => {
     const bytes = Uint8Array.from(atob(png), char => char.charCodeAt(0));
