@@ -1,6 +1,6 @@
 # Recovered development source
 
-## v6.64 candidate: touching results and inline source addresses
+## v6.64: touching results and inline source addresses
 
 The two 2026-11-12 22:46/22:47 Berry recordings still show missing grey
 dividers between independent results. Examples include Pixiv / Eki-net PDF /
@@ -32,8 +32,7 @@ removal and all non-Google adapters are preserved. Tests include frozen failure
 controls, source classification and real iframe import/pixel checks with zero
 geometry drift. The migrated repository validator is used: the bundled skill
 validator still expects the retired Sites identity and exits before validation.
-Do not fabricate that identity or reactivate its host. Publication is separate
-from this candidate correction and validation.
+Do not fabricate that identity or reactivate its host.
 
 The complete migrated validator passed at candidate
 `a99bcb1f4e2ab930c25ce4d96bffa86746dcab52`:
@@ -54,7 +53,13 @@ The local release equals the CI-built package byte-for-byte. Userscript SHA-256:
 `cfd28266e45fe42d84609e9420930c3dc3215a054d89bb066757ae6dae35faf7`.
 Metadata SHA-256:
 `3c46f18da3412c507b186d2c41c3258ecfacc8f0fa04902cb8849dd45d228c58`.
-This is a validated candidate; the production main/Pages release is unchanged.
+Published after the owner's explicit approval on 2026-11-12. Pages deployment
+of `d0c11852d2756df0cdc69d1bd3efeca6445f15ed` completed successfully:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43235842685
+At 14:26 UTC, the fixed homepage, userscript and metadata URLs all returned
+HTTP 200 and matched the validated local release byte-for-byte. The homepage
+SHA-256 was `eb9c42893559ba630a33ba34e16c5b524cf477bd35b1155792e738b5da3b782e`.
+Native Berry/AdGuard validation on the owner's device remains unverified.
 
 ## v6.63: grouped separators, stable imports and Google diagnostic removal
 
