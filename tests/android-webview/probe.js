@@ -116,6 +116,7 @@
     snapshot(number) {
       const container = scope(number);
       if (!container) throw new Error(`No imported page ${number}`);
+      const sourceRoot = container.querySelector('.generic-autopager-google-source-root');
       const results = [...container.querySelectorAll('[data-organic-result]')].map(node => ({
         id: node.dataset.organicResult, rect: rect(node), content: contentRect(node),
         title: node.querySelector('.organic-title').textContent,
@@ -125,13 +126,23 @@
           src: node.querySelector('.organic-thumbnail').getAttribute('src'),
           rect: rect(node.querySelector('.organic-thumbnail')),
         } : null,
+        rootStructure: node.querySelector('.Ww4FFb') ? {
+          directRootChild: node.parentElement === sourceRoot,
+          surface: rect(node.querySelector('.Ww4FFb')),
+          surfaceBackground: getComputedStyle(node.querySelector('.Ww4FFb')).backgroundColor,
+          surfaceMarginBottom: getComputedStyle(node.querySelector('.Ww4FFb')).marginBottom,
+          shadow: getComputedStyle(node).boxShadow,
+          sourceText: node.querySelector('.organic-source-header')?.textContent || '',
+        } : null,
       }));
       const invisible = results.some(result => result.rect.width <= 0 || result.rect.height <= 0);
       return {
         page: number,
         width: innerWidth, height: innerHeight, documentWidth: document.documentElement.scrollWidth,
+        documentHeight: document.documentElement.scrollHeight, scrollX, scrollY,
         dpr: devicePixelRatio, userAgent: navigator.userAgent,
         nativeUnchanged: document.getElementById('organic-native').outerHTML === native,
+        sourceRoot: sourceRoot ? rect(sourceRoot) : null,
         errors: [...errors],
         results,
         diagnostics: invisible ? {
