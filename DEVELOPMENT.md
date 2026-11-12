@@ -1,5 +1,56 @@
 # Recovered development source
 
+## Selected-result evidence capture before changing grouped-card rendering
+
+On 2026-11-13 the owner approved investigating the still-missing boundaries
+between three ordinary Google results and moving to explicit result frames.
+The first required step is reproduction of the actual failing subtree. The
+historical device diagnostics contain selectors, geometry and rejection
+reasons, but not its complete HTML; the stored neutral fixtures and CI
+screenshots are not that capture. The surviving recordings likewise do not
+establish the DOM. A fresh cloud-browser inspection of the same train query
+returned desktop results with ten separate one-heading MjjYud children, not
+the reported Berry group. Direct Android-UA fetching returned HTTP 429.
+
+The standalone `tools/google-result-capture.user.js` is an opt-in, one-shot
+local capture aid, not part of the production autopager. It lets the owner
+select a result in the affected page so the selected page, rather than the
+most recently appended page, can be inspected. The intended next change is
+to normalize confirmed complete ordinary-result units into explicit wrappers
+while still detached, after existing style/title preparation and before the
+first visible append. Rich modules and unresolved result ranges must remain
+intact. The old post-append boundary painter must not repaint new wrappers.
+
+Until the actual affected capture is available, no v6.67 layout fix is
+claimed or released. The fixed production userscript remains byte-identical
+to v6.66.0. The migrated repository validator remains authoritative; the old
+bundled validator still exits at the retired Sites identity check.
+
+The complete migrated v6.66.0 validator passed unchanged on candidate
+`844aecb690f89fe40e1bf4536f14b3061f00235d`, Actions run `43300078544`.
+Further collector-only refinements use the focused capture suite and exact
+package comparisons; they do not change the production executable. The helper
+now checks retained attributes, children, text and viewport consistency, and
+only persists its completion boolean after the owner confirms that the file
+was saved. A cancelled download remains retryable across navigation.
+
+To supply the missing evidence, install the separate helper while the regular
+autopager stays enabled, open the affected Google results, press
+`区切り箇所を取得` and select one of the three affected results. Attach the
+downloaded `Google_Result_Structure_YYYYMMDD.json` to the ongoing conversation.
+After verifying the file exists, `保存できたので終了` dismisses the helper for
+that Google origin. Do not publish the owner's resulting capture to the public
+repository; derive a minimized, anonymized regression fixture from it.
+
+The final helper passed eleven Chromium capture groups on candidate
+`9d554d47bcaa00bdfdbbdead402888cafaced97b`, Actions run `43301341590`.
+Its SHA-256 is
+`761c1ccd7679d034cd1d741345242921deb609ec72f121d07c0a1cc5209cb0ff`.
+The tests cover selection fidelity, sanitization, no result mutation or remote
+requests, save confirmation/cancellation, storage fallback, route changes,
+mid-capture structure/attribute/scroll changes, size limits and retries. They
+validate the collector, not the missing-divider fix or native Berry downloads.
+
 ## v6.66: sustained Google page preparation, not only earlier triggering
 
 The 2026-11-13 00:07 Berry recording still reaches the loaded document end

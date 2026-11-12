@@ -1,0 +1,59 @@
+name: Google selected result capture validation
+on:
+  push:
+    branches: [diagnose/google-result-capture]
+permissions:
+  contents: read
+concurrency:
+  group: google-result-capture-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: android-autopager-update
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: android-autopager-update/package-lock.json
+      - name: Install test dependencies and Chromium
+        working-directory: android-autopager-update
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Prepare canonical validation checkout
+        run: |
+          sudo mkdir -p /workspace/sites
+          sudo chown "$USER" /workspace/sites
+          mv android-autopager-update /workspace/sites/android-autopager-update
+          ln -s /workspace/sites/android-autopager-update android-autopager-update
+          git -C /workspace/sites/android-autopager-update switch -c main
+          git -C /workspace/sites/android-autopager-update remote set-url origin https://github.com/hiro191u3n2/android-autopager-update.git
+      - name: Validate one-shot capture
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          set -o pipefail
+          node --check tools/google-result-capture.user.js
+          node tests/test_google_result_capture.mjs 2>&1 | tee "$RUNNER_TEMP/result-capture-validation.log"
+      - name: Validate unchanged production package
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          set -o pipefail
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.66.0 2>&1 | tee "$RUNNER_TEMP/production-package.log"
+          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.66.0 2>&1 | tee -a "$RUNNER_TEMP/production-package.log"
+          cmp Android_Generic_AutoPager_v6.66.js "$RUNNER_TEMP/android-autopager-release/android-generic-autopager.user.js"
+          cmp android-generic-autopager.user.js "$RUNNER_TEMP/android-autopager-release/android-generic-autopager.user.js"
+          cmp android-generic-autopager.meta.js "$RUNNER_TEMP/android-autopager-release/android-generic-autopager.meta.js"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: google-result-capture-validation
+          path: |
+            ${{ runner.temp }}/result-capture-validation.log
+            ${{ runner.temp }}/production-package.log
+          retention-days: 7
