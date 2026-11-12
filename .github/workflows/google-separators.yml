@@ -1,12 +1,13 @@
 name: Google result separator validation
 on:
   push:
-    branches: [fix/google-separators-6.55]
+    branches: [fix/google-separators-6.56]
     paths:
       - '.github/workflows/google-separators.yml'
       - 'src/google-import-layout.js'
       - 'worker/index.js'
       - 'tests/test_google_separators.mjs'
+      - 'tests/test_google_result_boundaries.mjs'
       - 'package.json'
       - 'index.html'
 permissions:
@@ -38,20 +39,22 @@ jobs:
           node --check src/google-import-layout.js
       - name: Run complete regression suite
         env:
-          GOOGLE_SEPARATOR_SCREENSHOT: ${{ runner.temp }}/google-separators-v655.png
+          GOOGLE_SEPARATOR_SCREENSHOT: ${{ runner.temp }}/google-separators-v656.png
+          GOOGLE_BOUNDARY_SCREENSHOT: ${{ runner.temp }}/google-boundaries-v656.png
         run: |
           set -o pipefail
           npm test 2>&1 | tee "$RUNNER_TEMP/google-separators-validation.log"
       - name: Build and verify release package
         run: |
-          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.55.0
-          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.55.0
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.56.0
+          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.56.0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: google-separators-v655-validation
+          name: google-separators-v656-validation
           path: |
             ${{ runner.temp }}/google-separators-validation.log
-            ${{ runner.temp }}/google-separators-v655.png
+            ${{ runner.temp }}/google-separators-v656.png
+            ${{ runner.temp }}/google-boundaries-v656.png
             ${{ runner.temp }}/android-autopager-release/
           retention-days: 7
