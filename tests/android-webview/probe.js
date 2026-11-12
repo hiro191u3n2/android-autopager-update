@@ -139,6 +139,7 @@
       return {
         page: number,
         width: innerWidth, height: innerHeight, documentWidth: document.documentElement.scrollWidth,
+        documentHeight: document.documentElement.scrollHeight, scrollX, scrollY,
         dpr: devicePixelRatio, userAgent: navigator.userAgent,
         nativeUnchanged: document.getElementById('organic-native').outerHTML === native,
         sourceRoot: sourceRoot ? rect(sourceRoot) : null,

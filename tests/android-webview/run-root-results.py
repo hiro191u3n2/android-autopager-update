@@ -139,6 +139,44 @@ def capture(geometry, base):
             time.sleep(0.1)
 
 
+def verify_same_layout(current, control):
+    # Page 3 may become available before or after the page-2 scroll request.
+    # That changes the scroll clamp and translates every viewport rectangle.
+    # Compare layout within the recorded source root, retaining the strict
+    # tolerance and independently checking that the root itself did not grow.
+    new_root, old_root = current['sourceRoot'], control['sourceRoot']
+    for dimension in ['width', 'height', 'left']:
+        assert abs(new_root[dimension] - old_root[dimension]) <= 0.2, ('Source root geometry changed', dimension, new_root, old_root)
+    assert len(current['results']) == len(control['results']), 'Result count changed between candidate and control'
+    maximum = 0
+
+    def compare_box(new, old, label):
+        nonlocal maximum
+        for edge in ['top', 'bottom', 'left', 'right', 'width', 'height']:
+            if edge not in new and edge not in old:
+                continue
+            origin = 'top' if edge in ['top', 'bottom'] else 'left' if edge in ['left', 'right'] else None
+            delta = (new[edge] - (new_root[origin] if origin else 0)) - (old[edge] - (old_root[origin] if origin else 0))
+            maximum = max(maximum, abs(delta))
+            assert abs(delta) <= 0.2, ('Repair changed source-relative geometry', label, edge, delta, new, old)
+
+    for new, old in zip(current['results'], control['results']):
+        assert new['id'] == old['id'], 'Result identity changed between candidate and control'
+        compare_box(new['rect'], old['rect'], new['id'] + '/card')
+        compare_box(new['content'], old['content'], new['id'] + '/content')
+        compare_box(new['rootStructure']['surface'], old['rootStructure']['surface'], new['id'] + '/surface')
+        assert bool(new['thumbnail']) == bool(old['thumbnail']), 'Thumbnail presence changed'
+        if new['thumbnail']:
+            compare_box(new['thumbnail']['rect'], old['thumbnail']['rect'], new['id'] + '/thumbnail')
+    return {'viewportTranslationY': new_root['top'] - old_root['top'],
+            'maximumSourceRelativeDifference': maximum, 'tolerance': 0.2,
+            'currentRoot': new_root, 'controlRoot': old_root,
+            'currentScroll': {'x': current.get('scrollX'), 'y': current.get('scrollY')},
+            'controlScroll': {'x': control.get('scrollX'), 'y': control.get('scrollY')},
+            'currentRootDocumentTop': new_root['top'] + current['scrollY'] if 'scrollY' in current else None,
+            'controlRootDocumentTop': old_root['top'] + control['scrollY'] if 'scrollY' in control else None}
+
+
 assert MANIFEST['variants']['current']['version'] == '6.60.0', MANIFEST['variants']['current']
 assert ROOT['control']['version'] == '6.59.0', ROOT['control']
 save_json('build-manifest.json', MANIFEST)
@@ -157,6 +195,7 @@ adb('install', '-r', str(BUILD / 'webview-fixture-test.apk'))
 measurements = []
 failures = []
 geometries = {}
+layout_comparisons = []
 try:
     for variant in ['current', 'control']:
         for shape in ['missing', 'native']:
@@ -193,13 +232,13 @@ try:
                 if not current or not control:
                     continue
                 try:
-                    for new, old in zip(current['results'], control['results']):
-                        for edge in ['top', 'bottom', 'left', 'right', 'width', 'height']:
-                            assert abs(new['rect'][edge] - old['rect'][edge]) <= 0.2, ('Repair changed geometry instead of painting the existing gap', new['id'], edge, new['rect'], old['rect'])
+                    comparison = verify_same_layout(current, control)
+                    layout_comparisons.append({'shape': shape, 'theme': theme, 'page': number, **comparison})
                 except AssertionError as error:
                     failures.append({'scenario': f'unchanged-layout-{shape}-{theme}-page{number}', 'error': str(error)})
 finally:
     save_json('measurements.json', measurements)
+    save_json('layout-comparisons.json', layout_comparisons)
     save_json('verification-failures.json', failures)
     (OUTPUT / 'last-logcat.txt').write_text(adb('logcat', '-d', '-s', 'AutoPagerTest:I', 'chromium:E', 'AndroidRuntime:E'))
 if failures:
