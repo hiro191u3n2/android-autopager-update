@@ -45,16 +45,23 @@ function documentHTML({ before = '', inside = '', after = '', shared = false } =
     body{margin:0;font:16px/1.5 sans-serif}#header{height:100px}.band{display:block;padding:14px;border-bottom:8px solid #eee}.region{display:flex;align-items:center;gap:8px}.region [role=button]{margin-left:auto}h2,h3,p{margin:0}.MjjYud{padding:16px;border-bottom:8px solid #eee}#map{height:120px;background:#e5ece5}aside,footer{padding:20px}svg{flex-shrink:0}
   </style>${top}${shared ? '<'+wrapper+' id="shared">' : ''}${before}${results}${after}${shared ? '</'+wrapper+'>' : ''}${extras}`;
 }
-async function setup(content, code = current, url = 'https://www.google.co.jp/search?q=木村') {
+async function setup(content, code = current, url = 'https://www.google.co.jp/search?q=木村', { holdPagination = false } = {}) {
   const context = await browser.newContext({viewport:{width:390,height:844}});
   const page = await context.newPage();
   const errors = [];
+  let releasePagination;
+  const paginationGate = new Promise(resolve => { releasePagination = resolve; });
   page.on('pageerror', error => errors.push(String(error)));
-  await page.route('**/*', route => route.request().isNavigationRequest() ? route.fulfill({contentType:'text/html',body:documentHTML(content)}) : route.abort());
+  await page.route('**/*', async route => {
+    if (!route.request().isNavigationRequest()) return route.abort();
+    if (holdPagination && new URL(route.request().url()).searchParams.has('start')) await paginationGate;
+    if (page.isClosed()) return;
+    return route.fulfill({contentType:'text/html',body:documentHTML(content)});
+  });
   await page.addInitScript({content:code});
-  await page.goto(url);
+  await page.goto(url, holdPagination ? { waitUntil: 'domcontentloaded' } : undefined);
   await page.waitForTimeout(250);
-  return {page,context,errors};
+  return {page,context,errors,releasePagination};
 }
 async function visible(page,id) {
   return page.locator('#'+id).evaluate(el => !!el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
@@ -62,9 +69,10 @@ async function visible(page,id) {
 async function hidden(page,ids) {
   for (const id of ids) assert.equal(await visible(page,id),false,`${id} should be hidden with its padding`);
 }
-async function retained(page) {
+async function retained(page, { paging = false } = {}) {
   for (const id of ['places','map','place-card','address','organic','snippet','organic-location','questions','question-answer','aimode','footer','footer-location','footer-error','sidebar','sidebar-location','sidebar-error']) {
-    assert.equal(await visible(page,id),true,`${id} is unrelated content and must remain`);
+    const tail = ['footer','footer-location','footer-error'].includes(id);
+    assert.equal(await visible(page,id),!(paging && tail),paging && tail ? `${id} is temporarily suppressed by active pagination` : `${id} is unrelated content and must remain`);
   }
   assert.equal(await page.locator('#organic>a').getAttribute('href'),'https://ordinary.example/article');
   assert.equal(await page.locator('textarea').inputValue(),'木村');
@@ -121,9 +129,23 @@ try {
     await run.page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
     await run.page.waitForTimeout(200);await hidden(run.page,['ai','location']);await run.context.close();
   });
-  await scenario('packaged userscript includes the mobile fix', async () => {
-    const run = await setup({before:region()+error()},await buildUserscript());
-    await hidden(run.page,['ai','location']);await retained(run.page);assert.deepEqual(run.errors,[]);await run.context.close();
+  await scenario('packaged mobile cleanup preserves footer content through active pagination and pause', async () => {
+    // Keep the next request pending so the active/paused states are observed
+    // deterministically, rather than racing the existing duplicate-page stop.
+    const run = await setup({before:region()+error()},await buildUserscript(),'https://www.google.co.jp/search?q=木村',{holdPagination:true});
+    try {
+      await run.page.waitForFunction(() => document.getElementById('generic-autopager-status-v2')?.textContent.startsWith('読込'));
+      await hidden(run.page,['ai','location']);await retained(run.page,{paging:true});
+      const footer = await run.page.locator('#footer').evaluate((node, markup) => ({
+        content:node.innerHTML, expected:new DOMParser().parseFromString(markup,'text/html').querySelector('#footer').innerHTML,
+        cleanupMarked:node.matches('[data-generic-google-cleanup-v648],[data-generic-google-cleanup-shield-v648]') || !!node.querySelector('[data-generic-google-cleanup-v648],[data-generic-google-cleanup-shield-v648]'),
+      }),extras);
+      assert.equal(footer.content,footer.expected,'Active pagination preserves the exact original footer contents');
+      assert.equal(footer.cleanupMarked,false,'The cleanup module must never classify the footer or its children as notices');
+      await run.page.locator('#generic-autopager-status-v2').evaluate(node => node.click());
+      await retained(run.page);await hidden(run.page,['ai','location']);
+      assert.deepEqual(run.errors,[]);
+    } finally {await run.context.close();run.releasePagination();}
   });
   await scenario('AI Mode is untouched even with the new mobile patterns', async () => {
     const run = await setup({before:region()+error()},current,'https://www.google.com/search?q=木村&udm=50');
