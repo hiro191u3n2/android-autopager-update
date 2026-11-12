@@ -1,5 +1,86 @@
 # Recovered development source
 
+## v6.58: boundaries inside grouped organic results
+
+v6.58 starts from the owner's v6.57 rollback, main commit
+9b52d18419848b1d463f42c4d7d8551042d683fc. Before editing, the unmodified
+worker output matched the published v6.57 script exactly (SHA-256
+7c7a488ab1c08f639aa34b6bd223f8a2ec021b157fbefe0268362d7a30a8baf6).
+The v6.53 layout snapshot remains unchanged; v6.54-v6.56's separator snapshot
+and broader normalization are not reintroduced.
+
+Only appended Google search pages receive the new boundary repair. A result
+must have its own source identity and matching external title link. Plain-div
+titles and alternate heading levels are supported. Duplicate domain text in
+one source header is deduplicated, while independently headed same-site
+results remain separate. CSS-hidden alternatives, sitelinks without their own
+source header and horizontal rows cannot become vertical result boundaries.
+All source identities constrain wrapper promotion, including results whose
+titles cannot be recognized, so a known result cannot swallow an unknown one.
+
+Only adjacent full-width results within a shared group receive a missing
+border-top. Existing edge borders, short decorative paint and background
+gutters are retained. The new border inherits a native divider's height/color,
+with a theme-aware 6px fallback. No empty separator nodes are inserted.
+Multiple-result groups and their children are also excluded from the legacy
+price-based commerce reconstruction, preserving organic entries that mention
+prices. Standalone commerce cards retain the existing behavior. Work runs from
+the existing immediate/RAF/350ms import passes; no input/scroll handler,
+observer or new recurring timer is added.
+
+The new Chromium suite has four frozen-version failure controls and thirteen
+current-code scenarios. It covers rendered-frame/fetch imports, 360/412 CSS px,
+light/dark themes, mixed/plain title markup, independently headed same-host
+results, prices, and more than 6500 retained imported elements. Large-DOM
+checks establish that boundary repair is not skipped, not a speed benchmark.
+Pages 2/3 must paint one contiguous native-color 8px band at each boundary,
+across at least 95% of the sampled width, without bands inside result content,
+sitelinks or horizontal cards. Delayed paint is measured again after 1200ms.
+Titles, descriptions, links, thumbnails, hidden alternatives and the initial
+native result's exact markup are checked.
+
+The Android test harness runs the complete userscript before the initial
+fixture body is parsed and captures actual emulator-compositor screenshots
+with adb. Every HTTP(S) request is served from APK assets or rejected, so no
+live Google request occurs. Sixteen control/current, mixed/plain-title,
+light/dark and page-2/3 cases compare painted pixels and content geometry.
+The Activity leaves navigation visible to avoid Android's first-run immersive
+confirmation; known background pixels reject dimmed or obscured captures.
+The divider color, thickness and single-band assertions remain unchanged.
+
+These are controlled pages modeled on the supplied screenshot, not captured
+Google DOM. Live Google showed an unusual-traffic CAPTCHA, which was not
+solved or bypassed. Android API 35 WebView testing is distinct from the user's
+Berry Browser, AdGuard and physical device. It cannot establish the exact
+markup served to that device or guarantee future Google templates.
+
+The compact plain-title fixture initially used the synthetic phrase
+"次の検索結果を表示", which collided with the preserved correction-notice
+classifier and hid the test container. It now uses neutral restaurant copy.
+Production cleanup and strict visibility/pixel assertions were not changed.
+
+Validation passed at candidate 67f3ac50947cb9f4866eb651ebe6eac8f1c81105:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43184073720
+The complete Chromium regression suite, all 17 grouping scenarios, and release
+package verification passed after the fixture change. Android 15 / API 35 with
+com.google.android.webview 124.0.6367.219 passed all 16 screenshot cases with no
+verification failures. Each current boundary measured one 21-physical-pixel
+band (about 8.01 CSS px); each frozen control retained the two missing internal
+bands. Representative light/dark, old/current emulator screenshots were also
+visually inspected. The control uses frozen v6.53, whose executable body is
+identical to the v6.57 rollback.
+
+The Android APK manifest, Chromium release build and local release all contain
+the same complete v6.58 userscript (SHA-256
+5526d606fe395e8c1f8985a4f5fa8574584325783507f13e41d577790b1e402d).
+The metadata SHA-256 is
+b8b7054bd3fe1c6879de5822c0270642a0ec1fb123c6302c0f5be4ce6d1c211e.
+Run the full local gate in a browser-capable environment with
+`bash scripts/validate-project.sh 6.58.0`; Android instructions and scope are in
+`tests/android-webview/README.md`.
+
+## Historical releases
+
 v6.57 is a rollback requested by the owner after separator changes worsened
 their device display. The executable is restored exactly to the frozen v6.53
 package, Git blob 1d0077630bb5cdbc80a85ff0b12862010b398f06. Only metadata is
