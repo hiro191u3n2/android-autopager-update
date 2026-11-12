@@ -46,9 +46,11 @@ function fixture(start) {
 async function open(code, { late = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 500, height: 983 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   const page = await context.newPage(), errors = [];
-  let releasePage2, releaseFinal, firstTitleRequest;
+  let releasePage2, releaseFinal, releaseRetryTitle, retryTitleFinished, firstTitleRequest;
   const page2Gate = new Promise(resolve => { releasePage2 = resolve; });
   const finalGate = new Promise(resolve => { releaseFinal = resolve; });
+  const retryTitleGate = new Promise(resolve => { releaseRetryTitle = resolve; });
+  const retryTitleSettled = new Promise(resolve => { retryTitleFinished = resolve; });
   const titleRequested = new Promise(resolve => { firstTitleRequest = resolve; });
   const state = { failNext: false, lateResponses: [], titleRequests: 0, requestedStarts: [] };
   page.on('pageerror', error => errors.push(String(error)));
@@ -73,13 +75,16 @@ async function open(code, { late = false } = {}) {
       firstTitleRequest();
       const canonical = new URL(url.searchParams.get('url'));
       const start = Number(canonical.searchParams.get('v').slice(-2));
+      if (start === 20) await retryTitleGate;
       const response = { contentType: 'application/json', body: JSON.stringify({ title: finalTitle(start) }), headers: { 'access-control-allow-origin': '*' } };
       if (late) {
         state.lateResponses.push(() => route.fulfill(response));
         return;
       }
       await new Promise(resolve => setTimeout(resolve, 400));
-      return route.fulfill(response);
+      await route.fulfill(response);
+      if (start === 20) retryTitleFinished();
+      return;
     }
     return route.abort();
   });
@@ -105,8 +110,8 @@ async function open(code, { late = false } = {}) {
   // Observe its gated loading state without waiting for that iframe to finish.
   await page.goto('https://www.google.com/search?q=staging', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('generic-autopager-status-v2')?.textContent.startsWith('読込'), { timeout: 20000 });
-  return { context, page, state, errors, releasePage2, releaseFinal, titleRequested,
-    close: async () => { releasePage2(); releaseFinal(); await context.close(); } };
+  return { context, page, state, errors, releasePage2, releaseFinal, releaseRetryTitle, retryTitleSettled, titleRequested,
+    close: async () => { releasePage2(); releaseFinal(); releaseRetryTitle(); await context.close(); } };
 }
 
 async function snapshot(current, label) {
@@ -190,7 +195,15 @@ try {
     assert.equal(retried.footerDisplay, 'none', 'No explicit next link still uses the existing synthesized-page continuation');
     assert.equal(new URL(retried.nextHref).searchParams.get('start'), '30');
     const page3 = retried.trace.filter(entry => entry.page === '3');
-    assert(page3.length >= 1 && page3.every(entry => entry.titles[0] === finalTitle(20)));
+    assert(page3.length >= 1 && page3.every(entry => entry.titles[0] === googleTitle(20)),
+      'Retry at the document end immediately publishes the original Google title while its resolver is pending');
+    current.releaseRetryTitle();
+    await current.retryTitleSettled;
+    await current.page.waitForTimeout(750);
+    const settledRetry = await snapshot(current, 'current-urgent-retry-title-stable');
+    assert(settledRetry.trace.filter(entry => entry.page === '3').every(entry => entry.titles[0] === googleTitle(20)),
+      'The completed late resolver never rewrites an urgent page after its first visible state');
+    assert.equal(await current.page.locator('[data-staging-video="20"] h3').textContent(), googleTitle(20));
     current.releaseFinal();
     await current.page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     await current.page.waitForFunction(() => document.getElementById('generic-autopager-status-v2')?.style.display === 'none', undefined, { timeout: 20000 });

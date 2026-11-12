@@ -14,6 +14,10 @@ images, and another 450ms on pages with no images: 990ms without any network
 or layout work. v6.66 visits the same lazy-loading viewport positions with
 rendering opportunities instead of fixed sleeps. Pending images with reserved
 dimensions can paint later; unsized pending images keep a bounded load wait.
+Known safe lazy-image URLs in reserved slots are activated after the viewport
+pass without a deadline sleep. Unsized delayed images, placeholders and picture
+sources are observed until their source and intrinsic geometry are ready within
+the shared bound; unresolved activation is not silently imported as a blank.
 The image source/geometry pass now batches all reads before writes and removes
 the redundant synchronous computed-background walk already covered by the
 preserved layout snapshot.
