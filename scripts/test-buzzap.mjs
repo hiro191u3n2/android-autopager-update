@@ -2,7 +2,7 @@
 // Do not describe byte-preservation checks as live-site playback/browser tests.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, END, VERSION } from '../worker/index.js';
+import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, GOOGLE_DIAGNOSTICS_INITIALIZER, END, VERSION } from '../worker/index.js';
 
 const base = await readFile(new URL('../Android_Generic_AutoPager_v6.44.js', import.meta.url), 'utf8');
 const output = await buildUserscript();
@@ -14,7 +14,14 @@ const googleCleanup = (await readFile(new URL('../src/google-search-cleanup.js',
 const prefix = `\n\n${googleCleanup}\n${realtime}\n${gallery}\n`;
 const executable = output.slice(output.indexOf(END) + END.length);
 assert(executable.startsWith(prefix), 'Runtime module ordering changed');
-let restored = executable.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
+const googleInspection = (await readFile(new URL('../src/google-boundary-inspection.js', import.meta.url), 'utf8')).trim();
+const googleDiagnostics = (await readFile(new URL('../src/google-result-diagnostics.js', import.meta.url), 'utf8')).trim();
+const diagnosticAddition = `${googleInspection}\n${googleDiagnostics}\n${GOOGLE_DIAGNOSTICS_INITIALIZER}\n`;
+assert.equal(executable.split(diagnosticAddition).length, 2, 'Diagnostic addition must occur exactly once');
+const preserved658 = executable.replace(diagnosticAddition, '');
+const frozen658 = await readFile(new URL('../Android_Generic_AutoPager_v6.58.js', import.meta.url), 'utf8');
+assert.equal(preserved658, frozen658.slice(frozen658.indexOf(END) + END.length), 'Diagnostic release must preserve the complete v6.58 executable');
+let restored = preserved658.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
 const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
 assert.equal(restored.split(googleLayout).length, 2);
 restored = restored.replace(googleLayout + '\n', '');
