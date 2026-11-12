@@ -1,5 +1,39 @@
 # Recovered development source
 
+v6.56 adds result-boundary normalization after a Google page is appended. The
+v6.54/v6.55 fixes only preserved existing source paint; they could not supply
+missing dividers inside a grouped result wrapper. The user reported continuing
+and increased gaps on v6.55, so those fixture successes were insufficient.
+
+The normalizer identifies external linked titles with their own preceding
+source identity, keeps the highest wrapper containing one primary result, and
+checks only adjacent full-width vertically stacked units. Same-host results
+are separate; sitelinks without independent source headers and horizontal rows
+are protected. Existing borders, short decorative strips and pseudo paint are
+checked at the exact result edges. A group's final border cannot satisfy its
+internal boundaries. Missing bands inherit an existing divider's color/height,
+or use a theme-aware 6px fallback. Existing native background gutters count as
+boundaries. Work is restricted to the existing immediate/RAF/350ms import
+passes; there are no additional scroll/input handlers or mutation observers.
+
+tests/test_google_result_boundaries.mjs reproduces three organic entries in
+one group with only a group-bottom border. Frozen v6.55 must lose its two
+internal dividers on both rendered-frame and fetch imports; current code must
+paint all adjacent result boundaries once. It covers same-domain results,
+role-based headings, URL-text source labels, sitelinks, CSS-only horizontal
+cards, title/snippet/link preservation, pages 2/3, 360/412px and light/dark.
+These are controlled fixtures modeled on the screenshot, not a device DOM
+capture. Google blocked the remote test browser with an unusual-traffic
+CAPTCHA; it was not solved or bypassed. Native Berry verification is pending.
+
+Validation passed at candidate 9d45762b468a0c7b91f6c937836748e3ae3e0760:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43158407580
+The new suite passed all 10 scenarios, including frozen-v6.55 failure controls
+for both acquisition paths. Existing divider/layout, cleanup, input-performance
+and unrelated-site regressions passed. The CI-built script matches the local
+package (SHA-256
+1269711b531e7c05eef67d8464a51aabe40071acbcb536ed5cae259e95bdae91).
+
 v6.55 extends the separator capture to painted, short, text-free decorative
 containers with empty descendants, and to whitespace-only generated content.
 The v6.54 leaf-only test lost the parent strip's fixed height in the former
