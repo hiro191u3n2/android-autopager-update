@@ -1,5 +1,38 @@
 # Recovered development source
 
+## v6.66: sustained Google page preparation, not only earlier triggering
+
+The 2026-11-13 00:07 Berry recording still reaches the loaded document end
+while the status says loading. Stops occur at 3.231–3.989, 5.147–5.814,
+6.656–7.572, 8.689–9.790 and 10.631–11.381 seconds. Each appended page is
+about two viewports and the reader traverses it in about one second. The
+v6.65 test used roughly six-viewport pages, waited for page 2 before scrolling
+and stopped before crossing page 3. It did not establish sustained throughput.
+
+The old rendered-frame preparation imposed 3 x 180ms even with fully loaded
+images, and another 450ms on pages with no images: 990ms without any network
+or layout work. v6.66 visits the same lazy-loading viewport positions with
+rendering opportunities instead of fixed sleeps. Pending images with reserved
+dimensions can paint later; unsized pending images keep a bounded load wait.
+The image source/geometry pass now batches all reads before writes and removes
+the redundant synchronous computed-background walk already covered by the
+preserved layout snapshot.
+
+Eligible video titles start resolving as soon as the source root is available,
+overlapping frame and layout preparation within the existing shared deadline.
+Ready titles are retained. While the reader approaches the loaded end, optional
+unfinished title lookups no longer hold the entire next page: Google's visible
+title remains and is never rewritten after append. No outer scroll positions,
+gestures, separator geometry or unrelated site adapters are changed.
+
+Validation uses frozen v6.65 controls, approximately 1900px pages, identical
+fixed-start sustained relative inputs through at least five boundaries, and
+actual CDP touch/fling input. It includes slow-title responses, real iframe
+lazy images, unsized image readiness and operation-count checks for the removed
+background walk. These are controlled Chromium tests, not native Berry/AdGuard
+measurements on the owner's device. The migrated repository validator remains
+the validation authority for the approved GitHub migration.
+
 ## v6.65: prepare the next Google page before the scroll boundary
 
 The two 2026-11-12 Berry recordings repeatedly reach the loaded document's

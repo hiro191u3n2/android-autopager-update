@@ -4,6 +4,7 @@ function createGenericGoogleReadAheadV665(state, load) {
   const route = genericGoogleTailRouteV663();
   if (!route || !state?.target?.isConnected) return null;
   let latest = null, frame = 0, generation = 0, disposed = false, suspended = false, composing = false;
+  let lastScrollY = window.scrollY || 0, lastMotionAt = -Infinity;
   const listeners = [];
   const listen = (target, name, handler) => {
     target.addEventListener(name, handler, { passive: true });
@@ -48,7 +49,19 @@ function createGenericGoogleReadAheadV665(state, load) {
     if (section?.parentNode === state.target) latest = section;
     schedule();
   };
-  listen(window, 'scroll', schedule);
+  // Optional remote title enrichment must not hold the whole next page when
+  // the reader is consuming the remaining content or already at its end.
+  const urgent = () => {
+    if (!valid() || state.paused || state.stopped || document.hidden) return true;
+    const remaining = state.target.getBoundingClientRect().bottom - window.innerHeight;
+    return remaining <= 160 || performance.now() - lastMotionAt < 350 && remaining <= window.innerHeight * 2;
+  };
+  listen(window, 'scroll', () => {
+    const y = window.scrollY || 0;
+    if (Math.abs(y - lastScrollY) > 1) lastMotionAt = performance.now();
+    lastScrollY = y;
+    schedule();
+  });
   listen(window, 'resize', schedule);
   listen(window, 'popstate', schedule);
   listen(window, 'pagehide', () => { suspended = true; generation++; cancel(); });
@@ -58,5 +71,5 @@ function createGenericGoogleReadAheadV665(state, load) {
   listen(document, 'compositionstart', () => { composing = true; });
   listen(document, 'compositionend', () => { composing = false; schedule(); });
   schedule();
-  return { schedule, appended, valid, ticket: () => generation, dispose };
+  return { schedule, appended, valid, urgent, ticket: () => generation, dispose };
 }

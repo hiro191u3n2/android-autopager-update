@@ -2,8 +2,7 @@
 // once; a slow/failed resolver leaves Google's original visible title intact.
 const genericGoogleTitleDeadlineV663 = 2200;
 
-async function prepareGenericGoogleTitlesV663(root, parseVideo, resolveTitle, applyTitle) {
-  if (!root?.querySelectorAll || root.isConnected || !genericGoogleTailRouteV663()) return;
+function collectGenericGoogleTitlesV666(root, parseVideo) {
   const jobs = [], seen = new Set();
   for (const anchor of root.querySelectorAll('a[href]')) {
     const video = parseVideo(anchor.getAttribute('href') || anchor.href);
@@ -19,11 +18,78 @@ async function prepareGenericGoogleTitlesV663(root, parseVideo, resolveTitle, ap
     seen.add(title);
     jobs.push({ title, video });
   }
+  return jobs;
+}
+
+function genericGoogleTitleIdentityV666(video) {
+  if (video?.videoId) return 'id:' + video.videoId;
+  if (video?.canonicalUrl) return 'url:' + video.canonicalUrl;
+  return '';
+}
+
+// Start the existing cached resolver while the source frame is still being
+// hydrated. This never edits the source or a subsequently displayed title.
+function primeGenericGoogleTitlesV666(root, parseVideo, resolveTitle) {
+  const route = genericGoogleTailRouteV663();
+  if (!root?.querySelectorAll || !root.isConnected || !route) return;
+  const startedAt = performance.now(), jobs = collectGenericGoogleTitlesV666(root, parseVideo);
+  const preparation = { startedAt, titles: new Map() };
+  if (!jobs.length) return preparation;
+  let cursor = 0, closed = false;
+  const timer = window.setTimeout(() => { closed = true; }, genericGoogleTitleDeadlineV663);
+  const active = () => !closed && root.isConnected && genericGoogleTailRouteV663() === route &&
+    performance.now() - startedAt < genericGoogleTitleDeadlineV663;
+  const workers = Array.from({ length: Math.min(3, jobs.length) }, async () => {
+    while (active() && cursor < jobs.length) {
+      const job = jobs[cursor++];
+      try {
+        const text = await resolveTitle(job.video), identity = genericGoogleTitleIdentityV666(job.video);
+        if (active() && identity && text) preparation.titles.set(identity, text);
+      } catch (_) { /* The original Google title remains available. */ }
+    }
+  });
+  const finish = () => { closed = true; window.clearTimeout(timer); };
+  Promise.all(workers).then(finish, finish);
+  return preparation;
+}
+
+async function prepareGenericGoogleTitlesV663(root, parseVideo, resolveTitle, applyTitle, options = {}) {
+  if (!root?.querySelectorAll || root.isConnected || !genericGoogleTailRouteV663()) return;
+  const startedAt = options.preparation?.startedAt ?? options.startedAt;
+  const elapsed = Number.isFinite(startedAt) ? Math.max(0, performance.now() - startedAt) : 0;
+  const remaining = Math.max(0, genericGoogleTitleDeadlineV663 - elapsed);
+  const responsive = typeof options.shouldYield === 'function';
+  const shouldYield = () => {
+    try { return responsive && options.shouldYield(); }
+    catch (_) { return false; }
+  };
+  const jobs = collectGenericGoogleTitlesV666(root, parseVideo).filter(job => {
+    const text = options.preparation?.titles?.get(genericGoogleTitleIdentityV666(job.video));
+    if (!text) return true;
+    if (root.contains(job.title)) applyTitle(job.title, text);
+    return false;
+  });
+  // Completed source-frame work is ready synchronously, even when the reader
+  // needs this page now. Only unresolved titles participate in the wait below.
+  if (!remaining || shouldYield()) return;
   if (!jobs.length) return;
-  let cursor = 0, closed = false, timer = 0;
+  let cursor = 0, closed = false, timer = 0, poll = 0, releaseUrgent;
+  const urgent = new Promise(resolve => { releaseUrgent = resolve; });
+  const checkUrgent = () => {
+    if (!closed && shouldYield()) { closed = true; releaseUrgent(); }
+  };
+  const pollUrgent = () => {
+    if (closed) return;
+    checkUrgent();
+    if (!closed) poll = window.setTimeout(pollUrgent, 50);
+  };
+  if (responsive) {
+    window.addEventListener('scroll', checkUrgent, { passive: true });
+    poll = window.setTimeout(pollUrgent, 50);
+  }
   const completed = [];
   const settled = Promise.all(Array.from({ length: Math.min(3, jobs.length) }, async () => {
-    while (!closed && cursor < jobs.length) {
+    while (!closed && !shouldYield() && cursor < jobs.length) {
       const job = jobs[cursor++];
       try {
         const text = await resolveTitle(job.video);
@@ -32,12 +98,14 @@ async function prepareGenericGoogleTitlesV663(root, parseVideo, resolveTitle, ap
     }
   }));
   try {
-    await Promise.race([settled, new Promise(resolve => {
-      timer = window.setTimeout(resolve, genericGoogleTitleDeadlineV663);
+    await Promise.race([settled, urgent, new Promise(resolve => {
+      timer = window.setTimeout(resolve, remaining);
     })]);
   } finally {
     closed = true;
     window.clearTimeout(timer);
+    window.clearTimeout(poll);
+    if (responsive) window.removeEventListener('scroll', checkUrgent);
   }
   // Requests can settle after the shared deadline. They can still populate the
   // existing resolver cache, but no continuation may rewrite a displayed page.

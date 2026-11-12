@@ -13,7 +13,7 @@ function create(url = 'https://www.google.com/search?q=read-ahead') {
     url, runScripts: 'outside-only', pretendToBeVisual: true,
   });
   const { window } = dom, doc = window.document;
-  const clock = FakeTimers.withGlobal(window).install({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
+  const clock = FakeTimers.withGlobal(window).install({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
   window.eval(staging + '\n' + source);
   const state = { target: doc.getElementById('rso'), loading: false, paused: false, stopped: false, nextUrl: '/search?q=read-ahead&start=10', pages: 1 };
   const loads = [];
@@ -21,7 +21,30 @@ function create(url = 'https://www.google.com/search?q=read-ahead') {
   const emit = name => window.dispatchEvent(new window.Event(name));
   const tick = () => clock.tick(20);
   const close = () => { helper?.dispose(); clock.uninstall(); window.close(); };
-  return { window, doc, state, helper, loads, emit, tick, close };
+  return { window, doc, state, helper, loads, emit, tick, close, clock };
+}
+
+{
+  const test = create();
+  try {
+    const { state, helper, window, emit, clock } = test;
+    let remaining = window.innerHeight;
+    state.target.getBoundingClientRect = () => ({ bottom: window.innerHeight + remaining });
+    assert.equal(helper.urgent(), false, 'An idle reader retains the normal title-resolution budget');
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 100 });
+    emit('scroll');
+    assert.equal(helper.urgent(), true, 'Moving toward the available end releases optional title waiting');
+    remaining = window.innerHeight * 3;
+    assert.equal(helper.urgent(), false, 'Ample loaded content retains the title budget even during motion');
+    remaining = window.innerHeight;
+    clock.tick(400);
+    assert.equal(helper.urgent(), false, 'Stopped motion with spare content returns to normal title preparation');
+    remaining = 0;
+    assert.equal(helper.urgent(), true, 'A reader already clamped at the end does not need further scroll events');
+    state.paused = true;
+    assert.equal(helper.urgent(), true, 'Pause releases optional title waiting before stale-append rejection');
+    console.log('PASS read-ahead unit: title urgency distinguishes idle, motion, headroom, end clamp and pause'); passed++;
+  } finally { test.close(); }
 }
 
 {

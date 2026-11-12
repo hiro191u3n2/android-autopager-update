@@ -2,7 +2,7 @@
 // Do not describe byte-preservation checks as live-site playback/browser tests.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, GOOGLE_STAGING_REPLACEMENTS, GOOGLE_READ_AHEAD_REPLACEMENTS, END, VERSION } from '../worker/index.js';
+import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, GOOGLE_STAGING_REPLACEMENTS, GOOGLE_READ_AHEAD_REPLACEMENTS, GOOGLE_FRAME_PREPARATION_REPLACEMENTS, END, VERSION } from '../worker/index.js';
 
 const base = await readFile(new URL('../Android_Generic_AutoPager_v6.44.js', import.meta.url), 'utf8');
 const output = await buildUserscript();
@@ -13,7 +13,24 @@ const helper = (await readFile(new URL('../src/fashion-product-guard.js', import
 const googleCleanup = (await readFile(new URL('../src/google-search-cleanup.js', import.meta.url), 'utf8')).trim();
 const prefix = `\n\n${googleCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
-const googleReadAhead = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
+const currentReadAhead = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
+const currentStaging = (await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim();
+const googleFramePreparation = (await readFile(new URL('../src/google-frame-preparation.js', import.meta.url), 'utf8')).trim();
+const frozen665 = await readFile(new URL('../Android_Generic_AutoPager_v6.65.js', import.meta.url), 'utf8');
+const frozen665Body = frozen665.slice(frozen665.indexOf(END) + END.length);
+const stagingStart665 = frozen665Body.indexOf('// Prepare only a detached Google result page.');
+const aheadStart665 = frozen665Body.indexOf('// Keep one Google result page ready ahead of the reader.');
+const coreStart665 = frozen665Body.indexOf('function e(){if(/^search');
+assert(stagingStart665 >= 0 && aheadStart665 > stagingStart665 && coreStart665 > aheadStart665);
+const googleStaging = frozen665Body.slice(stagingStart665, aheadStart665).trimEnd();
+const googleReadAhead = frozen665Body.slice(aheadStart665, coreStart665).trimEnd();
+for (const module of [currentReadAhead, currentStaging, googleFramePreparation]) assert.equal(executable.split(module).length, 2);
+executable = executable.replace(googleFramePreparation + '\n', '').replace(currentReadAhead, googleReadAhead).replace(currentStaging, googleStaging);
+for (const [from, to] of GOOGLE_FRAME_PREPARATION_REPLACEMENTS) {
+  assert.equal(executable.split(to).length, 2, 'Google preparation restoration boundary must be unique');
+  executable = executable.replace(to, from);
+}
+assert.equal(executable, frozen665Body, 'Only named Google frame/title preparation and urgency changes may differ from v6.65');
 assert.equal(executable.split(googleReadAhead).length, 2);
 executable = executable.replace(googleReadAhead + '\n', '');
 for (const [from, to] of GOOGLE_READ_AHEAD_REPLACEMENTS) {
@@ -24,7 +41,6 @@ const frozen664 = await readFile(new URL('../Android_Generic_AutoPager_v6.64.js'
 assert.equal(executable, frozen664.slice(frozen664.indexOf(END) + END.length), 'Only the named Google read-ahead additions may differ from v6.64');
 assert(executable.startsWith(prefix), 'Runtime module ordering changed');
 const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
-const googleStaging = (await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim();
 const frozen663 = await readFile(new URL('../Android_Generic_AutoPager_v6.63.js', import.meta.url), 'utf8');
 const frozen663Body = frozen663.slice(frozen663.indexOf(END) + END.length);
 const layout663Start = frozen663Body.indexOf('// Google loads result-specific CSS in each fetched document.');
