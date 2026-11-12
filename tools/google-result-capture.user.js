@@ -22,9 +22,8 @@
   const ownStorage = (write = false) => {
     for (const name of ['localStorage', 'sessionStorage']) {
       try {
-        if (write) window[name].setItem(DONE, '1');
-        else return window[name].getItem(DONE) === '1';
-        return false;
+        if (write) { window[name].setItem(DONE, '1'); return false; }
+        if (window[name].getItem(DONE) === '1') return true;
       } catch (_) { /* Only this helper's boolean key is accessed. */ }
     }
     return false;
@@ -88,8 +87,17 @@
     const allowed = /^(?:id|class|title|alt|dir|lang|role|hidden|inert|width|height|colspan|rowspan|open|aria-[a-z-]+|data-dtld|data-snhf|data-page|data-generic-[a-z0-9-]+)$/i;
     const skipped = 'script,noscript,style,link,meta,base,iframe,object,embed,form,input,textarea,select,[contenteditable]:not([contenteditable="false"]),#gb,[data-ogpc],[data-google-account]';
     if (target.closest(skipped)) throw new Error('入力欄ではなく、検索結果の見出しや説明文を選んでください。');
+    const excluded = node => node.matches(skipped) || node.id === UI || chosen.initial && node !== root &&
+      node.matches('.generic-autopager-page,.generic-autopager-google-source-root');
+    const countWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: node => excluded(node) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+    });
+    let nodeCount = 1;
+    while (countWalker.nextNode()) if (++nodeCount > limits.maxNodes) {
+      throw new Error(`対象ページが大きすぎます（上限${limits.maxNodes}要素）。別の区切り箇所を選んでください。`);
+    }
     const inert = document.implementation.createHTMLDocument('');
-    const holder = inert.createElement('div'), elements = [], originals = [], headings = [];
+    const holder = inert.createElement('div'), elements = [], originals = [], texts = [], headings = [];
     const stack = [{ node: root, parent: holder, parentIndex: null }];
     let selectedIndex = null, batchStart = performance.now(), visited = 0;
     while (stack.length) {
@@ -98,10 +106,12 @@
         if (!root.isConnected || location.href !== startURL) throw new Error('取得中にページが変わりました。もう一度取得してください。');
       }
       const { node, parent, parentIndex } = stack.pop();
-      if (node.nodeType === Node.TEXT_NODE) { parent.appendChild(inert.createTextNode(node.textContent)); continue; }
+      if (node.nodeType === Node.TEXT_NODE) {
+        texts.push({ node, value: node.data, parent: node.parentNode });
+        parent.appendChild(inert.createTextNode(node.data)); continue;
+      }
       if (node.nodeType !== Node.ELEMENT_NODE) continue;
-      if (node.matches(skipped) || node.id === UI || chosen.initial && node !== root &&
-          node.matches('.generic-autopager-page,.generic-autopager-google-source-root')) { omit('excluded subtree'); continue; }
+      if (excluded(node)) { omit('excluded subtree'); continue; }
       if (elements.length >= limits.maxNodes) throw new Error(`対象ページが大きすぎます（上限${limits.maxNodes}要素）。別の区切り箇所を選んでください。`);
       const copy = inert.createElementNS(node.namespaceURI, node.localName), index = elements.length;
       for (const attribute of node.attributes) {
@@ -120,7 +130,7 @@
       copy.setAttribute('data-capture-node', String(index)); parent.appendChild(copy);
       const rect = rectOf(node), style = styleOf(node), computed = styleTable[style];
       elements.push({ index, parentIndex, tag: node.localName, rect, style, pseudos: pseudoOf(node) });
-      originals.push({ node, parent: node.parentNode });
+      originals.push({ node, parent: node.parentNode, children: [...node.childNodes] });
       if (node === target || node.contains(target)) selectedIndex = index;
       if (node.matches('h1,h2,h3,h4,h5,h6,[role="heading"],[aria-level]') && rect.width > 0 && rect.height > 0 &&
           computed.visibility === 'visible' && Number.parseFloat(computed.opacity || '1') !== 0) headings.push({ index });
@@ -133,7 +143,10 @@
       if (ancestors.length >= limits.maxAncestors) throw new Error('親要素が多すぎるため取得を中止しました。');
       ancestors.push({ tag: node.localName, id: node.id, class: node.getAttribute('class') || '', rect: rectOf(node), style: styleOf(node), pseudos: pseudoOf(node) });
     }
-    if (!root.isConnected || location.href !== startURL || originals.some(entry => !root.contains(entry.node) || entry.node.parentNode !== entry.parent)) {
+    if (!root.isConnected || location.href !== startURL || originals.some(entry => !root.contains(entry.node) ||
+        entry.node.parentNode !== entry.parent || entry.node.childNodes.length !== entry.children.length ||
+        entry.children.some((child, index) => entry.node.childNodes[index] !== child)) ||
+        texts.some(entry => entry.node.data !== entry.value || entry.node.parentNode !== entry.parent)) {
       throw new Error('取得中に検索結果が更新されました。もう一度取得してください。');
     }
     const page = root.closest('.generic-autopager-page'), vv = window.visualViewport;

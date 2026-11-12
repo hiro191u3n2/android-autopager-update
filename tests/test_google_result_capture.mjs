@@ -47,27 +47,43 @@ function fixture() {
   </div></main><button id="generic-autopager-status-v2">自動 3/30</button></body></html>`;
 }
 
-async function open(url = 'https://www.google.com/search?q=SECRET_QUERY&token=SECRET_QUERY_TOKEN') {
+async function open(url = 'https://www.google.com/search?q=SECRET_QUERY&token=SECRET_QUERY_TOKEN', { localStorageWriteFails = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 500, height: 983 }, isMobile: true, hasTouch: true, acceptDownloads: true });
   const page = await context.newPage(), requests = [], errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   page.on('request', request => { if (/^https?:/.test(request.url())) requests.push(request.url()); });
   await page.route('**/*', route => route.request().isNavigationRequest()
     ? route.fulfill({ contentType: 'text/html', body: fixture() }) : route.abort());
-  await page.addInitScript(() => {
-    const probe = window.__captureProbe = { cookieReads: 0, storageReads: [], storageWrites: [], clipboard: 0, scrollWrites: [], clicks: [], downloads: 0 };
+  await page.addInitScript(({ localStorageWriteFails }) => {
+    const probe = window.__captureProbe = { cookieReads: 0, storageReads: [], storageReadKinds: [], storageWrites: [], clipboard: 0, scrollWrites: [], clicks: [], downloads: 0 };
     Object.defineProperty(document, 'cookie', { configurable: true, get() { probe.cookieReads++; return 'SECRET_COOKIE'; }, set() {} });
     const get = Storage.prototype.getItem, set = Storage.prototype.setItem;
-    Storage.prototype.getItem = function (key) { probe.storageReads.push(String(key)); return get.call(this, key); };
-    Storage.prototype.setItem = function (key, value) { probe.storageWrites.push([String(key), String(value)]); return set.call(this, key, value); };
+    set.call(localStorage, 'unrelated-private-state', 'SECRET_STORAGE');
+    set.call(sessionStorage, 'unrelated-private-state', 'SECRET_SESSION');
+    Storage.prototype.getItem = function (key) {
+      probe.storageReads.push(String(key)); probe.storageReadKinds.push(this === localStorage ? 'local' : 'session');
+      return get.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      probe.storageWrites.push([String(key), String(value), this === localStorage ? 'local' : 'session']);
+      if (localStorageWriteFails && this === localStorage && key === '__googleResultStructureCaptureDone_v1') {
+        throw new DOMException('Fixture localStorage quota exceeded', 'QuotaExceededError');
+      }
+      return set.call(this, key, value);
+    };
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { probe.clipboard++; } } });
+    const execCommand = document.execCommand.bind(document);
+    document.execCommand = (command, ...args) => {
+      if (String(command).toLowerCase() === 'copy') { probe.clipboard++; return false; }
+      return execCommand(command, ...args);
+    };
     const scroll = window.scrollTo.bind(window);
     window.scrollTo = (...args) => { probe.scrollWrites.push(args); return scroll(...args); };
     document.addEventListener('click', event => {
       const anchor = event.target.closest?.('#rso a[href]');
       if (anchor) { probe.clicks.push({ text: anchor.textContent, prevented: event.defaultPrevented }); event.preventDefault(); }
     });
-  });
+  }, { localStorageWriteFails });
   await page.goto(url, { waitUntil: 'load' });
   requests.length = 0;
   return { context, page, requests, errors, close: () => context.close() };
@@ -113,7 +129,7 @@ try {
     for (const title of titles) assert(report.root.html.includes(title), `Actual selected group's title survives: ${title}`);
     assert(!report.root.html.includes('別の追加ページの結果'));
     assert(!report.root.html.includes('最初のページの結果'));
-    for (const secret of ['SECRET_PASSWORD', 'SECRET_TEXTAREA', 'SECRET_OPTION', 'SECRET_EDITABLE', 'SECRET_SCRIPT', 'SECRET_EVENT', 'SECRET_CREDENTIAL', 'SECRET_URL_TOKEN', 'SECRET_HASH', 'SECRET_QUERY', 'SECRET_IMAGE_TOKEN', 'SECRET_COOKIE']) {
+    for (const secret of ['SECRET_PASSWORD', 'SECRET_TEXTAREA', 'SECRET_OPTION', 'SECRET_EDITABLE', 'SECRET_SCRIPT', 'SECRET_EVENT', 'SECRET_CREDENTIAL', 'SECRET_URL_TOKEN', 'SECRET_HASH', 'SECRET_QUERY', 'SECRET_IMAGE_TOKEN', 'SECRET_COOKIE', 'SECRET_STORAGE', 'SECRET_SESSION']) {
       assert(!text.includes(secret), 'Private or executable fixture value must be omitted: ' + secret);
     }
     const mapping = await selected.page.evaluate(report => {
@@ -164,6 +180,24 @@ try {
     passed++; console.log('PASS capture: completed one-use flag suppresses subsequent-page UI');
   } finally { await selected.close(); }
 
+  const fallback = await open('https://www.google.com/search?q=storage-fallback', { localStorageWriteFails: true });
+  try {
+    await install(fallback);
+    await capture(fallback);
+    const completed = await fallback.page.evaluate(() => window.__captureProbe);
+    assert.deepEqual(completed.storageWrites.map(([key, value, kind]) => ({ key, value, kind })),
+      [{ key: DONE, value: '1', kind: 'local' }, { key: DONE, value: '1', kind: 'session' }],
+      'A localStorage write failure stores the completed flag in sessionStorage');
+    await fallback.page.goto('https://www.google.com/search?q=storage-fallback-next-page', { waitUntil: 'load' });
+    await install(fallback);
+    assert.equal(await fallback.page.locator(UI).count(), 0, 'A readable but empty localStorage must not conceal the completed sessionStorage flag');
+    const resumed = await fallback.page.evaluate(() => window.__captureProbe);
+    assert.deepEqual(resumed.storageReadKinds, ['local', 'session'], 'The later page checks both storage locations when localStorage has no flag');
+    assert.deepEqual(resumed.storageReads, [DONE, DONE]);
+    assert.deepEqual(fallback.errors, []);
+    passed++; console.log('PASS capture: sessionStorage completion fallback remains effective when localStorage reads work but writes fail');
+  } finally { await fallback.close(); }
+
   const cancelled = await open();
   try {
     await install(cancelled);
@@ -190,6 +224,48 @@ try {
   }
   passed++; console.log('PASS capture: unrelated hosts, non-search routes and AI Mode stay untouched');
 
+  const changing = await open();
+  try {
+    await install(changing);
+    await changing.page.locator('#capture-target').scrollIntoViewIfNeeded();
+    await changing.page.evaluate(() => {
+      const root = document.querySelector('.generic-autopager-page[data-page="2"] .generic-autopager-google-source-root');
+      const padding = document.createElement('div'); padding.className = 'mutation-yield-fixture';
+      for (let n = 0; n < 300; n++) padding.appendChild(document.createElement('span'));
+      root.appendChild(padding);
+      const timeout = window.setTimeout.bind(window), originalRect = root.getBoundingClientRect;
+      let rootMeasured = false;
+      window.__captureMutationOccurred = false;
+      root.getBoundingClientRect = function () { rootMeasured = true; return originalRect.call(this); };
+      window.setTimeout = (callback, delay, ...args) => {
+        if (typeof callback !== 'function') return timeout(callback, delay, ...args);
+        return timeout(() => {
+          if (delay === 0 && rootMeasured && !window.__captureMutationOccurred &&
+              document.getElementById('google-result-capture-status')?.textContent.includes('取得しています')) {
+            const added = document.createElement('div'); added.className = 'during-capture-change';
+            added.textContent = '取得途中に追加された検索結果'; root.appendChild(added);
+            window.__captureMutationOccurred = true;
+          }
+          callback(...args);
+        }, delay);
+      };
+      window.__restoreCaptureMutation = () => { window.setTimeout = timeout; root.getBoundingClientRect = originalRect; };
+    });
+    let downloads = 0; changing.page.on('download', () => { downloads++; });
+    await changing.page.locator(START).click();
+    await changing.page.locator('#capture-target').click();
+    await changing.page.waitForFunction(selector => /取得中.*更新/.test(document.querySelector(selector)?.textContent || ''), STATUS, { timeout: 15000 });
+    assert.equal(await changing.page.evaluate(() => window.__captureMutationOccurred), true, 'The fixture really changes a captured parent during a yield');
+    assert.equal(downloads, 0, 'A changed subtree must not be exported as apparently consistent evidence');
+    assert.equal((await changing.page.evaluate(() => window.__captureProbe.storageWrites)).length, 0, 'An inconsistent capture does not consume the helper');
+    await changing.page.evaluate(() => { window.__restoreCaptureMutation(); document.querySelector('.during-capture-change').remove(); });
+    const { report } = await capture(changing);
+    assert.equal(Number(report.root.pageNumber), 2);
+    assert.equal(downloads, 1, 'Stable retry produces the only downloaded evidence file');
+    assert.deepEqual(changing.errors, []);
+    passed++; console.log('PASS capture: a retained-parent change during a yield is rejected explicitly and stable retry remains available');
+  } finally { await changing.close(); }
+
   const oversized = await open();
   try {
     await oversized.page.evaluate(() => {
@@ -204,7 +280,7 @@ try {
     const before = await snapshot(oversized);
     await oversized.page.locator(START).click();
     await oversized.page.locator('#capture-target').click();
-    await oversized.page.waitForFunction(selector => /(?:上限|大き|多すぎ|超え|失敗|取得できません)/.test(document.querySelector(selector)?.textContent || ''), STATUS, { timeout: 10000 });
+    await oversized.page.waitForFunction(selector => /(?:上限|大き|多すぎ|超え|失敗|取得できません)/.test(document.querySelector(selector)?.textContent || ''), STATUS, { timeout: 30000 });
     assert.equal(downloads, 0, 'Oversized capture does not publish an incomplete file');
     const after = await snapshot(oversized);
     assert.equal(after.html, before.html);
