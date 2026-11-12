@@ -195,8 +195,14 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
   // URL text is often nested in several spans. One source identity must not
   // become several results, nor prevent a result's wrapper from being found.
   const identities = sources.filter(source => !sources.some(other => {
-    if (other === source || other.host !== source.host) return false;
-    if (source.node.contains(other.node)) return true;
+    if (other === source) return false;
+    const sameHost = other.host === source.host;
+    // A source row can name the site by its base domain while displaying a
+    // subdomain URL. Only the plain site-name label can yield to that URL; two
+    // explicit URLs or separate source rows must keep their own identities.
+    const siteNameForURL = !source.explicitURL && other.explicitURL && other.host.endsWith('.' + source.host);
+    if (!sameHost && !siteNameForURL) return false;
+    if (sameHost && source.node.contains(other.node)) return true;
     // Some sites use their domain as the site name as well as the URL. Those
     // sibling labels are one identity when they share a source-only container.
     let common = source.node.parentElement;
@@ -280,6 +286,65 @@ function hasGenericGoogleMultipleResultsV658(root) {
   return false;
 }
 
+// Top-level mobile results can have transparent wrappers around one opaque
+// result surface. Follow the known source/title ancestry, without scanning the
+// subtree, so an already painted gutter is compared with the actual card face.
+function getGenericGoogleResultSurfaceV660(record, root, rect, style) {
+  const card = record.card, box = rect(card);
+  const colored = color => color && color !== 'transparent' && !/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(color);
+  for (let node = record.title; node && node !== root; node = node.parentElement) {
+    const s = style(node), r = rect(node), color = s.backgroundColor;
+    const alpha = /^rgba\(/.test(color) ? Number.parseFloat(color.split(',').at(-1)) : 1;
+    if (node.contains(record.source) && colored(color) && alpha === 1 &&
+        s.visibility === 'visible' && Number.parseFloat(s.opacity || '1') === 1 &&
+        Math.abs(r.left - box.left) <= 1 && Math.abs(r.right - box.right) <= 1 &&
+        Math.abs(r.top - box.top) <= 1 && Math.abs(r.bottom - box.bottom) <= 1) {
+      return { node, color, coversCard: true };
+    }
+    if (node === card) break;
+  }
+  for (let node = card; node; node = node.parentElement) {
+    const color = style(node).backgroundColor;
+    if (colored(color)) return { node, color, coversCard: false };
+  }
+  return { node: null, color: 'rgb(255, 255, 255)', coversCard: false };
+}
+
+// This additional path only paints an existing small gap between independent
+// direct children of the imported root. It neither joins grouped modules nor
+// changes the box model, and refuses paint whose clipping/shadow is ambiguous.
+function getGenericGoogleRootGapV660(root, previous, current, rect, style, surfaces) {
+  const a = rect(previous), b = rect(current), height = b.top - a.bottom;
+  const reject = reason => ({ accepted: false, reason, height });
+  if (previous.parentElement !== root || current.parentElement !== root) return reject('root-branches');
+  if (height < 2 || height > 16) return reject('root-gap-range');
+  let sibling = previous.nextElementSibling;
+  for (; sibling && sibling !== current; sibling = sibling.nextElementSibling) {
+    if (sibling.matches('script,style,template')) continue;
+    const r = rect(sibling), s = style(sibling);
+    if (r.width > 0 && r.height > 0 && s.visibility === 'visible' && Number.parseFloat(s.opacity) !== 0) return reject('root-intervening-content');
+  }
+  if (sibling !== current) return reject('root-branches');
+  if (!surfaces.get(previous)?.coversCard || !surfaces.get(current)?.coversCard) return reject('root-surface-unconfirmed');
+  const currentStyle = style(current), previousShadow = style(previous).boxShadow;
+  if (currentStyle.boxShadow && currentStyle.boxShadow !== 'none' ||
+      previousShadow && previousShadow !== 'none' && !previous.hasAttribute(genericGoogleBoundaryMarkV658)) return reject('root-existing-shadow');
+  if (['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius'].some(property => Number.parseFloat(currentStyle[property]) > 0)) return reject('root-rounded-box');
+  const limit = root.closest('.generic-autopager-page') || root;
+  for (let node = current; node; node = node.parentElement) {
+    const s = style(node), r = rect(node);
+    if ([s.transform, s.clipPath, s.maskImage, s.backgroundImage].some(value => value && value !== 'none')) return reject('root-paint-complexity');
+    if (node !== current) {
+      const clippedY = /^(?:hidden|clip|scroll|auto)$/.test(s.overflowY);
+      const clippedX = /^(?:hidden|clip|scroll|auto)$/.test(s.overflowX);
+      if (clippedY && (a.bottom < r.top + (Number.parseFloat(s.borderTopWidth) || 0) - 1 || b.top > r.bottom - (Number.parseFloat(s.borderBottomWidth) || 0) + 1) ||
+          clippedX && (b.left < r.left + (Number.parseFloat(s.borderLeftWidth) || 0) - 1 || b.right > r.right - (Number.parseFloat(s.borderRightWidth) || 0) + 1)) return reject('root-ancestor-clipping');
+    }
+    if (node === limit) break;
+  }
+  return { accepted: true, reason: 'root-gap-eligible', height };
+}
+
 function repairGenericGoogleResultBoundariesV658(page) {
   if (!page?.isConnected || !/^(?:www\.)?google\.[a-z.]+$/i.test(location.hostname) || location.pathname !== '/search') return;
   const root = page.querySelector('.generic-autopager-google-source-root');
@@ -303,11 +368,13 @@ function repairGenericGoogleResultBoundariesV658(page) {
     for (let n = node; n; n = n.parentElement) if (colored(style(n).backgroundColor)) return style(n).backgroundColor;
     return 'rgb(255, 255, 255)';
   };
-  const cards = getGenericGoogleResultRecordsV658(root, true).records.filter(record =>
+  const records = getGenericGoogleResultRecordsV658(root, true).records.filter(record =>
     record.card && record.card !== record.anchor && visible(record.card) && visible(record.title) && visible(record.source) &&
-    rect(record.card).width >= rootRect.width * 0.75).map(record => record.card);
+    rect(record.card).width >= rootRect.width * 0.75);
+  const cards = records.map(record => record.card), surfaces = new WeakMap();
+  for (const record of records) surfaces.set(record.card, getGenericGoogleResultSurfaceV660(record, root, rect, style));
   if (cards.length < 2) return;
-  const surface = background(cards[0]);
+  const surface = surfaces.get(cards[0]).color;
   const bands = [];
   const inspected = new Set();
   const addBand = (top, bottom, left, right, color) => {
@@ -351,6 +418,7 @@ function repairGenericGoogleResultBoundariesV658(page) {
   // Only inspect result edges and adjacent decorative siblings. A large hidden
   // subtree cannot disable the repair or trigger a whole-page style walk.
   for (const card of cards) {
+    if (surfaces.get(card).coversCard) inspect(surfaces.get(card).node);
     for (let node = card; node && node !== root; node = node.parentElement) {
       inspect(node); inspect(node.previousElementSibling); inspect(node.nextElementSibling);
     }
@@ -371,21 +439,26 @@ function repairGenericGoogleResultBoundariesV658(page) {
     if (a.bottom > b.top + 1 || b.top - a.bottom > 120 || Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12) continue;
     let common = previous.parentElement;
     while (common && !common.contains(current)) common = common.parentElement;
-    // Restrict repair to independent results sharing an imported group. Separate
-    // top-level modules and their native outer borders keep their own styling.
-    if (!common || common === root) continue;
+    if (!common) continue;
+    const rootGap = common === root ? getGenericGoogleRootGapV660(root, previous, current, rect, style, surfaces) : null;
+    if (rootGap && !rootGap.accepted) continue;
     const exists = bands.some(band => band.left <= Math.max(a.left, b.left) + 8 && band.right >= Math.min(a.right, b.right) - 8 &&
       band.top >= a.bottom - 24 && band.bottom <= b.top + 24);
     if (exists) continue;
-    if (b.top - a.bottom >= 2 && background(common) !== background(previous) && background(common) !== background(current)) continue;
+    const previousSurface = rootGap ? surfaces.get(previous).color : background(previous);
+    const currentSurface = rootGap ? surfaces.get(current).color : background(current);
+    if (b.top - a.bottom >= 2 && background(common) !== previousSurface && background(common) !== currentSurface) continue;
     // A border belongs to the existing result box, so no empty synthetic node
     // can be removed by Google cleanup and no repeated pass can append a copy.
     const currentStyle = style(current);
     if ((Number.parseFloat(currentStyle.borderTopWidth) || 0) > 0 && colored(currentStyle.borderTopColor) && currentStyle.borderTopColor !== surface) continue;
-    missing.push(current);
+    missing.push({ current, rootGap });
   }
-  for (const current of missing) {
-    current.style.setProperty('border-top', `${height}px solid ${color}`, 'important');
+  for (const { current, rootGap } of missing) {
+    // An outer, zero-blur shadow is clipped inside the border box. Its only
+    // visible portion fills this existing gap; margins and heights stay intact.
+    if (rootGap) current.style.setProperty('box-shadow', `0px -${rootGap.height}px 0px 0px ${color}`, 'important');
+    else current.style.setProperty('border-top', `${height}px solid ${color}`, 'important');
     current.setAttribute(genericGoogleBoundaryMarkV658, '1');
   }
 }
