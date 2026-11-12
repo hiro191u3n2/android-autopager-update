@@ -25,7 +25,8 @@ if (process.env.GOOGLE_TEST_CHROMIUM_MODULE) {
 const browser = await chromium.launch(options);
 const built = await buildUserscript();
 const frozen = await readFile(resolve(ROOT, 'Android_Generic_AutoPager_v6.53.js'), 'utf8');
-const kinds = ['before', 'after', 'pseudo-border', 'anchored', 'empty', 'minheight', 'border'];
+const previous = await readFile(resolve(ROOT, 'Android_Generic_AutoPager_v6.54.js'), 'utf8');
+const kinds = ['before', 'after', 'pseudo-border', 'anchored', 'empty', 'minheight', 'nested-empty', 'whitespace', 'border'];
 const native = '<article id="native"><h3><a href="https://native.example/one">初回の検索結果</a></h3><p>検索欄と初回ページは変更しません。</p></article>';
 let passed = 0;
 
@@ -34,7 +35,7 @@ function result(start, kind, position) {
   const extras = kind === 'border' && position === 1 ? `
     <div class="sitelinks"><a href="https://result.example/${id}/one"><h3>関連記事その一</h3></a><a href="https://result.example/${id}/two"><h3>関連記事その二</h3></a></div>
     <div class="carousel"><a href="https://item.example/${start}/a"><h3>横並びカードA</h3></a><a href="https://item.example/${start}/b"><h3>横並びカードB</h3></a></div>` : '';
-  return `<article class="result ${kind === 'before' && position === 2 ? 'pseudo-before' : ''} ${kind === 'after' && position === 1 ? 'pseudo-after' : ''} ${kind === 'pseudo-border' && position === 1 ? 'pseudo-border' : ''} ${kind === 'anchored' && position === 1 ? 'anchored-line' : ''} ${kind === 'border' && position === 1 ? 'border-line' : ''}" data-result="${id}"><div class="result-copy"><div class="source-header"><span class="logo" aria-hidden="true"></span><div>情報サイト ${id}<div class="source-url">https://result.example</div></div></div><a class="main-link" href="https://result.example/${id}"><h3>検索結果 ${id} の見出し</h3></a><p>検索結果本文。追加したページでも見出しと説明文の順序を保ち、次の結果との区切りを表示します。</p>${extras}</div></article>`;
+  return `<article class="result ${kind === 'before' && position === 2 ? 'pseudo-before' : ''} ${kind === 'after' && position === 1 ? 'pseudo-after' : ''} ${kind === 'pseudo-border' && position === 1 ? 'pseudo-border' : ''} ${kind === 'anchored' && position === 1 ? 'anchored-line' : ''} ${kind === 'whitespace' && position === 1 ? 'whitespace-line' : ''} ${kind === 'border' && position === 1 ? 'border-line' : ''}" data-result="${id}"><div class="result-copy"><div class="source-header"><span class="logo" aria-hidden="true"></span><div>情報サイト ${id}<div class="source-url">https://result.example</div></div></div><a class="main-link" href="https://result.example/${id}"><h3>検索結果 ${id} の見出し</h3></a><p>検索結果本文。追加したページでも見出しと説明文の順序を保ち、次の結果との区切りを表示します。</p>${extras}</div></article>`;
 }
 
 function fixture(start, dark = false) {
@@ -42,7 +43,7 @@ function fixture(start, dark = false) {
   const ink = dark ? '#e8eaed' : '#202124';
   const line = dark ? '#111' : '#e8eaed';
   if (!start) return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:${page};color:${ink};font:14px/1.5 Arial,sans-serif}#native{padding:16px;min-height:200px}.pseudo-before::before,.pseudo-after::after,.pseudo-border::after,.anchored-line::after{content:"";display:block;width:100%;height:3px;background:#f00;border-top:2px solid #f0f}</style><main id="search"><div id="rso">${native}</div></main><nav><a id="pnnext" href="/search?q=separator&start=10">次へ</a></nav>`;
-  const groups = kinds.map(kind => `<div class="MjjYud" data-group="${kind}-${start}">${result(start, kind, 1)}${kind === 'empty' ? '<div class="empty-line" role="separator"></div>' : kind === 'minheight' ? '<div class="minheight-line" aria-hidden="true"></div>' : ''}${result(start, kind, 2)}</div>`).join('');
+  const groups = kinds.map(kind => `<div class="MjjYud" data-group="${kind}-${start}">${result(start, kind, 1)}${kind === 'empty' ? '<div class="empty-line" role="separator"></div>' : kind === 'minheight' ? '<div class="minheight-line" aria-hidden="true"></div>' : kind === 'nested-empty' ? '<div class="nested-empty-line" aria-hidden="true"><span><span></span></span></div>' : ''}${result(start, kind, 2)}</div>`).join('');
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
     *{box-sizing:border-box}body{margin:0;background:${page};color:${ink};font:14px/1.5 Arial,sans-serif}
     #rso{width:100%}.MjjYud{display:block;margin:0;padding:0;border-bottom:8px solid ${line};background:${page}}
@@ -50,10 +51,12 @@ function fixture(start, dark = false) {
     .source-header{display:flex;align-items:center;gap:8px}.source-url{font-size:12px}.logo{display:block;flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#39ad75}
     h3{font-size:19px;line-height:26px;font-weight:400;margin:10px 0}a{color:${dark ? '#8ab4f8' : '#1a0dab'};text-decoration:none}p{font-size:14px;line-height:21px;margin:0}
     .pseudo-before::before,.pseudo-after::after{content:"";display:block;width:100%;height:8px;background:${line};pointer-events:none}
+    .whitespace-line::after{content:" ";display:block;width:100%;height:8px;background:${line};pointer-events:none}
     .pseudo-border::after{content:"";display:block;width:100%;height:0;border-bottom:8px solid ${line};pointer-events:none}
     .anchored-line{padding-bottom:8px}.anchored-line::after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;background:${line};pointer-events:none}
     .MjjYud[data-group^="empty-"]{display:flex;flex-direction:column;align-items:flex-start}.MjjYud[data-group^="empty-"]>.result{align-self:stretch}
     .empty-line{display:inline-block;width:100%;height:8px;background:${line}}.minheight-line{display:block;width:100%;min-height:8px;background:${line}}
+    .nested-empty-line{display:block;width:100%;height:8px;background:${line}}.nested-empty-line span{display:block}
     .border-line{border-bottom:8px solid ${line}}
     .sitelinks{display:block;padding:6px 0}.sitelinks h3{font-size:15px;line-height:20px;margin:0;padding:4px 0}
     .carousel{display:flex;gap:12px;overflow:hidden}.carousel>a{flex:0 0 120px;min-width:0}.carousel h3{font-size:14px;line-height:20px;margin:0;padding:6px 0}
@@ -90,6 +93,7 @@ async function measure(page, start, dark) {
       return {
         kind, first: rect(first), second: rect(second),
         firstCopy: rect(first.querySelector('.result-copy')), secondCopy: rect(second.querySelector('.result-copy')),
+        firstHeight: first.style.height, copyHeight: first.querySelector('.result-copy').style.height,
         link: second.querySelector('.main-link').href,
       };
     });
@@ -175,6 +179,8 @@ function verifyResults(value, label, start) {
     assert.equal(rows.insideFirst, 0, `${label}: ${group.kind} has no divider inside first result`);
     assert.equal(rows.insideSecond, 0, `${label}: ${group.kind} has no divider inside second result`);
     assert(Math.abs(group.secondCopy.top - group.firstCopy.bottom - 8) <= 1, `${label}: ${group.kind} does not add a duplicate divider or gap`);
+    assert.equal(group.firstHeight, 'auto', `${label}: ${group.kind} does not freeze the result card's height`);
+    assert.equal(group.copyHeight, 'auto', `${label}: ${group.kind} does not freeze the text container's height`);
     assert.equal(group.link, `https://result.example/${group.kind}-${start}-2`, `${label}: ${group.kind} preserves result URL`);
   }
   assert.equal(value.native, native, `${label}: first page remains unchanged`);
@@ -190,11 +196,22 @@ try {
   const old = await setup(frozen, 360, false);
   try {
     const value = await measure(old.page, 10, false);
-    for (const kind of ['before', 'after', 'pseudo-border', 'anchored', 'empty', 'minheight']) assert.equal(value.rows.find(row => row.kind === kind).boundary, 0, `Frozen v6.53 control must lose ${kind} divider`);
+    for (const kind of ['before', 'after', 'pseudo-border', 'anchored', 'empty', 'minheight', 'nested-empty', 'whitespace']) assert.equal(value.rows.find(row => row.kind === kind).boundary, 0, `Frozen v6.53 control must lose ${kind} divider`);
     assert.equal(value.rows.find(row => row.kind === 'border').boundary, 8, 'Frozen control must retain a conventional border');
     console.log('PASS frozen v6.53 reproduces missing generated/empty-element dividers and retains ordinary border');
     passed++;
   } finally { await old.context.close(); }
+
+  const lastRelease = await setup(previous, 360, false);
+  try {
+    const value = await measure(lastRelease.page, 10, false);
+    for (const row of value.rows) {
+      const missing = ['nested-empty', 'whitespace'].includes(row.kind);
+      assert.equal(row.boundary, missing ? 0 : 8, `Frozen v6.54 control ${missing ? 'must lose' : 'must retain'} ${row.kind} divider`);
+    }
+    console.log('PASS frozen v6.54 reproduces nested-empty and whitespace-generated divider loss while retaining earlier divider fixes');
+    passed++;
+  } finally { await lastRelease.context.close(); }
 
   if (!process.env.GOOGLE_SEPARATOR_CONTROL_ONLY) {
     for (const width of [360, 412]) for (const dark of [false, true]) {
