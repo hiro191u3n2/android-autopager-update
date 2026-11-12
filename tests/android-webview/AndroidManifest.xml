@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="jp.hiro.autopager.webviewtest" android:versionCode="1" android:versionName="1">
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+  <uses-permission android:name="android.permission.INTERNET" />
+  <application android:label="AutoPager fixture test" android:debuggable="true"
+      android:theme="@android:style/Theme.Material.Light.NoActionBar"
+      android:usesCleartextTraffic="false" android:allowBackup="false">
+    <activity android:name=".MainActivity" android:exported="true"
+        android:launchMode="singleTop" android:screenOrientation="portrait">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>
