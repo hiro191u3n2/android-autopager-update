@@ -43,6 +43,13 @@ Validated userscript SHA-256:
 Validated metadata SHA-256:
 `e953c5c59b57d1eb5eb3fd757536de85a344c9d1fe28233e2f1dd53b98046e58`.
 
+Published under the owner's continuing automatic-publication instruction.
+At 2026-11-12 14:48 UTC, the fixed homepage, userscript and metadata URLs all
+returned HTTP 200 and matched the validated release byte-for-byte. Pages run
+43240924777 and published-content verification run 43240924425 succeeded for
+`af88f89c0c591de31c7b52d479f4cf57aebaeb0a`. Homepage SHA-256:
+`9123ca4605db3df9e03683321a4262aa7c27f293a6a7d86d1603cf9f8b89b446`.
+
 ## v6.64: touching results and inline source addresses
 
 The two 2026-11-12 22:46/22:47 Berry recordings still show missing grey
