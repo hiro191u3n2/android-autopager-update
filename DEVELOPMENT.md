@@ -51,6 +51,14 @@ requests, save confirmation/cancellation, storage fallback, route changes,
 mid-capture structure/attribute/scroll changes, size limits and retries. They
 validate the collector, not the missing-divider fix or native Berry downloads.
 
+Published the optional helper in commit
+`be6b634c3f4bfe3d73a1ae1f05379519dd04bfc5` on 2026-11-13 (Asia/Tokyo).
+Pages deployment `43301657749` succeeded. The literal
+`https://hiro191u3n2.github.io/android-autopager-update/tools/google-result-capture.user.js`
+returned HTTP 200 with the exact validated SHA-256 above. The fixed production
+userscript, metadata and homepage also returned HTTP 200 and retained their
+verified v6.66.0 hashes. The divider fix remains pending the affected capture.
+
 ## v6.66: sustained Google page preparation, not only earlier triggering
 
 The 2026-11-13 00:07 Berry recording still reaches the loaded document end
