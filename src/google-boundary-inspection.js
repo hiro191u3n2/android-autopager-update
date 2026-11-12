@@ -6,7 +6,9 @@ function inspectGenericGoogleResultBoundariesV659(page) {
   const MAX_DESCRIPTORS = 160;
   const HEADING = 'h1,h2,h3,h4,h5,h6,[role="heading"],[aria-level]';
   const EXCLUDED = 'script,style,template,nav,footer,[hidden],[inert],[aria-hidden="true"],g-scrolling-carousel,g-inner-card,[role="grid"],[role="listbox"],[role="tablist"],[role="dialog"],details,g-related-question';
-  const PRIVATE = 'script,style,template,noscript,iframe,object,embed,input,textarea,select,option,button,form,nav,header,footer,[role="dialog"],[role="menu"],[role="listbox"],[contenteditable]';
+  // A semantic header inside an appended result can be its source-address row.
+  // Initial-page fallbacks still exclude page/account headers entirely.
+  const PRIVATE = 'script,style,template,noscript,iframe,object,embed,input,textarea,select,option,button,form,nav,footer,[role="dialog"],[role="menu"],[role="listbox"],[contenteditable]' + (page?.matches?.('.generic-autopager-page') ? '' : ',header');
   const report = {
     schema: 'google-boundary-inspection/v659', status: 'ok',
     scope: { pageNumber: null, initialPage: true, viewport: null, rootId: null },
@@ -337,12 +339,12 @@ function inspectGenericGoogleResultBoundariesV659(page) {
         const headings = [...node.querySelectorAll(HEADING)].slice(0, 4);
         report.nearby.anchors.push({ nodeId: describe(node), destination: external(node), text: safeText(textOf(node), 90), headings: headings.map(heading => ({ nodeId: describe(heading), visible: visible(heading), text: safeText(textOf(heading), 90) })), recognized: result.records.some(record => record.anchor === node) });
       }
-      if (!node.matches('cite,[data-dtld],div,span,a') || report.nearby.sources.length >= 40) continue;
+      if (!node.matches('cite,[data-dtld],div,span,a,header') || report.nearby.sources.length >= 40) continue;
       const text = node.getAttribute('data-dtld') || textOf(node);
       if (text.length > 260 || !/(?:https?:\/\/|www\.|(?:[\p{L}\p{N}-]+\.)+[a-z]{2,})/iu.test(text)) continue;
       const exclusion = node.closest(EXCLUDED);
       const observations = [];
-      if (node.matches('a:not([data-dtld])')) observations.push('source-tag-not-scanned');
+      if (!node.matches('cite,[data-dtld],span,div')) observations.push('source-tag-not-scanned');
       if (!node.matches('cite,[data-dtld]') && node.childElementCount !== 0) observations.push('source-nonleaf');
       if (node.querySelector(HEADING) || node.matches(HEADING)) observations.push('source-has-heading');
       if (exclusion) observations.push('source-excluded-ancestor');

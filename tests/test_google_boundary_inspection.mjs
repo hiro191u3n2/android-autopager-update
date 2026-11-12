@@ -9,8 +9,9 @@ const inspector = await readFile(new URL('../src/google-boundary-inspection.js',
 const zero = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
 
 function fixture(mode) {
-  const source = n => mode === 'split-url'
-    ? `<div class="source">https://<span>shop${n}</span><span>.example</span></div>`
+  const source = n => mode === 'header-split-url'
+    ? `<header class="source">https://<span>shop${n}</span><span>.example</span><textarea>HEADER_PRIVATE</textarea><span role="menu">HEADER_MENU_PRIVATE</span></header>`
+    : mode === 'split-url' ? `<div class="source">https://<span>shop${n}</span><span>.example</span></div>`
     : `<div class="source"${mode === 'aria-hidden' ? ' aria-hidden="true"' : ''}>https://shop${n}.example${mode === 'privacy' ? '/menu?q=QUERY_SENTINEL#HASH_SENTINEL' : ''}</div>`;
   const card = n => {
     const hiddenHeading = mode === 'hidden-heading' ? '<h3 hidden>Hidden alternative</h3>' : '';
@@ -41,7 +42,7 @@ function fixture(mode) {
 }
 
 let passed = 0;
-for (const mode of ['control', 'split-url', 'aria-hidden', 'contents', 'common-root', 'hidden-heading', 'narrow', 'root-width', 'marker', 'privacy']) {
+for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', 'contents', 'common-root', 'hidden-heading', 'narrow', 'root-width', 'marker', 'privacy']) {
   const { dom, w, page } = fixture(mode);
   try {
     const before = w.document.documentElement.outerHTML;
@@ -57,6 +58,20 @@ for (const mode of ['control', 'split-url', 'aria-hidden', 'contents', 'common-r
       assert.equal(plain.counts.sources, 0);
       assert(plain.nearby.sources.some(source => source.observations.includes('source-nonleaf')));
       assert(plain.nearby.structure.some(node => node.text === '.example'));
+    }
+    if (mode === 'header-split-url') {
+      assert.equal(plain.counts.sources, 0);
+      assert(plain.nearby.structure.some(node => node.tag === 'header'));
+      assert(plain.nearby.structure.some(node => node.text === '.example'));
+      assert(plain.nearby.sources.some(source => plain.nodes[source.nodeId]?.tag === 'header' && source.observations.includes('source-tag-not-scanned')));
+      assert(!JSON.stringify(plain).includes('HEADER_PRIVATE'));
+      assert(!JSON.stringify(plain).includes('HEADER_MENU_PRIVATE'));
+      const initialReport = w.inspectGenericGoogleResultBoundariesV659(w.document.querySelector('#rso'));
+      assert.equal(initialReport.status, 'root-missing');
+      assert(!initialReport.nearby.structure.some(node => node.tag === 'header'));
+      assert(!JSON.stringify(initialReport).includes('HEADER_PRIVATE'));
+      assert(!JSON.stringify(initialReport).includes('HEADER_MENU_PRIVATE'));
+      assert.equal(w.document.documentElement.outerHTML, before);
     }
     if (mode === 'aria-hidden') {
       assert.equal(plain.counts.sources, 0);
