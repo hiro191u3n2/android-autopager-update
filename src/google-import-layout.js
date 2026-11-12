@@ -374,12 +374,14 @@ function getGenericGoogleRootGapPaintV661(root, previous, current, rootGap, surf
   }
   const contrast = background?.alpha === 1 && faces.every(face => face?.alpha === 1) ? faces.map(face => ratio(background, face)) : [];
   let color = fallbackColor, basis = 'theme-fallback';
-  if (nativeColor) { color = nativeColor; basis = 'native-band'; }
   // This is a decorative-color choice, not an accessibility conformance rule
   // or an eligibility test. A failed comparison must never cancel root paint.
-  else if (background?.alpha === 1 && contrast.length === 2 && contrast.every(value => value >= 1.12)) {
+  // Preserve this gap's contrasting backdrop before borrowing a band color
+  // from another result group in the same imported root.
+  if (background?.alpha === 1 && contrast.length === 2 && contrast.every(value => value >= 1.12)) {
     color = backgroundColor; basis = 'ancestor-background';
   }
+  else if (nativeColor) { color = nativeColor; basis = 'native-band'; }
   // Keep the observed thin, hard outline of the previous opaque surface. Its
   // bottom edge already occupies part of the gap; paint the remaining space
   // without overwriting that edge or changing any existing shadow property.

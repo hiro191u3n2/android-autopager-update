@@ -99,8 +99,36 @@ async function measure(page, start, options, label, original = false) {
   // Suppress only the added outer shadow for an in-place reference. The
   // surface's original 1px outline stays rendered at identical pixel phases.
   // This avoids comparing antialiased edges at different absolute page Y's.
-  const reference = paintCase && !original ? await page.screenshot({ fullPage: true, animations: 'disabled', scale: 'css',
-    style: '#generic-autopager-status-v2{visibility:hidden!important}.generic-autopager-google-source-root>[data-root-case="root"]{box-shadow:none!important}' }) : png;
+  let reference = png;
+  if (paintCase && !original) {
+    // A stylesheet cannot override the repair's inline !important declaration.
+    // Change only that outer property; leave the native inner outline intact.
+    const shadows = await page.evaluate(start => {
+      const root = document.querySelector(`.generic-autopager-page[data-page="${start / 10 + 1}"] .generic-autopager-google-source-root`);
+      return [...root.querySelectorAll(':scope > [data-root-case="root"]')].map(node => {
+        const saved = { id: node.dataset.organicResult, value: node.style.getPropertyValue('box-shadow'),
+          priority: node.style.getPropertyPriority('box-shadow'), hadStyle: node.hasAttribute('style') };
+        node.style.setProperty('box-shadow', 'none', 'important');
+        return saved;
+      });
+    }, start);
+    try {
+      reference = await page.screenshot({ fullPage: true, animations: 'disabled', scale: 'css',
+        style: '#generic-autopager-status-v2{visibility:hidden!important}' });
+    } finally {
+      await page.evaluate(({ start, shadows }) => {
+        const root = document.querySelector(`.generic-autopager-page[data-page="${start / 10 + 1}"] .generic-autopager-google-source-root`);
+        for (const saved of shadows) {
+          const node = [...root.querySelectorAll(':scope > [data-root-case="root"]')]
+            .find(item => item.dataset.organicResult === saved.id);
+          if (!node) throw new Error('Reference capture lost original card ' + saved.id);
+          if (saved.value) node.style.setProperty('box-shadow', saved.value, saved.priority);
+          else node.style.removeProperty('box-shadow');
+          if (!saved.hadStyle && !node.getAttribute('style')) node.removeAttribute('style');
+        }
+      }, { start, shadows });
+    }
+  }
   if (output && label) await writeFile(resolve(output, label + '.png'), png);
   if (output && label && paintCase && !original) await writeFile(resolve(output, label + '-without-repair.png'), reference);
   const paint = await page.evaluate(async ({ png, reference, geometry, color, paintCase }) => {

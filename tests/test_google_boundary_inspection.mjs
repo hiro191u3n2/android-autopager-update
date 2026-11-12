@@ -7,7 +7,7 @@ import { JSDOM } from 'jsdom';
 const layout = await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8');
 const inspector = await readFile(new URL('../src/google-boundary-inspection.js', import.meta.url), 'utf8');
 const zero = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
-const ROOT_GAP_CASES = ['root-gap', 'root-native-gutter', 'root-interrupted', 'root-nearwhite', 'root-alpha', 'root-ring', 'root-native-ring', 'root-ring-small', 'root-painted'];
+const ROOT_GAP_CASES = ['root-gap', 'root-native-gutter', 'root-interrupted', 'root-nearwhite', 'root-alpha', 'root-ring', 'root-native-ring', 'root-native-conflict', 'root-ring-small', 'root-painted'];
 
 function fixture(mode) {
   const rootGapCase = ROOT_GAP_CASES.includes(mode);
@@ -26,16 +26,17 @@ function fixture(mode) {
     const value = `<div class="result" data-result="${n}">${rootGapCase ? `<div class="transparent"><div class="surface">${contents}</div></div>` : contents}</div>`;
     return mode === 'contents' ? `<div class="contents">${value}</div>` : value;
   };
-  const cards = [1, 2, 3].map(n => card(n) + (mode === 'root-interrupted' && n === 1 ? '<div class="interruption">Related module</div>' : '')).join('');
-  const backdrop = ['root-native-gutter', 'root-native-ring'].includes(mode) ? '#e8eaed' : mode === 'root-nearwhite' ? '#f8f9fa' : mode === 'root-alpha' ? 'rgba(0,0,0,.01)' : '#fff';
-  const ring = ['root-ring', 'root-native-ring', 'root-ring-small'].includes(mode) ? 'box-shadow:rgb(235, 237, 239) 0px 0px 0px 1px;' : '';
-  const rootStyle = rootGapCase ? `html,body{background:${backdrop}}section,#rso,.result,.transparent{background:transparent}.surface{background:#fff;${ring}}` : '';
+  const cards = [1, 2, 3].map(n => card(n) + (mode === 'root-interrupted' && n === 1 ? '<div class="interruption">Related module</div>' : '')).join('') + (mode === 'root-native-conflict' ? '<div class="distant-native-band"></div>' : '');
+  const backdrop = mode === 'root-native-conflict' ? '#dce0e6' : ['root-native-gutter', 'root-native-ring'].includes(mode) ? '#e8eaed' : mode === 'root-nearwhite' ? '#f8f9fa' : mode === 'root-alpha' ? 'rgba(0,0,0,.01)' : '#fff';
+  const ring = ['root-ring', 'root-native-ring', 'root-native-conflict', 'root-ring-small'].includes(mode) ? 'box-shadow:rgb(235, 237, 239) 0px 0px 0px 1px;' : '';
+  const rootStyle = rootGapCase ? `html,body{background:${backdrop}}section,#rso,.result,.transparent{background:transparent}.surface{background:#fff;${ring}}.distant-native-band{height:8px;background:#e8eaed}` : '';
   const dom = new JSDOM(`<style>*{visibility:visible;opacity:1;background:#fff}.group{border-bottom:8px solid #e8eaed}.contents{display:contents}[hidden]{display:none}${rootStyle}</style><section class="generic-autopager-page" data-page="2" data-source-url="https://www.google.com/search?q=SOURCE_QUERY_SENTINEL#SOURCE_HASH_SENTINEL"><div id="rso" class="generic-autopager-google-source-root">${mode === 'common-root' || rootGapCase ? cards : `<div class="group">${cards}</div>`}</div></section>`, { url: 'https://www.google.com/search?q=LOCATION_QUERY_SENTINEL#LOCATION_HASH_SENTINEL', runScripts: 'outside-only' });
   const w = dom.window;
   const originalStyle = w.getComputedStyle.bind(w);
   w.getComputedStyle = (node, pseudo) => pseudo ? { content: 'none', display: 'none', visibility: 'visible', opacity: '1', getPropertyValue: () => '' } : originalStyle(node);
   w.Element.prototype.getBoundingClientRect = function () {
     if (this.matches('.contents') || this.closest('[hidden]')) return zero;
+    if (this.matches('.distant-native-band')) return { left: 0, right: 360, top: 800, bottom: 808, width: 360, height: 8 };
     const n = Number(this.closest('[data-result]')?.getAttribute('data-result')) || 0;
     const width = mode === 'narrow' && n ? 260 : mode === 'root-width' ? 1000 : 360;
     let top = n ? 20 + (n - 1) * (mode === 'root-ring-small' ? 182 : rootGapCase ? 188 : 180) : 20, height = n ? 180 : 548;
@@ -106,11 +107,11 @@ for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', '
     if (ROOT_GAP_CASES.includes(mode) && mode !== 'root-interrupted') {
       const reason = mode === 'root-painted' ? 'marker' : 'would-repair';
       assert.deepEqual(plain.pairs.map(pair => pair.reason), [reason, reason]);
-      const native = ['root-native-gutter', 'root-native-ring'].includes(mode);
-      const ring = ['root-ring', 'root-native-ring', 'root-ring-small'].includes(mode);
+      const native = ['root-native-gutter', 'root-native-ring', 'root-native-conflict'].includes(mode);
+      const ring = ['root-ring', 'root-native-ring', 'root-native-conflict', 'root-ring-small'].includes(mode);
       for (const pair of plain.pairs) {
         assert.equal(pair.paint.current, true);
-        assert.equal(pair.paint.color, 'rgb(232, 234, 237)');
+        assert.equal(pair.paint.color, mode === 'root-native-conflict' ? 'rgb(220, 224, 230)' : 'rgb(232, 234, 237)');
         assert.equal(pair.paint.basis, native ? 'ancestor-background' : 'theme-fallback');
         assert.equal(plain.nodes[pair.paint.backgroundNodeId]?.tag, 'body', 'Evidence identifies the backdrop outside the imported page');
         assert.equal(pair.paint.edgeInset, ring ? 1 : 0);
@@ -127,6 +128,10 @@ for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', '
           assert.deepEqual(pair.paint.contrast, [], 'No uncomposited contrast ratio for a translucent background');
         }
         if (native) assert(pair.paint.contrast.length === 2 && pair.paint.contrast.every(ratio => ratio >= 1.12));
+      }
+      if (mode === 'root-native-conflict') {
+        assert(plain.bands.some(band => band.color === 'rgb(232, 234, 237)' && plain.nodes[band.nodeId]?.classes.includes('distant-native-band')), 'Exercise a real competing native-band color elsewhere in the root');
+        assert(plain.pairs.every(pair => pair.paint.backgroundColor === 'rgb(220, 224, 230)' && pair.paint.color === pair.paint.backgroundColor), 'The local native gutter keeps its own color rather than borrowing the distant band');
       }
     }
     if (mode === 'root-interrupted') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['root-intervening-content', 'would-repair']);

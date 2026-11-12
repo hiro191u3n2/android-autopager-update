@@ -19,10 +19,11 @@ is not evidence that the imported gap contains a visible separator. Qualified
 direct-root gaps no longer use this inequality to cancel paint. The old grouped
 path and native border/pseudo/decorative-band guards remain unchanged.
 
-For root gaps, a known native band supplies the paint color first. Otherwise an
-opaque parsed sRGB ancestor color may be reused when its contrast against both
-opaque result faces is at least 1.12; weak, translucent or unsupported colors
-use the existing theme fallback. This threshold chooses a decorative color;
+For root gaps, an opaque parsed sRGB ancestor color is retained when its contrast
+against both opaque result faces is at least 1.12. Otherwise a known native band
+supplies the paint color, followed by the existing theme fallback for weak,
+translucent or unsupported backgrounds. A band elsewhere in the imported root
+cannot recolor an already contrasting local gutter. This threshold chooses a decorative color;
 it never decides whether to repair and is not an accessibility conformance
 threshold. No root/body background, source content, geometry, event handler or
 recurring work is added or changed.
