@@ -16,13 +16,24 @@ const executable = output.slice(output.indexOf(END) + END.length);
 assert(executable.startsWith(prefix), 'Runtime module ordering changed');
 const googleInspection = (await readFile(new URL('../src/google-boundary-inspection.js', import.meta.url), 'utf8')).trim();
 const googleDiagnostics = (await readFile(new URL('../src/google-result-diagnostics.js', import.meta.url), 'utf8')).trim();
+const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
 const diagnosticAddition = `${googleInspection}\n${googleDiagnostics}\n${GOOGLE_DIAGNOSTICS_INITIALIZER}\n`;
 assert.equal(executable.split(diagnosticAddition).length, 2, 'Diagnostic addition must occur exactly once');
-const preserved658 = executable.replace(diagnosticAddition, '');
-const frozen658 = await readFile(new URL('../Android_Generic_AutoPager_v6.58.js', import.meta.url), 'utf8');
-assert.equal(preserved658, frozen658.slice(frozen658.indexOf(END) + END.length), 'Diagnostic release must preserve the complete v6.58 executable');
-let restored = preserved658.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
-const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
+const frozen659 = await readFile(new URL('../Android_Generic_AutoPager_v6.59.js', import.meta.url), 'utf8');
+const frozen659Body = frozen659.slice(frozen659.indexOf(END) + END.length);
+const oldLayoutStart = '// Google loads result-specific CSS in each fetched document.';
+const oldInspectionStart = '// On-demand, read-only evidence for the unchanged v6.58 boundary classifier.';
+const diagnosticsStart = '/* generic-google-result-diagnostics-v659 */';
+for (const marker of [oldLayoutStart, oldInspectionStart, diagnosticsStart]) {
+  assert.equal(frozen659Body.split(marker).length, 2, 'Frozen v6.59 module boundary must be unique');
+}
+const frozenLayout = frozen659Body.slice(frozen659Body.indexOf(oldLayoutStart), frozen659Body.indexOf(oldInspectionStart)).trimEnd();
+const frozenInspection = frozen659Body.slice(frozen659Body.indexOf(oldInspectionStart), frozen659Body.indexOf(diagnosticsStart)).trimEnd();
+const restored659 = executable.replace(googleLayout, frozenLayout).replace(googleInspection, frozenInspection)
+  .replace(GOOGLE_DIAGNOSTICS_INITIALIZER, 'installGenericGoogleResultDiagnosticsV659("6.59.0");');
+assert.equal(restored659, frozen659Body, 'Only Google result layout/classification and its diagnostic inspection may differ from v6.59');
+const withoutDiagnostics = executable.replace(diagnosticAddition, '');
+let restored = withoutDiagnostics.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
 assert.equal(restored.split(googleLayout).length, 2);
 restored = restored.replace(googleLayout + '\n', '');
 for (const [from, to] of GOOGLE_LAYOUT_REPLACEMENTS) {
