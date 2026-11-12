@@ -164,3 +164,228 @@ function hasGenericGoogleLayoutV647(root) {
   if (!/^(?:www\.)?google\.[a-z.]+$/i.test(location.hostname) || location.pathname !== '/search') return false;
   return getGenericGoogleLayoutRootsV647(root).length > 0;
 }
+
+// Each organic result owns a source address and an external destination. Use
+// that pair, not Google's choice of h3/div/ARIA heading or the page's node count,
+// to find independent results. Only imported pages are ever painted below.
+const genericGoogleBoundaryMarkV658 = 'data-generic-google-boundary-v658';
+const genericGoogleMultipleResultsV658 = new WeakMap();
+
+function getGenericGoogleResultRecordsV658(root, rendered = false) {
+  if (!root?.querySelectorAll) return { records: [], sources: [] };
+  const excluded = 'script,style,template,nav,footer,[hidden],[inert],[aria-hidden="true"],g-scrolling-carousel,g-inner-card,[role="grid"],[role="listbox"],[role="tablist"],[role="dialog"],details,g-related-question';
+  const heading = 'h1,h2,h3,h4,h5,h6,[role="heading"],[aria-level]';
+  const hostOf = text => {
+    const match = String(text || '').trim().match(/(?:^|\s)(?:https?:\/\/)?((?:[\p{L}\p{N}-]+\.)+[a-z]{2,})(?=$|[\s/:›»])/iu);
+    return match?.[1].toLowerCase().replace(/^www\./, '') || '';
+  };
+  const sources = [];
+  for (const node of root.querySelectorAll('cite,[data-dtld],span,div')) {
+    if (node.closest(excluded) || node.matches(heading)) continue;
+    const explicit = node.matches('cite,[data-dtld]');
+    if (!explicit && node.childElementCount !== 0) continue;
+    const text = (node.getAttribute('data-dtld') || node.textContent || '').trim();
+    if (!text || text.length > 220 || node.querySelector(heading)) continue;
+    const host = hostOf(text);
+    if (host) {
+      if (rendered && (!node.getClientRects().length || root.ownerDocument.defaultView.getComputedStyle(node).visibility !== 'visible')) continue;
+      sources.push({ node, host, explicitURL: /^(?:https?:\/\/|www\.)/i.test(text) });
+    }
+  }
+  // URL text is often nested in several spans. One source identity must not
+  // become several results, nor prevent a result's wrapper from being found.
+  const identities = sources.filter(source => !sources.some(other => {
+    if (other === source || other.host !== source.host) return false;
+    if (source.node.contains(other.node)) return true;
+    // Some sites use their domain as the site name as well as the URL. Those
+    // sibling labels are one identity when they share a source-only container.
+    let common = source.node.parentElement;
+    for (let depth = 0; common && common !== root && depth < 3; common = common.parentElement, depth++) {
+      if (common.matches('a[href],' + heading) || common.querySelector('a[href],' + heading)) break;
+      if (!common.contains(other.node)) continue;
+      return other.explicitURL && !source.explicitURL || other.explicitURL === source.explicitURL && Boolean(source.node.compareDocumentPosition(other.node) & 4);
+    }
+    return false;
+  }));
+  const records = [];
+  const used = new Set();
+  for (const anchor of root.querySelectorAll('a[href]')) {
+    if (anchor.closest(excluded)) continue;
+    let url;
+    try {
+      url = new URL(anchor.getAttribute('href'), location.href);
+      if (/^(?:www\.)?google\.[a-z.]+$/i.test(url.hostname) && url.pathname === '/url') {
+        url = new URL(url.searchParams.get('q') || url.searchParams.get('url') || '');
+      }
+    } catch { continue; }
+    if (!/^https?:$/.test(url.protocol) || /^(?:www\.)?google\.[a-z.]+$/i.test(url.hostname)) continue;
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
+    let title = anchor.matches(heading) ? anchor : anchor.querySelector(heading);
+    if (!title) {
+      // Mobile result titles can be plain text/div/span inside a link. A source
+      // link alone is rejected by the source-before-title condition below.
+      const candidates = [anchor, ...anchor.querySelectorAll('div,span')].filter(node => {
+        const text = node.textContent.trim();
+        return text.length >= 2 && text.length <= 500 && !hostOf(text) &&
+          !node.closest('cite,[data-dtld]') && !node.querySelector('cite,[data-dtld]');
+      });
+      title = candidates[candidates.length - 1];
+    }
+    if (!title || title.textContent.trim().length < 2) continue;
+    let source, unit = anchor;
+    for (let depth = 0; unit && unit !== root && depth < 16; unit = unit.parentElement, depth++) {
+      const owned = identities.filter(entry => unit.contains(entry.node) &&
+        (entry.host === host || host.endsWith('.' + entry.host)) &&
+        !entry.node.contains(title) && (entry.node.compareDocumentPosition(title) & 4));
+      if (!owned.length) continue;
+      source = owned[owned.length - 1];
+      break;
+    }
+    // A sitelink cannot borrow the source identity already owned by the main
+    // result. Same-domain results with separate source rows remain separate.
+    if (!source || used.has(source.node)) continue;
+    used.add(source.node);
+    records.push({ source: source.node, title, anchor, identity: unit });
+  }
+  const counts = new WeakMap();
+  // Count ALL source identities, including an unrecognized result. Promoting a
+  // recognized card must never swallow a later result we failed to recognize.
+  for (const { node } of identities) {
+    for (let parent = node; parent && parent !== root; parent = parent.parentElement) {
+      counts.set(parent, (counts.get(parent) || 0) + 1);
+    }
+  }
+  for (const record of records) {
+    let card = record.identity;
+    while (card?.parentElement && card.parentElement !== root && counts.get(card.parentElement) === 1) card = card.parentElement;
+    record.card = card;
+  }
+  return { records, sources: identities };
+}
+
+function hasGenericGoogleMultipleResultsV658(root) {
+  const count = node => {
+    if (!genericGoogleMultipleResultsV658.has(node)) {
+      genericGoogleMultipleResultsV658.set(node, getGenericGoogleResultRecordsV658(node).records.length > 1);
+    }
+    return genericGoogleMultipleResultsV658.get(node);
+  };
+  if (count(root)) return true;
+  // Also protect one child of a grouped organic block: otherwise rejecting the
+  // shared wrapper merely makes the price heuristic rebuild its first child.
+  for (let parent = root.parentElement, depth = 0; parent && depth < 8; parent = parent.parentElement, depth++) {
+    if (parent.matches('#rso,#search,.generic-autopager-google-source-root,.generic-autopager-page')) break;
+    if (parent.matches('.MjjYud,.g,[data-snhf]') && count(parent)) return true;
+  }
+  return false;
+}
+
+function repairGenericGoogleResultBoundariesV658(page) {
+  if (!page?.isConnected || !/^(?:www\.)?google\.[a-z.]+$/i.test(location.hostname) || location.pathname !== '/search') return;
+  const root = page.querySelector('.generic-autopager-google-source-root');
+  if (!root) return;
+  const view = root.ownerDocument.defaultView;
+  const rootRect = root.getBoundingClientRect();
+  if (rootRect.width < 120 || rootRect.width > 900) return;
+  const rectangles = new WeakMap(), styles = new WeakMap();
+  const rect = node => {
+    if (!rectangles.has(node)) rectangles.set(node, node.getBoundingClientRect());
+    return rectangles.get(node);
+  };
+  const style = node => {
+    if (!styles.has(node)) styles.set(node, view.getComputedStyle(node));
+    return styles.get(node);
+  };
+  const colored = color => color && color !== 'transparent' && !/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(color);
+  const visible = node => node && rect(node).width > 0 && rect(node).height > 0 &&
+    style(node).visibility === 'visible' && Number.parseFloat(style(node).opacity) !== 0;
+  const background = node => {
+    for (let n = node; n; n = n.parentElement) if (colored(style(n).backgroundColor)) return style(n).backgroundColor;
+    return 'rgb(255, 255, 255)';
+  };
+  const cards = getGenericGoogleResultRecordsV658(root, true).records.filter(record =>
+    record.card && record.card !== record.anchor && visible(record.card) && visible(record.title) && visible(record.source) &&
+    rect(record.card).width >= rootRect.width * 0.75).map(record => record.card);
+  if (cards.length < 2) return;
+  const surface = background(cards[0]);
+  const bands = [];
+  const inspected = new Set();
+  const addBand = (top, bottom, left, right, color) => {
+    const height = bottom - top;
+    if (height >= 1 && height <= 16 && right - left >= rootRect.width * 0.75 && colored(color) && color !== surface) {
+      bands.push({ top, bottom, left, right, height, color });
+    }
+  };
+  const inspect = node => {
+    if (!node || node === root || inspected.has(node) || node.matches('script,style,template')) return;
+    inspected.add(node);
+    if (!visible(node)) return;
+    const r = rect(node), s = style(node);
+    if (r.width < rootRect.width * 0.75) return;
+    for (const edge of ['top', 'bottom']) {
+      const size = Number.parseFloat(s.getPropertyValue(`border-${edge}-width`)) || 0;
+      if (!/^(?:none|hidden)$/.test(s.getPropertyValue(`border-${edge}-style`))) {
+        addBand(edge === 'top' ? r.top : r.bottom - size, edge === 'top' ? r.top + size : r.bottom, r.left, r.right, s.getPropertyValue(`border-${edge}-color`));
+      }
+    }
+    if (!node.textContent.trim()) addBand(r.top, r.bottom, r.left, r.right, s.backgroundColor);
+    for (const pseudo of ['::before', '::after']) {
+      const p = view.getComputedStyle(node, pseudo);
+      if (!/^(?:"\s*"|'\s*')$/.test(p.content) || p.display === 'none' || p.visibility !== 'visible' || Number.parseFloat(p.opacity) === 0) continue;
+      const px = property => Number.parseFloat(p.getPropertyValue(property)) || 0;
+      const height = Math.max(px('height'), px('min-height')) + (p.boxSizing === 'border-box' ? 0 : px('border-top-width') + px('border-bottom-width') + px('padding-top') + px('padding-bottom'));
+      if (height < 1 || height > 16) continue;
+      const width = /px$/.test(p.width) ? px('width') : r.width;
+      const absolute = /^(?:absolute|fixed)$/.test(p.position);
+      const left = r.left + (absolute ? px('left') : Number.parseFloat(s.paddingLeft) || 0) + px('margin-left');
+      const top = absolute ? (p.top !== 'auto' ? r.top + px('top') : r.bottom - px('bottom') - height) :
+        pseudo === '::before' ? r.top + (Number.parseFloat(s.borderTopWidth) || 0) + (Number.parseFloat(s.paddingTop) || 0) :
+          r.bottom - (Number.parseFloat(s.borderBottomWidth) || 0) - (Number.parseFloat(s.paddingBottom) || 0) - height;
+      if (colored(p.backgroundColor)) addBand(top, top + height, left, left + width, p.backgroundColor);
+      else {
+        addBand(top, top + px('border-top-width'), left, left + width, p.borderTopColor);
+        addBand(top + height - px('border-bottom-width'), top + height, left, left + width, p.borderBottomColor);
+      }
+    }
+  };
+  // Only inspect result edges and adjacent decorative siblings. A large hidden
+  // subtree cannot disable the repair or trigger a whole-page style walk.
+  for (const card of cards) {
+    for (let node = card; node && node !== root; node = node.parentElement) {
+      inspect(node); inspect(node.previousElementSibling); inspect(node.nextElementSibling);
+    }
+    for (const edge of ['firstElementChild', 'lastElementChild']) {
+      let node = card;
+      for (let depth = 0; node && depth < 6; depth++, node = node[edge]) inspect(node);
+    }
+  }
+  const native = bands.find(band => band.height >= 4 && band.height <= 12) || bands[0];
+  const rgb = surface.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [255, 255, 255];
+  const color = native?.color || (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722 < 128 ? 'rgb(60, 64, 67)' : 'rgb(232, 234, 237)');
+  const height = native?.height || 6;
+  const missing = [];
+  for (let i = 1; i < cards.length; i++) {
+    const previous = cards[i - 1], current = cards[i];
+    if (current.hasAttribute(genericGoogleBoundaryMarkV658)) continue;
+    const a = rect(previous), b = rect(current);
+    if (a.bottom > b.top + 1 || b.top - a.bottom > 120 || Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12) continue;
+    let common = previous.parentElement;
+    while (common && !common.contains(current)) common = common.parentElement;
+    // Restrict repair to independent results sharing an imported group. Separate
+    // top-level modules and their native outer borders keep their own styling.
+    if (!common || common === root) continue;
+    const exists = bands.some(band => band.left <= Math.max(a.left, b.left) + 8 && band.right >= Math.min(a.right, b.right) - 8 &&
+      band.top >= a.bottom - 24 && band.bottom <= b.top + 24);
+    if (exists) continue;
+    if (b.top - a.bottom >= 2 && background(common) !== background(previous) && background(common) !== background(current)) continue;
+    // A border belongs to the existing result box, so no empty synthetic node
+    // can be removed by Google cleanup and no repeated pass can append a copy.
+    const currentStyle = style(current);
+    if ((Number.parseFloat(currentStyle.borderTopWidth) || 0) > 0 && colored(currentStyle.borderTopColor) && currentStyle.borderTopColor !== surface) continue;
+    missing.push(current);
+  }
+  for (const current of missing) {
+    current.style.setProperty('border-top', `${height}px solid ${color}`, 'important');
+    current.setAttribute(genericGoogleBoundaryMarkV658, '1');
+  }
+}
