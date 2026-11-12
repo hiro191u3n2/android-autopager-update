@@ -1,5 +1,75 @@
 # Recovered development source
 
+## v6.60: root-level gaps identified by the owner's diagnostic
+
+The owner's v6.59 report captured on 2026-11-12 identified a concrete exclusion:
+three successful repair invocations found ten sources, nine records and eight
+eligible cards, but added no markers. Six adjacent pairs were rejected as
+`common-root`, each with an 8px gap. The imported root was transparent and about
+499.78 CSS px wide. Its independent `MjjYud` children wrapped full-size white
+`Ww4FFb` surfaces with 8px bottom margins. Another record remained its anchor
+because the site-name `gnavi.co.jp` and URL `r.gnavi.co.jp` were counted twice
+inside the same source header. The omitted record caused a 214.98px pair gap.
+These are reported facts about the selected page; its titles differ from the
+original three-store screenshot. The complete original Google HTML was not
+captured. Tests use neutral structural examples derived from this report.
+
+The existing parser now lets a plain base-domain name yield to an explicit
+subdomain URL only within the bounded source-only header ancestry. Separate
+headers and two explicit URLs retain their identities. Full-width cards that
+are direct children of the imported root can repair an existing 2-16px gap.
+The source/title ancestry must identify an opaque surface covering each card.
+Visible intervening modules, existing shadows, rounded/complex paint and
+clipping that would hide the gap reject this additional path. A contrasting
+native gutter and existing divider paint remain unchanged.
+
+The root path uses a zero-blur, zero-spread outer shadow to paint the existing
+gap. It does not add elements or change margins, borders, heights or positions.
+The earlier grouped-result border path is retained. The inspector calls the
+same new surface/root-gap helpers and includes surface and shadow evidence.
+Its schema remains v659; the running script version is now 6.60.0.
+
+The preservation test substitutes only the changed Google layout/classifier,
+its inspector and the version initializer back to frozen v6.59, then checks
+the entire executable byte-for-byte. The older v6.44 feature-preservation gate
+also remains active. Frozen v6.59 has Git blob
+32e645f7c7fef0bd561628581a7d8335369510b4. No unrelated site adapters or Google
+input/cleanup behavior are changed.
+
+Validation passed at candidate c1132a5701f45ef96866ec91342b4fbcf89e3e78:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43198068339
+The complete npm regression suite, frozen-baseline checks and release package
+validation passed. The new root-result Chromium suite has two frozen-v6.59
+failure controls and four current missing/native-gutter light/dark scenarios,
+covering frame/fetch imports, pages 2/3 and the delayed repair pass. All six
+passed, together with 17 inspector and 12 diagnostic UI scenarios and the
+existing grouped-result, input, cleanup and unrelated-site regression suites.
+
+The actual Android 15 / API 35 emulator WebView ran the complete userscript in
+16 screenshots: current/frozen v6.59, missing/native gutter, light/dark and
+pages 2/3. The frozen missing-gutter cases painted zero separator rows; current
+cases painted one band at each existing 8px gap. Native gutters remained single
+bands. Text, links, images, initial-page markup and result dimensions remained
+intact. Eight current/control geometry comparisons passed with a maximum
+source-relative difference of 0.000027 CSS px (0.2px allowed). The final report
+contains no verification failures, and light/dark compositor output was checked.
+
+An initial harness comparison treated different page-2 scroll positions as a
+layout change, although all 16 paint checks already passed. The runner now
+records scroll coordinates and compares each box within the source root while
+independently checking root dimensions. In the final run root document positions
+also agree within 0.000004px. No production code was changed for this harness
+correction. This is an offline structural reproduction based on the diagnostic,
+not a capture of the original three-store DOM or a live Google, Berry/AdGuard
+or physical-device verification.
+
+The release and the script tested in Android have SHA-256
+2f74b29b3fc8e514e355a70551b86b8eab002295ffc196d7b87c6f34ceabc5ed;
+the metadata SHA-256 is
+6eda4fd15b24bfaa81a53e4af1375fd6f41421f542380bf3fbc579bb54f1b4cc.
+After the successful candidate, only this validation record and the update
+page's historical v6.58 wording were revised; the executable was unchanged.
+
 ## v6.59: collect evidence for the unresolved Google result boundaries
 
 The owner reported that v6.58 did not fix the actual device display. The earlier
