@@ -19,19 +19,28 @@ const googleDiagnostics = (await readFile(new URL('../src/google-result-diagnost
 const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
 const diagnosticAddition = `${googleInspection}\n${googleDiagnostics}\n${GOOGLE_DIAGNOSTICS_INITIALIZER}\n`;
 assert.equal(executable.split(diagnosticAddition).length, 2, 'Diagnostic addition must occur exactly once');
-const frozen660 = await readFile(new URL('../Android_Generic_AutoPager_v6.60.js', import.meta.url), 'utf8');
-const frozen660Body = frozen660.slice(frozen660.indexOf(END) + END.length);
+const frozen661 = await readFile(new URL('../Android_Generic_AutoPager_v6.61.js', import.meta.url), 'utf8');
+const frozen661Body = frozen661.slice(frozen661.indexOf(END) + END.length);
 const oldLayoutStart = '// Google loads result-specific CSS in each fetched document.';
 const oldInspectionStart = '// On-demand, read-only evidence for the current boundary classifier.';
 const diagnosticsStart = '/* generic-google-result-diagnostics-v659 */';
 for (const marker of [oldLayoutStart, oldInspectionStart, diagnosticsStart]) {
-  assert.equal(frozen660Body.split(marker).length, 2, 'Frozen v6.60 module boundary must be unique');
+  assert.equal(frozen661Body.split(marker).length, 2, 'Frozen v6.61 module boundary must be unique');
 }
-const frozenLayout = frozen660Body.slice(frozen660Body.indexOf(oldLayoutStart), frozen660Body.indexOf(oldInspectionStart)).trimEnd();
-const frozenInspection = frozen660Body.slice(frozen660Body.indexOf(oldInspectionStart), frozen660Body.indexOf(diagnosticsStart)).trimEnd();
-const restored660 = executable.replace(googleLayout, frozenLayout).replace(googleInspection, frozenInspection)
-  .replace(GOOGLE_DIAGNOSTICS_INITIALIZER, 'installGenericGoogleResultDiagnosticsV659("6.60.0");');
-assert.equal(restored660, frozen660Body, 'Only Google result layout/classification and its diagnostic inspection may differ from v6.60');
+const frozenLayout = frozen661Body.slice(frozen661Body.indexOf(oldLayoutStart), frozen661Body.indexOf(oldInspectionStart)).trimEnd();
+const frozenInspection = frozen661Body.slice(frozen661Body.indexOf(oldInspectionStart), frozen661Body.indexOf(diagnosticsStart)).trimEnd();
+assert.equal(googleInspection, frozenInspection, 'Boundary diagnostics must remain unchanged');
+let restored661 = executable.replace(googleLayout, frozenLayout)
+  .replace(GOOGLE_DIAGNOSTICS_INITIALIZER, 'installGenericGoogleResultDiagnosticsV659("6.61.0");');
+for (const [current, previous] of [
+  ['await async function(t,e){await captureGenericGoogleLayoutRequiredV662(t);', 'function(t,e){captureGenericGoogleLayoutV647(t);'],
+  ['const u=await async function(e,n,o){const i=document.createElement("section");', 'const u=function(e,n,o){const i=document.createElement("section");'],
+  ['if(r&&isGenericGoogleLayoutSourceV647(e)&&!await applyGenericGoogleLayoutV647(e,u))throw new Error("検索結果の表示が更新されました。再読み込みしてください");', 'if(r)applyGenericGoogleLayoutV647(e,u);'],
+]) {
+  assert.equal(restored661.split(current).length, 2, 'Import-await boundary must be unique');
+  restored661 = restored661.replace(current, previous);
+}
+assert.equal(restored661, frozen661Body, 'Only Google import layout, its awaited batches and the diagnostic version may differ from v6.61');
 const withoutDiagnostics = executable.replace(diagnosticAddition, '');
 let restored = withoutDiagnostics.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
 assert.equal(restored.split(googleLayout).length, 2);
