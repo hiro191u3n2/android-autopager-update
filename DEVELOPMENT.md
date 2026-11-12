@@ -1,5 +1,27 @@
 # Recovered development source
 
+v6.55 extends the separator capture to painted, short, text-free decorative
+containers with empty descendants, and to whitespace-only generated content.
+The v6.54 leaf-only test lost the parent strip's fixed height in the former
+case; its empty-string-only pseudo test missed the latter. Interactive/media
+descendants remain excluded, and the width/height/paint limits still apply.
+No result/title-based separator synthesis, observer or input work is added.
+
+The additional fixtures use frozen v6.54 as a failure control. They are
+controlled Chromium reproductions, not a captured Android DOM. This session's
+live mobile Google request returned HTTP 429; local Chromium was blocked at
+process-singleton socket creation, so browser validation uses the existing
+read-only GitHub Actions job before production publication. The source starts
+at main a500840dd7a4f340639fef43c49b9dcbca806da7, and its unmodified build
+matched repository v6.54 exactly (SHA-256
+01050b7437f329dd4206fc05b6eafc9e900e8a9c2388237613f823a4ef3573bb).
+
+Validation passed at candidate b64543abc3070f9879f1c2fde7424885b6df6a56:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43135492308
+The complete regression suite and release checks passed. The CI-built script
+matches the local release (SHA-256
+5b41458a5316890369af6f28e21e19702c11955459de873c87a0abd6163e5342).
+
 v6.54 preserves Google result dividers when importing later pages. The v6.47
 layout snapshot replaced every non-media in-flow element's height with auto
 and min-height with zero, collapsing short empty background strips. It also
