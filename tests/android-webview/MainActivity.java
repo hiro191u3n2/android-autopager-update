@@ -86,6 +86,14 @@ public final class MainActivity extends Activity {
 
     @Override public void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        String diagnosticAction = intent.getStringExtra("diagnostic_action");
+        String diagnosticRequest = intent.getStringExtra("diagnostic_request");
+        if (diagnosticAction != null && diagnosticRequest != null
+                && diagnosticAction.matches("prepare|short-tap|resumed|opened|closed")
+                && diagnosticRequest.matches("[0-9]{1,8}")) {
+            recordDiagnostics(diagnosticAction, diagnosticRequest);
+            return;
+        }
         if (intent.getIntExtra("next_page", 0) == 3) {
             webView.evaluateJavascript("scrollTo(0,document.documentElement.scrollHeight)", null);
             waitForPage(3, 0);
@@ -157,6 +165,32 @@ public final class MainActivity extends Activity {
                 new ValueCallback<String>() {
             @Override public void onReceiveValue(String value) {
                 recordSnapshot(number, value);
+            }
+        });
+    }
+
+    private void recordDiagnostics(final String action, final String request) {
+        String script = "JSON.stringify(window.__autoPagerFixture.diagnostics("
+                + JSONObject.quote(action) + "))";
+        webView.evaluateJavascript(script, new ValueCallback<String>() {
+            @Override public void onReceiveValue(String value) {
+                try {
+                    Object decoded = new JSONTokener(value).nextValue();
+                    if (!(decoded instanceof String)) throw new IllegalStateException("No diagnostic probe: " + value);
+                    JSONObject report = new JSONObject((String) decoded);
+                    int[] location = new int[2];
+                    webView.getLocationOnScreen(location);
+                    report.put("request", request);
+                    report.put("action", action);
+                    report.put("variant", variant);
+                    report.put("theme", theme);
+                    report.put("shape", shape);
+                    report.put("androidApi", Build.VERSION.SDK_INT);
+                    report.put("viewX", location[0]); report.put("viewY", location[1]);
+                    report.put("viewWidth", webView.getWidth()); report.put("viewHeight", webView.getHeight());
+                    synchronized (javascriptErrors) { report.put("consoleErrors", new JSONArray(javascriptErrors)); }
+                    write("diagnostics-" + request + ".json", report.toString(2));
+                } catch (Exception error) { fail(error.toString()); }
             }
         });
     }

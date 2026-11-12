@@ -43,6 +43,38 @@ This uses Android API 35 and its installed WebView. It is **not** Android 17,
 Galaxy S26 Ultra, Berry Browser, AdGuard or live Google testing. It complements
 the broader Chromium suite; it does not prove those untested environments.
 
+## Diagnostic dialog smoke test
+
+The v6.59 diagnostic addition has a separate, single-scenario UI command. Build
+the complete candidate, start an API 35 emulator, then run:
+
+```bash
+bash tests/android-webview/build.sh "$PWD" /tmp/autopager-webview-build
+python3 tests/android-webview/run-diagnostics.py /tmp/autopager-webview-build /tmp/autopager-diagnostic-evidence
+```
+
+This command waits for the existing page-2 ready report on the current, mixed
+title, light fixture, and checks that all four results are rendered and intact.
+Only then does its probe remove the fixture's status-hiding stylesheet. It adds
+synthetic private query/hash and form-value sentinels and saves the source DOM
+baseline. It does not open the dialog or simulate browser events in JavaScript.
+
+Actual `adb input` touches verify normal tap pauses, a second tap resumes,
+a 1300 ms long press opens the diagnostic dialog, and its close button closes
+it. Touch coordinates come from the live WebView geometry and screen origin.
+An Activity intent calls a read-only probe through `evaluateJavascript` to save
+the textarea content and UI state; requests have distinct IDs so stale reports
+cannot pass. The report must identify v6.59.0 and imported page 2, include four
+sources/records/cards and the expected three pair reasons, and omit all private
+sentinels, URL queries and fragments. The form values, initial result, imported
+markup, scroll position and pager state must remain intact through open/close.
+
+The runner saves actual emulator PNGs before/after the touches, requires the
+dialog to change compositor pixels inside its visible bounds, and saves the
+diagnostic JSON, probe state, environment, script hash, logcat and failures.
+This is a diagnostic UI smoke test; it does not repeat the sixteen divider
+paint scenarios or establish behavior on a live Google/Berry page.
+
 Build prerequisites are SDK Platform 35, Build Tools 35.0.0, Java, Node, Python
 and Pillow. Ubuntu 24.04 is pinned because `ubuntu-latest` is changing to 26.04
 in November 2026. Public GitHub hosted Ubuntu runners provide the SDK; the

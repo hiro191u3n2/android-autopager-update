@@ -30,11 +30,88 @@
     for (let current = node; current && values.length < 10; current = current.parentElement) values.push(describe(current));
     return values;
   };
+  const diagnosticTokens = [
+    'PRIVATE_DIAGNOSTIC_QUERY_TOKEN', 'PRIVATE_DIAGNOSTIC_HASH_TOKEN',
+    'PRIVATE_DIAGNOSTIC_FORM_TOKEN', 'PRIVATE_DIAGNOSTIC_TEXTAREA_TOKEN',
+  ];
+  let diagnosticBaseline = null;
+  const control = selector => {
+    const node = document.querySelector(selector);
+    if (!node) return null;
+    const style = getComputedStyle(node);
+    const box = rect(node);
+    return {
+      rect: box, text: node.textContent, ariaLabel: node.getAttribute('aria-label'),
+      role: node.getAttribute('role'), className: node.className,
+      visible: box.width > 0 && box.height > 0 && style.display !== 'none' &&
+        style.visibility === 'visible' && Number.parseFloat(style.opacity) !== 0,
+    };
+  };
   window.__autoPagerFixture = {
     scroll(number) {
       const group = scope(number)?.querySelector('[data-organic-group]');
       if (!group) throw new Error(`No imported group on page ${number}`);
       scrollTo(0, group.getBoundingClientRect().top + scrollY - 16);
+    },
+    diagnostics(action) {
+      const page = scope(2);
+      if (!page) throw new Error('Diagnostic UI test requires the real appended page 2');
+      if (action === 'prepare') {
+        if (diagnosticBaseline) throw new Error('Diagnostic UI preparation must run only once');
+        const hiddenStatus = document.getElementById('fixture-status-visibility');
+        if (!hiddenStatus) throw new Error('Missing fixture-only hidden status rule');
+        hiddenStatus.remove();
+        const privateURL = value => {
+          const url = new URL(value, location.href);
+          url.searchParams.set('diagnostic_private', diagnosticTokens[0]);
+          url.hash = diagnosticTokens[1];
+          return url.href;
+        };
+        history.replaceState(null, '', privateURL(location.href));
+        page.dataset.sourceUrl = privateURL(page.dataset.sourceUrl);
+        const resultLink = page.querySelector('.organic-main-link');
+        resultLink.href = privateURL(resultLink.href);
+        const form = document.createElement('form');
+        form.id = 'fixture-diagnostic-private-form';
+        form.style.display = 'none';
+        const input = document.createElement('input');
+        input.setAttribute('value', diagnosticTokens[2]);
+        const textarea = document.createElement('textarea');
+        textarea.textContent = diagnosticTokens[3];
+        form.append(input, textarea);
+        page.querySelector('.generic-autopager-google-source-root').appendChild(form);
+        window.__autoPagerFixture.scroll(2);
+        diagnosticBaseline = {
+          native: document.getElementById('organic-native').outerHTML,
+          page: page.outerHTML, scrollY,
+        };
+      }
+      const host = document.getElementById('generic-google-diagnostics-v659');
+      const textarea = document.getElementById('generic-google-diagnostics-text-v659');
+      const status = control('#generic-autopager-status-v2');
+      if (status) status.paused = document.getElementById('generic-autopager-status-v2')
+        .classList.contains('generic-autopager-status-hidden');
+      return {
+        width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollY,
+        errors: [...errors], status,
+        dialog: host ? {
+          host: control('#generic-google-diagnostics-v659'),
+          panel: control('#generic-google-diagnostics-v659[role="dialog"]'),
+          textarea: control('#generic-google-diagnostics-text-v659'),
+          close: control('#generic-google-diagnostics-close-v659'),
+          readonly: Boolean(textarea?.readOnly),
+          reportText: textarea?.value || '',
+        } : null,
+        baseline: diagnosticBaseline ? {
+          nativeUnchanged: document.getElementById('organic-native').outerHTML === diagnosticBaseline.native,
+          importedMarkupUnchanged: page.outerHTML === diagnosticBaseline.page,
+          scrollDelta: scrollY - diagnosticBaseline.scrollY,
+          formValuesPreserved: document.getElementById('fixture-diagnostic-private-form')?.elements[0]?.value === diagnosticTokens[2] &&
+            document.getElementById('fixture-diagnostic-private-form')?.elements[1]?.value === diagnosticTokens[3],
+        } : null,
+        privacyTokens: [...diagnosticTokens],
+        page: window.__autoPagerFixture.snapshot(2),
+      };
     },
     snapshot(number) {
       const container = scope(number);
