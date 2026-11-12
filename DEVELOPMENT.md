@@ -39,6 +39,12 @@ part body. Order the complete bodies by PART and concatenate them without
 adding separators. For GZIP, base64-decode and gunzip before parsing JSON.
 Do not strip or normalize whitespace inside a raw JSON body.
 
+Published v1.1.0 in commit `e989156dd15eb9e16b8fed91e34a63ddbb6ee3dd` on
+2026-11-13 (Asia/Tokyo); Pages deployment `43332768049` succeeded. The literal
+helper URL returned HTTP 200 and the exact validated SHA-256 above. The fixed
+production userscript, metadata and homepage also returned HTTP 200 with their
+unchanged verified v6.66.0 hashes.
+
 ## Selected-result evidence capture before changing grouped-card rendering
 
 On 2026-11-13 the owner approved investigating the still-missing boundaries
