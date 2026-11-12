@@ -35,6 +35,27 @@ validator still expects the retired Sites identity and exits before validation.
 Do not fabricate that identity or reactivate its host. Publication is separate
 from this candidate correction and validation.
 
+The complete migrated validator passed at candidate
+`a99bcb1f4e2ab930c25ce4d96bffa86746dcab52`:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43233936945
+All 62 source-row cases and 25 iframe/pixel cases pass, including 0px geometry
+change after touching-card paint, 8px single bands, outline preservation and
+protected shadows/rounded/translucent content. The complete existing suite also
+passes, including grouped/root layouts, rich imports, title/tail staging,
+diagnostic removal, cleanup, input liveness, Yahoo and fashion adapters.
+
+The initial test's intervening-content fixture used a 40px min-height that the
+pre-existing importer intentionally normalizes for text. It now uses 10px
+padding and natural line height to provide the same 40px source height without
+testing unrelated min-height behavior. Strict pixel and geometry assertions
+were retained; no feature code changed after the first CI candidate.
+
+The local release equals the CI-built package byte-for-byte. Userscript SHA-256:
+`cfd28266e45fe42d84609e9420930c3dc3215a054d89bb066757ae6dae35faf7`.
+Metadata SHA-256:
+`3c46f18da3412c507b186d2c41c3258ecfacc8f0fa04902cb8849dd45d228c58`.
+This is a validated candidate; the production main/Pages release is unchanged.
+
 ## v6.63: grouped separators, stable imports and Google diagnostic removal
 
 The owner's second recording on 2026-11-12 shows two missing separators within
