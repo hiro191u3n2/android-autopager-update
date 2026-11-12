@@ -58,33 +58,39 @@ const monitor=`(() => {
   }
   requestAnimationFrame(frame);
 })();`;
-async function setup(spec={},code=current,url='https://www.google.co.jp/search?q=木村'){
+async function setup(spec={},code=current,url='https://www.google.co.jp/search?q=木村',{holdPagination=false}={}){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage(),errors=[];
+  let releasePagination;
+  const paginationGate=new Promise(resolve=>{releasePagination=resolve;});
   page.on('pageerror',error=>errors.push(String(error)));
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url());
     if(url.pathname==='/parser-pause.js'){await new Promise(resolve=>setTimeout(resolve,300));return route.fulfill({contentType:'application/javascript',body:'window.__parserPauseFinished=true;'});}
-    if(route.request().isNavigationRequest())return route.fulfill({contentType:'text/html',body:html(spec)});
+    if(route.request().isNavigationRequest()){
+      if(holdPagination&&url.searchParams.has('start'))await paginationGate;
+      if(page.isClosed())return;
+      return route.fulfill({contentType:'text/html',body:html(spec)});
+    }
     return route.abort();
   });
   await page.addInitScript({content:monitor+'\n'+code});
-  await page.goto(url,{waitUntil:'load'});
+  await page.goto(url,{waitUntil:holdPagination?'domcontentloaded':'load'});
   await page.waitForTimeout(260);
-  return {page,context,errors};
+  return {page,context,errors,releasePagination};
 }
-async function retained(run){
+async function retained(run,{paging=false}={}){
   const state=await run.page.evaluate(()=>({retained:['query','tabs','aimode','tools','places','map','address','organic','quoted-error','paa','footer'].map(id=>[id,window.__paintVisible(document.getElementById(id))]),input:document.getElementById('query').value,body:window.__paintVisible(document.body)}));
-  for(const [id,visible] of state.retained)assert(visible,id+' must remain after initial cleanup');
+  for(const [id,visible] of state.retained)assert.equal(visible,!(paging&&id==='footer'),paging&&id==='footer'?'Pagination temporarily suppresses the intact native footer':id+' must remain after initial cleanup');
   assert(state.body,'Page must not remain blank');assert.equal(state.input,'木村');assert.deepEqual(run.errors,[]);
 }
-async function noFlash(run,{since=0,loading=false}={}){
+async function noFlash(run,{since=0,loading=false,paging=false}={}){
   const samples=await run.page.evaluate(index=>window.__paintSamples.slice(index),since);
   assert(samples.length>2,'Enough frames must be observed');
   assert(samples.some(sample=>sample.present.length>0),'Fixture notices must be observed in the DOM');
   if(loading)assert(samples.some(sample=>sample.ready==='loading'),'A frame before DOMContentLoaded must be tested');
   const shown=samples.filter(sample=>sample.visible.length);
   assert.equal(shown.length,0,'Notice visible in frame(s): '+JSON.stringify(shown.slice(0,5)));
-  await retained(run);
+  await retained(run,{paging});
 }
 const checks=[];
 async function scenario(name,fn){try{await fn();checks.push({name,passed:true});console.log('PASS '+name);}catch(error){checks.push({name,passed:false,error:String(error)});console.error('FAIL '+name+': '+error.message);}}
@@ -123,8 +129,22 @@ try{
     const since=await run.page.evaluate(()=>{const start=window.__paintSamples.length;history.pushState({},'', '/search?q=別の検索');window.dispatchEvent(new PopStateEvent('popstate'));return start;});
     await run.page.waitForTimeout(350);await noFlash(run,{since});await run.context.close();
   });
-  await scenario('full packaged script obeys the same first-paint contract',async()=>{
-    const run=await setup({kind:'css'},await buildUserscript());await noFlash(run,{loading:true});await run.context.close();
+  await scenario('packaged first-paint cleanup and reversible pagination footer state coexist',async()=>{
+    const run=await setup({kind:'css'},await buildUserscript(),'https://www.google.co.jp/search?q=木村',{holdPagination:true});
+    try{
+      await run.page.waitForFunction(()=>document.getElementById('generic-autopager-status-v2')?.textContent.startsWith('読込'));
+      // All notice-frame assertions remain identical, including frames seen
+      // while the original HTML parser was still waiting for its script.
+      await noFlash(run,{loading:true,paging:true});
+      const footer=await run.page.locator('#footer').evaluate((node,markup)=>({
+        content:node.innerHTML,expected:new DOMParser().parseFromString(markup,'text/html').querySelector('#footer').innerHTML,
+        cleanupMarked:node.matches('[data-generic-google-cleanup-v648],[data-generic-google-cleanup-shield-v648]')||!!node.querySelector('[data-generic-google-cleanup-v648],[data-generic-google-cleanup-shield-v648]'),
+      }),results);
+      assert.equal(footer.content,footer.expected,'The original footer content survives active pagination');
+      assert.equal(footer.cleanupMarked,false,'First-paint cleanup must not mark footer content as a notice');
+      await run.page.locator('#generic-autopager-status-v2').evaluate(node=>node.click());
+      await noFlash(run,{loading:true});
+    }finally{await run.context.close();run.releasePagination();}
   });
   await scenario('AI Mode keeps all notices and controls visible',async()=>{
     const run=await setup({},current,'https://www.google.com/search?q=木村&udm=50');
