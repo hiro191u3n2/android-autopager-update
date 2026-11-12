@@ -1,5 +1,77 @@
 # Recovered development source
 
+## v6.59: collect evidence for the unresolved Google result boundaries
+
+The owner reported that v6.58 did not fix the actual device display. The earlier
+controlled Chromium and Android fixtures did not establish the structure served
+to that device. No captured Google DOM was recovered from the source/evidence;
+live Google had shown an unusual-traffic CAPTCHA. Do not describe v6.59 as a
+completed visual fix. It is an on-demand diagnostic addition needed to identify
+the actual failed branch before changing the boundary rules again.
+
+`src/google-import-layout.js` and all v6.58 rendering behavior remain unchanged.
+The preservation test removes the two diagnostic modules and their initializer,
+then compares the entire remaining executable byte-for-byte with frozen v6.58.
+The only wrapper around the existing repair function delegates exactly once,
+preserving this/arguments/return/exception identity. It records invocation time,
+connection/source-root presence and outcome in a WeakMap with six recent entries
+per page, without extra repairs, geometry reads or background traversal.
+
+On Google /search, a roughly one-second hold on the existing bottom-right
+page/status control opens a local diagnostic dialog. Short taps retain pause/
+resume. Movement, release and cancellation stop the pending hold; contextmenu
+provides a long-press fallback. Diagnosis runs only when this dialog is opened.
+There is no startup scan, new observer, recurring timer, network transmission or
+persistent storage. The user can review and copy the JSON, save it locally or
+close the dialog. Closing preserves the result markup and scroll position.
+
+The inspector uses the unchanged v6.58 source/title parser and reports root and
+card eligibility, source/title/card mappings, ancestor geometry, existing bands,
+and pair skip reasons. Up to three nearby contexts/400 structural nodes are
+sampled even when zero records are recognized. This can distinguish split URL
+text, visible aria-hidden source rows, display:contents wrappers, hidden heading
+selection, narrow cards and root-level siblings, without assuming any is the
+actual device cause. Semantic headers are included only inside appended result
+pages; initial-page fallback excludes headers and global controls.
+
+Serialized text excludes form fields, menus, dialogs and script content,
+including those nested in otherwise eligible parent nodes. URL query/hash and
+credentials, image src/base64 payloads, event attributes, cookies and storage
+are omitted. The inspector is bounded to 140,000 UTF-8 bytes and the whole report
+to 200,000 bytes. Compact JSON is used before dropping a large inspection, and
+all truncation is explicit. The user's selected-page report is still required
+to determine why their three results remain joined.
+
+Validation passed at candidate dd651178172c925a1eb489217eaf8122b55d9376:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43192861098
+The full Chromium regression command and release package checks passed, along
+with 14 inspector scenarios and 12 diagnostic UI/gesture/copy/limit scenarios.
+The preservation check confirms that removing the diagnostic addition yields
+the exact v6.58 executable. These local DOM tests do not establish the owner's
+Google markup or native clipboard integration.
+
+One actual Android 15 / API 35 WebView smoke test passed short tap/pause,
+resume, a 1300 ms long press/open, sanitized page-2 report capture and close.
+The source markup, form values and scroll were preserved, and the report
+contained four sources/records/cards, the expected three pair reasons and
+three existing repair calls. The diagnostic panel was also visually inspected
+in its emulator compositor screenshot. No verification failures remained.
+The complete script in the Android APK and release package has SHA-256
+98103fe6414bbda15b67f1e9daaad75f1a5574738763f36a34c4fb8202e58647;
+the metadata SHA-256 is
+4f10b6eee0e7e14fcbda2e64c7ed04a657a841b1ebe460686983254f0a8f717e.
+
+An initial harness run sampled the previous frame after evaluateJavascript
+had returned the new DOM. Its immediately subsequent failure screenshot
+already showed the complete dialog. The harness now waits for WebView visual
+state and an Android frame commit, then checks actual compositor pixels with
+the original difference threshold and a bounded presentation wait. The
+production diagnostic UI was not changed to address this harness race.
+This single offline diagnostic smoke does not repeat the sixteen divider
+paint scenarios and is not a live Google, Berry Browser or physical-device
+verification. The original visual issue remains unresolved pending the
+owner's report.
+
 ## v6.58: boundaries inside grouped organic results
 
 v6.58 starts from the owner's v6.57 rollback, main commit
