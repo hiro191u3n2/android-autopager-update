@@ -1,5 +1,31 @@
 # Recovered development source
 
+## Selected-result evidence capture before changing grouped-card rendering
+
+On 2026-11-13 the owner approved investigating the still-missing boundaries
+between three ordinary Google results and moving to explicit result frames.
+The first required step is reproduction of the actual failing subtree. The
+historical device diagnostics contain selectors, geometry and rejection
+reasons, but not its complete HTML; the stored neutral fixtures and CI
+screenshots are not that capture. The surviving recordings likewise do not
+establish the DOM. A fresh cloud-browser inspection of the same train query
+returned desktop results with ten separate one-heading MjjYud children, not
+the reported Berry group. Direct Android-UA fetching returned HTTP 429.
+
+The standalone `tools/google-result-capture.user.js` is an opt-in, one-shot
+local capture aid, not part of the production autopager. It lets the owner
+select a result in the affected page so the selected page, rather than the
+most recently appended page, can be inspected. The intended next change is
+to normalize confirmed complete ordinary-result units into explicit wrappers
+while still detached, after existing style/title preparation and before the
+first visible append. Rich modules and unresolved result ranges must remain
+intact. The old post-append boundary painter must not repaint new wrappers.
+
+Until the actual affected capture is available, no v6.67 layout fix is
+claimed or released. The fixed production userscript remains byte-identical
+to v6.66.0. The migrated repository validator remains authoritative; the old
+bundled validator still exits at the retired Sites identity check.
+
 ## v6.66: sustained Google page preparation, not only earlier triggering
 
 The 2026-11-13 00:07 Berry recording still reaches the loaded document end
