@@ -49,7 +49,9 @@ def report(number):
 def screen_scale(geometry):
     visual = geometry.get('visualViewport')
     assert visual and abs(visual['scale'] - 1) <= 0.001, 'Fixture must be captured at its unzoomed viewport'
-    return geometry['viewWidth'] / visual['width']
+    # WebView reports a separately rounded visual viewport width. Its quotient
+    # with the view width drifts from the actual screenshot raster scale.
+    return geometry['dpr']
 
 
 def painted_rows(image, geometry, previous, following, color):
@@ -75,14 +77,24 @@ def painted_rows(image, geometry, previous, following, color):
     return {'cssPixels': len(rows) / scale, 'bands': bands, 'screenRows': len(rows)}
 
 
-def gap_region(geometry, previous, following, start_inset=0, end_inset=0):
+def gap_region(geometry, previous, following, part='full'):
     scale = screen_scale(geometry)
-    # Inspect full physical pixels inside the specified CSS interval. Exclude
-    # only the fractional edge pixels, whose coverage can blend adjacent colors.
-    x0 = ceil(geometry['viewX'] + (previous['rect']['left'] + 8) * scale - 0.0001)
-    x1 = floor(geometry['viewX'] + (previous['rect']['right'] - 8) * scale + 0.0001)
-    y0 = ceil(geometry['viewY'] + (previous['rect']['bottom'] + start_inset) * scale - 0.0001)
-    y1 = floor(geometry['viewY'] + (following['rect']['top'] - end_inset) * scale + 0.0001)
+    # Skia snaps each painted card edge to its nearest physical pixel before
+    # extending the 1 CSS px ring. Test full pixels inside those painted
+    # intervals; fractional ring/underlay coverage belongs to their edges.
+    x0 = ceil(geometry['viewX'] + (previous['rect']['left'] + 8) * scale)
+    x1 = floor(geometry['viewX'] + (previous['rect']['right'] - 8) * scale)
+    before = round(geometry['viewY'] + previous['rect']['bottom'] * scale)
+    after = round(geometry['viewY'] + following['rect']['top'] * scale)
+    if part == 'middle':
+        y0, y1 = ceil(before + scale), floor(after - scale)
+    elif part == 'previous-ring':
+        y0, y1 = before, floor(before + scale)
+    elif part == 'current-ring':
+        y0, y1 = ceil(after - scale), after
+    else:
+        assert part == 'full', part
+        y0, y1 = before, after
     return (x0, y0, x1, y1)
 
 
@@ -141,9 +153,9 @@ def verify_pixels(geometry, png, case):
     boundaries = []
     for index in range(len(results) - 1):
         previous, following = results[index], results[index + 1]
-        middle = verify_solid_region(image, gap_region(geometry, previous, following, 1, 1), color, f'gap-{index}-middle6')
-        before_ring = verify_solid_region(image, gap_region(geometry, previous, following, 0, 7), case['ringRgb'], f'gap-{index}-previous-ring1')
-        after_ring = verify_solid_region(image, gap_region(geometry, previous, following, 7, 0), case['ringRgb'], f'gap-{index}-current-ring1')
+        middle = verify_solid_region(image, gap_region(geometry, previous, following, 'middle'), color, f'gap-{index}-middle6')
+        before_ring = verify_solid_region(image, gap_region(geometry, previous, following, 'previous-ring'), case['ringRgb'], f'gap-{index}-previous-ring1')
+        after_ring = verify_solid_region(image, gap_region(geometry, previous, following, 'current-ring'), case['ringRgb'], f'gap-{index}-current-ring1')
         boundaries.append({'fullGapCssPixels': following['rect']['top'] - previous['rect']['bottom'],
                            'middleCssPixels': 6, 'middle': middle, 'previousRing': before_ring, 'currentRing': after_ring})
     divider = case['paintRgb']

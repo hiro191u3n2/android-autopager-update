@@ -27,7 +27,7 @@ are recorded in the build manifest. The shared renderer is
 `tests/fixtures/google-root-results.mjs`. An emulator density of 345 at a 1080px
 screen width gives approximately 501 CSS px, allowing the reconstructed root
 to retain its measured 499.78px width. Pixel coordinates always use the actual
-reported WebView origin and unzoomed visual viewport width.
+reported WebView origin and device pixel ratio at the unzoomed viewport.
 
 The actual gaps must remain 8px. The central 6px must show the control's
 specified underlay or the candidate's specified separator color, while both
@@ -38,6 +38,15 @@ distinguishes the light outline (235/237/239) from the separator (232/234/237).
 The whole native 8px gap raster must also match between candidate and control;
 painting the same native color is permitted. No marker-absence assertion is
 used for native gutters.
+
+The API 35 evidence reports a 1080px view, DPR 2.15625 and a separately rounded
+visual viewport width of 501.33334 CSS px. Dividing view width by that viewport
+width gives the wrong raster scale and moves lower samples into the adjacent
+outline. Coordinates therefore use DPR. Painted card edges are snapped to the
+nearest physical pixel before computing the 1 CSS px ring and middle intervals;
+only whole pixels inside each interval are tested. This also aligns native
+before/after crops when the viewport has scrolled, without changing the color
+or geometry tolerances.
 
 Root size and root-relative card, content, surface and thumbnail rectangles
 must match the control within 0.2px. This retains exact layout checks while
