@@ -1,11 +1,13 @@
 // Google loads result-specific CSS in each fetched document. Preserve the
 // rendered source layout when importing its nodes instead of guessing which
 // price, article, or video template Google returned. This runs only once per
-// imported page; there are no scroll listeners, timers, or document observers.
+// imported page. Bounded batches yield to input; there are no scroll listeners,
+// recurring timers, or document observers.
 const genericGoogleLayoutSourcesV647 = new WeakMap();
 const genericGoogleLayoutClonesV647 = new WeakSet();
 const genericGoogleLayoutMarkerV647 = 'data-generic-google-layout-v647';
-const genericGoogleLayoutLimitV647 = 5000;
+const genericGoogleLayoutPseudoMarkV662 = 'data-generic-google-pseudo-v662';
+let genericGoogleLayoutScopeV662 = 0;
 const genericGoogleLayoutPropertiesV647 = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'float', 'clear',
   'box-sizing', 'min-width', 'max-width', 'min-height', 'max-height',
@@ -32,10 +34,62 @@ const genericGoogleLayoutPropertiesV647 = [
   'opacity', 'visibility', 'object-fit', 'object-position', 'aspect-ratio',
   'transform', 'transform-origin', 'translate', 'rotate', 'scale',
   'clip', 'clip-path', 'filter', 'list-style-type', 'list-style-position',
+  'mask-image', 'mask-size', 'mask-position', 'mask-repeat', 'mask-origin',
+  'mask-clip', 'mask-mode', 'mask-composite',
+  '-webkit-mask-image', '-webkit-mask-size', '-webkit-mask-position',
+  '-webkit-mask-repeat', '-webkit-mask-origin', '-webkit-mask-clip',
+  '-webkit-mask-composite', 'background-origin', 'background-blend-mode',
   '-webkit-line-clamp', '-webkit-box-orient', '-webkit-text-fill-color',
   'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity',
   'pointer-events', 'direction', 'writing-mode',
 ];
+
+function getGenericGoogleLayoutValuesV662(computed) {
+  const values = [];
+  for (const property of genericGoogleLayoutPropertiesV647) {
+    const value = computed.getPropertyValue(property);
+    if (value) values.push([property, value]);
+  }
+  return values;
+}
+
+// Typed OM preserves auto/percent/calc widths instead of resolving every box
+// to pixels. In older engines the measured width still preserves columns;
+// replacing all ordinary boxes with auto destroyed width-constrained cards.
+function getGenericGoogleLayoutWidthV662(node, computed) {
+  try {
+    const value = node.computedStyleMap?.().get('width');
+    if (value) return String(value);
+  } catch (_) { }
+  return computed.width;
+}
+
+function getGenericGoogleLayoutPseudosV662(node, view) {
+  const pseudos = [];
+  for (const pseudo of ['::before', '::after']) {
+    const computed = view.getComputedStyle(node, pseudo);
+    if (!computed.content || /^(?:none|normal)$/.test(computed.content) || computed.display === 'none') continue;
+    const values = getGenericGoogleLayoutValuesV662(computed);
+    // Keep stretched backgrounds tied to their card when text grows. Explicit
+    // dimensions of stars, stock dots and divider strips remain unchanged.
+    const absolute = /^(?:absolute|fixed)$/.test(computed.position);
+    const width = absolute && computed.left === '0px' && computed.right === '0px' ? 'auto' : computed.width;
+    const height = absolute && computed.top === '0px' && computed.bottom === '0px' ? 'auto' : computed.height;
+    values.push(['content', computed.content], ['width', width], ['height', height]);
+    pseudos.push({ pseudo, values });
+  }
+  return pseudos;
+}
+
+const yieldGenericGoogleLayoutV662 = () => new Promise(resolve => window.setTimeout(resolve, 0));
+
+async function captureGenericGoogleLayoutRequiredV662(root) {
+  if (await captureGenericGoogleLayoutV647(root)) return;
+  // Google can replace a result while the batched read yields. Retry before
+  // legacy image hydration touches the source, never import a partial layout.
+  await yieldGenericGoogleLayoutV662();
+  if (!await captureGenericGoogleLayoutV647(root)) throw new Error('検索結果の表示を取得できませんでした。再読み込みしてください');
+}
 
 function isGenericGoogleLayoutSourceV647(root) {
   try {
@@ -54,12 +108,11 @@ function captureGenericGoogleLayoutV647(root) {
   if (!root?.querySelectorAll || !isGenericGoogleLayoutSourceV647(root)) return false;
   if (genericGoogleLayoutSourcesV647.has(root)) return true;
   const nodes = [root, ...root.querySelectorAll('*')];
-  if (nodes.length > genericGoogleLayoutLimitV647) return false;
   const view = root.ownerDocument.defaultView;
   const rootRect = root.getBoundingClientRect();
   // A detached/blocked/non-rendered document cannot provide a reliable layout.
   if (rootRect.width < 100 || rootRect.height < 1) return false;
-  try {
+  return (async () => { try {
     const rectangles = new WeakMap();
     const rectangle = node => {
       if (!rectangles.has(node)) rectangles.set(node, node.getBoundingClientRect());
@@ -90,22 +143,32 @@ function captureGenericGoogleLayoutV647(root) {
         mediaFrames.add(parent);
       }
     }
-    const styles = nodes.map(node => {
-      if (node.matches('script,style,link,meta,template')) return null;
-      const computed = view.getComputedStyle(node);
-      const values = [];
-      for (const property of genericGoogleLayoutPropertiesV647) {
-        const value = computed.getPropertyValue(property);
-        if (value) values.push([property, value]);
+    const styles = [], hiddenBranches = new WeakSet();
+    let batchStart = performance.now();
+    for (let index = 0; index < nodes.length; index++) {
+      const node = nodes[index];
+      if (index && (index % 64 === 0 || performance.now() - batchStart >= 6)) {
+        await yieldGenericGoogleLayoutV662();
+        if (!root.isConnected) return false;
+        batchStart = performance.now();
       }
+      // A large hidden menu must not disable preservation for the entire page.
+      // Its root's display:none is captured; descendants need no style reads.
+      if (hiddenBranches.has(node.parentElement)) {
+        hiddenBranches.add(node); styles.push(null); continue;
+      }
+      if (node.matches('script,style,link,meta,template')) { styles.push(null); continue; }
+      const computed = view.getComputedStyle(node);
+      const values = getGenericGoogleLayoutValuesV662(computed);
+      if (computed.display === 'none') hiddenBranches.add(node);
       const positioned = /^(?:absolute|fixed)$/.test(computed.position);
       const media = mediaFrames.has(node) || node.matches('img,video,canvas,svg');
-      // Computed width/height are used pixels even when the author's rule was
-      // auto. Copying those pixels onto text prevents wrapping when a restored
-      // YouTube title grows. Keep fixed dimensions only for media and overlays.
-      values.push(['width', positioned || media ? computed.width : 'auto']);
-      values.push(['height', positioned || media ? computed.height : 'auto']);
-      if (!positioned && !media) {
+      const decoration = !node.childElementCount && !node.textContent.trim();
+      // Text heights remain flexible when a restored YouTube title grows.
+      // Empty CSS icons/spacers, unlike text boxes, need their original height.
+      values.push(['width', getGenericGoogleLayoutWidthV662(node, computed)]);
+      values.push(['height', positioned || media || decoration ? computed.height : 'auto']);
+      if (!positioned && !media && !decoration) {
         values.push(['min-height', '0']);
         const clamped = Number.parseInt(computed.getPropertyValue('-webkit-line-clamp'), 10) > 0;
         if (titleContainers.has(node) && !clamped) values.push(['max-height', 'none']);
@@ -120,37 +183,63 @@ function captureGenericGoogleLayoutV647(root) {
           }
         }
       }
-      return {
+      styles.push({
         values,
+        pseudos: computed.display === 'none' ? [] : getGenericGoogleLayoutPseudosV662(node, view),
         hidden: node.hasAttribute('hidden'),
         ariaHidden: node.getAttribute('aria-hidden'),
-      };
-    });
+      });
+    }
+    const currentNodes = [root, ...root.querySelectorAll('*')];
+    if (!root.isConnected || currentNodes.length !== nodes.length || currentNodes.some((node, index) => node !== nodes[index])) return false;
     genericGoogleLayoutSourcesV647.set(root, { nodes, styles });
     return true;
   } catch {
     return false;
-  }
+  } })();
 }
 
 function applyGenericGoogleLayoutV647(source, clone) {
   const snapshot = genericGoogleLayoutSourcesV647.get(source);
   if (!snapshot || !clone?.querySelectorAll) return false;
   const nodes = [clone, ...clone.querySelectorAll('*')];
-  if (nodes.length !== snapshot.nodes.length || nodes.some((node, i) =>
+  const currentSourceNodes = [source, ...source.querySelectorAll('*')];
+  if (nodes.length !== snapshot.nodes.length || currentSourceNodes.length !== snapshot.nodes.length || nodes.some((node, i) =>
+    currentSourceNodes[i] !== snapshot.nodes[i] ||
     node.localName !== snapshot.nodes[i].localName ||
     node.namespaceURI !== snapshot.nodes[i].namespaceURI)) return false;
+  return (async () => {
+  const scope = String(++genericGoogleLayoutScopeV662);
+  const scopeSelector = `[data-generic-google-scope-v662="${scope}"]:is(#generic-google-layout-specificity-v662,*)`;
+  const rules = [`${scopeSelector}::before,${scopeSelector}::after,${scopeSelector} *::before,${scopeSelector} *::after{content:none!important}`];
+  let batchStart = performance.now();
   for (let i = 0; i < nodes.length; i++) {
+    if (i && (i % 64 === 0 || performance.now() - batchStart >= 6)) {
+      await yieldGenericGoogleLayoutV662(); batchStart = performance.now();
+    }
     const node = nodes[i], entry = snapshot.styles[i];
     if (!entry) continue;
     for (const [property, value] of entry.values) node.style.setProperty(property, value, 'important');
     if (entry.hidden) node.setAttribute('hidden', '');
     if (entry.ariaHidden !== null) node.setAttribute('aria-hidden', entry.ariaHidden);
+    if (entry.pseudos.length) {
+      node.setAttribute(genericGoogleLayoutPseudoMarkV662, String(i));
+      for (const { pseudo, values } of entry.pseudos) {
+        const selector = i === 0 ? scopeSelector : `${scopeSelector} [${genericGoogleLayoutPseudoMarkV662}="${i}"]`;
+        rules.push(`${selector}${pseudo}{${values.map(([property, value]) => `${property}:${value}!important;`).join('')}}`);
+      }
+    }
   }
+  const stylesheet = clone.ownerDocument.createElement('style');
+  stylesheet.setAttribute('data-generic-google-pseudo-style-v662', scope);
+  stylesheet.textContent = rules.join('\n');
+  clone.setAttribute('data-generic-google-scope-v662', scope);
+  clone.appendChild(stylesheet);
   clone.setAttribute(genericGoogleLayoutMarkerV647, '1');
   genericGoogleLayoutClonesV647.add(clone);
   genericGoogleLayoutSourcesV647.delete(source);
   return true;
+  })();
 }
 
 function getGenericGoogleLayoutRootsV647(root) {

@@ -1,5 +1,48 @@
 # Recovered development source
 
+## v6.62: preserve shopping columns and generated decorations
+
+The owner's 23.71-second screen recording supplied on 2026-11-12 shows native
+horizontal shopping cards becoming vertical on added pages. The same organic
+result on either side of a page boundary retains its rating text but loses its
+stars and stock dot. Some result dividers also disappear. This is visual
+evidence, not a capture of the device's DOM or proof of which snapshot branch
+ran on that device.
+
+The rendered-source snapshot previously replaced every ordinary wrapper's
+width with auto, omitted before/after pseudo-elements and CSS masks, collapsed
+empty decoration heights, and rejected the entire page above 5,000 elements.
+Widths now retain computed auto/percent/calc constraints through Typed OM with
+a measured-width fallback. Text heights still grow, including restored YouTube
+titles. Empty painted boxes keep their heights. Pseudo rules and masks are
+copied into selectors unique to one imported root, with absent pseudos reset
+inside that root only. The first page's stylesheet is not changed.
+
+Capture and detached-clone application yield in short batches. Display-none
+branches retain their hiding parent without reading every descendant's style.
+There is no all-or-nothing element-count cutoff. A source tree changed during
+capture gets one retry before legacy image hydration; mismatched application
+stops the import rather than exposing an unstyled clone to legacy card repair.
+No observer, scroll handler or recurring timer is added. The existing boundary
+classifier and all unrelated site adapters are unchanged. The production
+Google preference remains rendered frames; its opt-in fetch path is unchanged.
+
+The new rich-result suite uses controlled fixtures with CSS-only card widths,
+rounded pseudo backgrounds, rating/stock decorations, masks, source dividers,
+and a hidden subtree bringing the source above 5,000 elements. It compares
+frozen v6.61 against the built script at 360/500px in dark/light themes on
+pages 2/3, including screenshot pixels, geometry, content and first-page
+isolation. These fixtures model the video's symptoms, not Google's full HTML.
+The complete existing regression and release-packaging gates remain required.
+
+The current workspace cannot launch Chromium because its process-singleton
+socket is denied. Rendering validation runs in the repository's dedicated
+GitHub Actions workflow. No Android/Berry/AdGuard device result is implied.
+Validation results and release hashes are recorded after the workflow passes.
+
+Primary CSS reference used for retaining percentage/auto widths:
+https://developer.chrome.com/docs/css-ui/cssom
+
 ## v6.61: do not infer a painted gutter from ancestor color inequality
 
 The owner reported that v6.60 was still visually unresolved and supplied a
