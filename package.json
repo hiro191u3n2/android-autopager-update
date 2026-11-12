@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node scripts/test-buzzap.mjs && node tests/test_google_group_gap_units.mjs && node tests/test_google_source_rows.mjs && node tests/test_google_touching_results.mjs && node tests/test_google_no_diagnostics.mjs && node tests/test_google_import_staging.mjs && node tests/test_yahoo_realtime.mjs && node tests/test_fashion_performance.mjs && node tests/test_cityhill_gallery.mjs && node tests/test_generic_commerce_images.mjs && node tests/test_google_layout.mjs && node tests/test_google_rich_import.mjs && node tests/test_google_organic_groups.mjs && node tests/test_google_root_results.mjs && node tests/test_google_cleanup.mjs && node tests/test_google_mobile_cleanup.mjs && node tests/test_google_first_paint.mjs && node tests/test_google_location_semantics.mjs && node tests/test_google_cleanup_boundaries.mjs && node tests/test_google_cleanup_liveness.mjs && node tests/test_google_input_performance.mjs",
     "test:read-ahead": "node tests/test_google_read_ahead_unit.mjs && node tests/test_google_read_ahead.mjs",
-    "release:check": "bash scripts/validate-project.sh 6.65.0"
+    "test:continuous-scroll": "node tests/test_google_title_preparation_v666.mjs && node tests/test_google_frame_preparation.mjs && node tests/test_google_continuous_scroll.mjs",
+    "release:check": "bash scripts/validate-project.sh 6.66.0"
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "15.0.0",

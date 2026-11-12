@@ -1,5 +1,61 @@
 # Recovered development source
 
+## v6.66: sustained Google page preparation, not only earlier triggering
+
+The 2026-11-13 00:07 Berry recording still reaches the loaded document end
+while the status says loading. Stops occur at 3.231–3.989, 5.147–5.814,
+6.656–7.572, 8.689–9.790 and 10.631–11.381 seconds. Each appended page is
+about two viewports and the reader traverses it in about one second. The
+v6.65 test used roughly six-viewport pages, waited for page 2 before scrolling
+and stopped before crossing page 3. It did not establish sustained throughput.
+
+The old rendered-frame preparation imposed 3 x 180ms even with fully loaded
+images, and another 450ms on pages with no images: 990ms without any network
+or layout work. v6.66 visits the same lazy-loading viewport positions with
+rendering opportunities instead of fixed sleeps. Pending images with reserved
+dimensions can paint later; unsized pending images keep a bounded load wait.
+Known safe lazy-image URLs in reserved slots are activated after the viewport
+pass without a deadline sleep. Unsized delayed images, placeholders and picture
+sources are observed until their source and intrinsic geometry are ready within
+the shared bound; unresolved activation is not silently imported as a blank.
+The image source/geometry pass now batches all reads before writes and removes
+the redundant synchronous computed-background walk already covered by the
+preserved layout snapshot.
+
+Eligible video titles start resolving as soon as the source root is available,
+overlapping frame and layout preparation within the existing shared deadline.
+Ready titles are retained. While the reader approaches the loaded end, optional
+unfinished title lookups no longer hold the entire next page: Google's visible
+title remains and is never rewritten after append. No outer scroll positions,
+gestures, separator geometry or unrelated site adapters are changed.
+
+Validation uses frozen v6.65 controls, approximately 1900px pages, identical
+fixed-start sustained relative inputs through at least five boundaries, and
+actual CDP touch/fling input. It includes slow-title responses, real iframe
+lazy images, unsized image readiness and operation-count checks for the removed
+background walk. These are controlled Chromium tests, not native Berry/AdGuard
+measurements on the owner's device. The migrated repository validator remains
+the validation authority for the approved GitHub migration.
+
+The complete migrated validator passed on candidate
+`609162353e48cbc766c8bc5a7b9d7eded882e9e9`, Actions run `43250762662`.
+Both dense-text and 1800ms title-response scenarios crossed seven page
+boundaries with zero lost scroll displacement. Frozen v6.65 lost 2826px and
+9508px respectively. During native touch inertia the next page appended 273ms
+after release and movement continued another 525px after the first appended
+frame. Ten image-preparation scenarios cover ready, reserved, unsized, delayed
+IO, placeholder and picture sources plus the duplicate-background-walk count.
+The existing Google layout/cleanup/input and Yahoo/fashion/commerce suites all
+passed. Lifecycle fixtures now distinguish initial native pageshow from a
+simulated history departure; urgent retry explicitly checks stable Google-title
+fallback after its gated resolver settles. No production event handling was
+changed to accommodate those fixture corrections.
+
+CI artifacts and the local package are byte-identical: userscript SHA-256
+`c0eaac604a31073fecfea32cf35b982665355654b33534affe855d221267830f`,
+metadata `a4c1d38dfecc77e67166298b5819f42b9711a75b51c1260223943911ed7f3be1`,
+executable body `32d45b79faecea51f042070392e0fb6f37efdb6cf500b0d46e39fa1dde483c38`.
+
 ## v6.65: prepare the next Google page before the scroll boundary
 
 The two 2026-11-12 Berry recordings repeatedly reach the loaded document's
