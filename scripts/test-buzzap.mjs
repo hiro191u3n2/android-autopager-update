@@ -16,6 +16,13 @@ const executable = output.slice(output.indexOf(END) + END.length);
 assert(executable.startsWith(prefix), 'Runtime module ordering changed');
 const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
 const googleStaging = (await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim();
+const frozen663 = await readFile(new URL('../Android_Generic_AutoPager_v6.63.js', import.meta.url), 'utf8');
+const frozen663Body = frozen663.slice(frozen663.indexOf(END) + END.length);
+const layout663Start = frozen663Body.indexOf('// Google loads result-specific CSS in each fetched document.');
+const layout663End = frozen663Body.indexOf('// Prepare only a detached Google result page.', layout663Start);
+assert(layout663Start >= 0 && layout663End > layout663Start);
+const frozen663Layout = frozen663Body.slice(layout663Start, layout663End).trimEnd();
+assert.equal(executable.replace(googleLayout, frozen663Layout), frozen663Body, 'Only the Google import layout module may differ from v6.63');
 for (const marker of [
   'installGenericGoogleResultDiagnosticsV659', 'inspectGenericGoogleResultBoundariesV659',
   '__genericGoogleResultDiagnosticsV659', 'generic-google-diagnostics-v659',

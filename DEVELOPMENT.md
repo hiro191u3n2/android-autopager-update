@@ -1,5 +1,61 @@
 # Recovered development source
 
+## v6.64 candidate: touching results and inline source addresses
+
+The two 2026-11-12 22:46/22:47 Berry recordings still show missing grey
+dividers between independent results. Examples include Pixiv / Eki-net PDF /
+NAVITIME and the Chiba tourism site / MAFF / Daigo. The videos do not reveal
+the device DOM or installed version. Live Google in the inspection browser
+requested reCAPTCHA; no challenge was attempted. No new device logs are added.
+
+Two concrete exclusions are reproduced against frozen v6.63: direct-root
+result boxes with 0–1px external gaps were rejected even when their padding
+provided safe empty space; source addresses split by inline elements or a PDF
+badge were skipped as non-leaf nodes. These are verified code defects matching
+the symptoms, not proof of the exact path taken on the owner's device.
+
+Touching results now receive an inset stripe only within confirmed existing
+top padding. The source/title and rendered children must remain below the
+stripe. Full opaque result surfaces, adjacency, clipping, transforms, radius,
+pseudos and existing shadows are checked; known thin outer outlines are kept.
+No card height, margin, content position or scrolling handler is changed.
+Existing native borders and ambiguous decoration remain unchanged.
+
+Source recognition accepts short complete URL rows made from safe inline
+text/emphasis/wbr and an optional trailing PDF badge. It rejects mixed domains,
+headings, snippets, interactive/hidden content and URL fragments masquerading
+as separate hosts. Nested complete rows retain only one source identity.
+
+The v6.63 executable preservation gate requires every byte outside the layout
+module to remain unchanged. Previous title staging, tail behavior, diagnostic
+removal and all non-Google adapters are preserved. Tests include frozen failure
+controls, source classification and real iframe import/pixel checks with zero
+geometry drift. The migrated repository validator is used: the bundled skill
+validator still expects the retired Sites identity and exits before validation.
+Do not fabricate that identity or reactivate its host. Publication is separate
+from this candidate correction and validation.
+
+The complete migrated validator passed at candidate
+`a99bcb1f4e2ab930c25ce4d96bffa86746dcab52`:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43233936945
+All 62 source-row cases and 25 iframe/pixel cases pass, including 0px geometry
+change after touching-card paint, 8px single bands, outline preservation and
+protected shadows/rounded/translucent content. The complete existing suite also
+passes, including grouped/root layouts, rich imports, title/tail staging,
+diagnostic removal, cleanup, input liveness, Yahoo and fashion adapters.
+
+The initial test's intervening-content fixture used a 40px min-height that the
+pre-existing importer intentionally normalizes for text. It now uses 10px
+padding and natural line height to provide the same 40px source height without
+testing unrelated min-height behavior. Strict pixel and geometry assertions
+were retained; no feature code changed after the first CI candidate.
+
+The local release equals the CI-built package byte-for-byte. Userscript SHA-256:
+`cfd28266e45fe42d84609e9420930c3dc3215a054d89bb066757ae6dae35faf7`.
+Metadata SHA-256:
+`3c46f18da3412c507b186d2c41c3258ecfacc8f0fa04902cb8849dd45d228c58`.
+This is a validated candidate; the production main/Pages release is unchanged.
+
 ## v6.63: grouped separators, stable imports and Google diagnostic removal
 
 The owner's second recording on 2026-11-12 shows two missing separators within

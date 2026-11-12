@@ -1,0 +1,54 @@
+name: Google touching result validation
+on:
+  push:
+    branches: [fix/google-touching-results-6.64]
+permissions:
+  contents: read
+concurrency:
+  group: google-touching-results-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: android-autopager-update
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: android-autopager-update/package-lock.json
+      - name: Install test dependencies and Chromium
+        working-directory: android-autopager-update
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Prepare canonical validation checkout
+        run: |
+          sudo mkdir -p /workspace/sites
+          sudo chown "$USER" /workspace/sites
+          mv android-autopager-update /workspace/sites/android-autopager-update
+          ln -s /workspace/sites/android-autopager-update android-autopager-update
+          git -C /workspace/sites/android-autopager-update switch -c main
+          git -C /workspace/sites/android-autopager-update remote set-url origin https://github.com/hiro191u3n2/android-autopager-update.git
+      - name: Run regressions and verify release
+        working-directory: /workspace/sites/android-autopager-update
+        env:
+          GOOGLE_TOUCHING_ARTIFACT_DIR: ${{ runner.temp }}/google-touching-results
+        run: |
+          set -o pipefail
+          bash scripts/validate-project.sh 6.64.0 2>&1 | tee "$RUNNER_TEMP/touching-validation.log"
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.64.0
+          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.64.0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: google-touching-v664-validation
+          path: |
+            ${{ runner.temp }}/touching-validation.log
+            ${{ runner.temp }}/google-touching-results/
+            ${{ runner.temp }}/android-autopager-release/
+          retention-days: 7
