@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.64.0';
+export const VERSION = '6.65.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -33,6 +33,15 @@ export const GOOGLE_STAGING_REPLACEMENTS = [
   ["function dt(t,e=\"\"){","function dt(t,e=\"\"){if(r)syncGenericGoogleTailV663(l.target,!l.paused&&!l.stopped&&!!l.nextUrl,l.nextUrl);"],
   ["function ut(){","function ut(){if(r)syncGenericGoogleTailV663(l.target,false,l.nextUrl);"],
   ["function mt(){","function mt(){if(r)syncGenericGoogleTailV663(l.target,false,l.nextUrl);"],
+];
+// Google keeps one prepared page ahead of the reader. Other sites retain their
+// existing sentinel, delay and resume behavior exactly.
+export const GOOGLE_READ_AHEAD_REPLACEMENTS = [
+  [';async function f(){if(l.loading||l.paused||l.stopped)return;', ';const genericGoogleReadAheadV665=r?createGenericGoogleReadAheadV665(l,f):null;async function f(){if(l.loading||l.paused||l.stopped||genericGoogleReadAheadV665&&!genericGoogleReadAheadV665.valid())return;const googleReadAheadTicketV665=genericGoogleReadAheadV665?.ticket();'],
+  ['(/(^|\\.)buzzap\\.jp$/i.test(location.hostname)&&"primary"===l.target?.id&&d?.parentNode===l.target?l.target.insertBefore(u,d):l.target.appendChild(u));', 'if(genericGoogleReadAheadV665&&(!genericGoogleReadAheadV665.valid(googleReadAheadTicketV665)||l.paused||l.stopped))return;(/(^|\\.)buzzap\\.jp$/i.test(location.hostname)&&"primary"===l.target?.id&&d?.parentNode===l.target?l.target.insertBefore(u,d):l.target.appendChild(u));if(genericGoogleReadAheadV665)genericGoogleReadAheadV665.appended(u);'],
+  ['finally{o&&o(),l.loading=!1,setTimeout(()=>{', 'finally{o&&o(),l.loading=!1;if(genericGoogleReadAheadV665)genericGoogleReadAheadV665.schedule();else setTimeout(()=>{'],
+  ['(()=>{const t=/(^|\\.)buzzap\\.jp$/i.test(location.hostname),e="IntersectionObserver"in window;', '(()=>{if(genericGoogleReadAheadV665)return;const t=/(^|\\.)buzzap\\.jp$/i.test(location.hostname),e="IntersectionObserver"in window;'],
+  ['(dt(`自動 ${l.pages}/${t.maxPages}`),ct()<=h&&f())', '(dt(`自動 ${l.pages}/${t.maxPages}`),genericGoogleReadAheadV665?genericGoogleReadAheadV665.schedule():ct()<=h&&f())'],
 ];
 // Exact original ranges are pinned so unrelated legacy features cannot drift.
 export const MODULE_REPLACEMENTS = [
@@ -74,10 +83,15 @@ export async function buildUserscript() {
     assert.equal(body.split(from).length, 2, 'Google layout boundary changed');
     body = body.replace(from, to);
   }
+  for (const [from, to] of GOOGLE_READ_AHEAD_REPLACEMENTS) {
+    assert.equal(body.split(from).length, 2, 'Google read-ahead boundary changed');
+    body = body.replace(from, to);
+  }
   const googleLayout = (await readFile(new URL('src/google-import-layout.js', root), 'utf8')).trim();
   const googleStaging = (await readFile(new URL('src/google-import-staging.js', root), 'utf8')).trim();
+  const googleReadAhead = (await readFile(new URL('src/google-read-ahead.js', root), 'utf8')).trim();
   assert.equal(body.split('function e(){').length, 2, 'Google layout helper boundary changed');
-  body = body.replace('function e(){', `${googleLayout}\n${googleStaging}\nfunction e(){`);
+  body = body.replace('function e(){', `${googleLayout}\n${googleStaging}\n${googleReadAhead}\nfunction e(){`);
   let header = baseline.slice(0, end).replace(/^(\/\/ @version\s+)6\.44\.0$/m, `$1${VERSION}`);
   header = header.replace('// @description  ', '// @description  Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。');
   header = header.replace('// @description  ', '// @description  服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。');
@@ -94,6 +108,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。');
   header = header.replace('// @description  ', '// @description  Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。');
   header = header.replace('// @description  ', '// @description  Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。');
+  header = header.replace('// @description  ', '// @description  Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;

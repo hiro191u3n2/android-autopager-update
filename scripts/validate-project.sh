@@ -4,7 +4,7 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 release_version="${1:-}"
 test "$project_dir" = /workspace/sites/android-autopager-update
-test "$release_version" = 6.64.0
+test "$release_version" = 6.65.0
 test "$(git -C "$project_dir" remote get-url origin)" = https://github.com/hiro191u3n2/android-autopager-update.git
 test "$(git -C "$project_dir" branch --show-current)" = main
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.44.js)" = ee0c1d906375c7d34ebc3046719abef10d42c7ae
@@ -27,6 +27,8 @@ node --check "$project_dir/src/yahoo-realtime-autopager.js"
 node --check "$project_dir/src/cityhill-gallery-compat.js"
 node --check "$project_dir/src/fashion-product-guard.js"
 node "$project_dir/scripts/test-buzzap.mjs"
+node "$project_dir/tests/test_google_read_ahead_unit.mjs"
+node "$project_dir/tests/test_google_read_ahead.mjs"
 node "$project_dir/tests/test_google_group_gap_units.mjs"
 node "$project_dir/tests/test_google_source_rows.mjs"
 node "$project_dir/tests/test_google_touching_results.mjs"

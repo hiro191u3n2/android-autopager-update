@@ -46,15 +46,16 @@ if (process.env.GOOGLE_TEST_CHROMIUM_MODULE) {
 }
 
 const STATUS = '#generic-autopager-status-v2';
-const fixture = `<!doctype html><html><head><meta charset="utf-8">
+const fixture = (start = 0) => `<!doctype html><html><head><meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>body{margin:0;font:16px/1.5 Arial,sans-serif}article{box-sizing:border-box;min-height:500px;padding:16px;border-bottom:8px solid #e8eaed}h3{font-weight:400}</style>
   </head><body><main id="search"><div id="rso">${Array.from({ length: 24 }, (_, n) =>
-    `<article class="MjjYud"><div>Fixture ${n + 1}<br>https://result${n + 1}.example</div><a href="https://result${n + 1}.example/article"><h3>検索結果 ${n + 1}</h3></a><p>停止と再開を確認する通常の検索結果です。</p></article>`).join('')}</div></main>
-  <nav><a id="pnnext" href="/search?q=diagnostic-removal&amp;start=10">次へ</a></nav></body></html>`;
+    `<article class="MjjYud"${start ? ' style="padding-bottom:400px"' : ''}><div>Fixture ${start}/${n + 1}<br>https://page${start}-result${n + 1}.example</div><a href="https://page${start}-result${n + 1}.example/article"><h3>検索結果 ${start}/${n + 1}</h3></a><p>停止と再開を確認する通常の検索結果です。</p></article>`).join('')}</div></main>
+  <nav><a id="pnnext" href="/search?q=diagnostic-removal&amp;start=${start + 10}">次へ</a></nav></body></html>`;
 
 // Probe browser side effects without replacing the pager or its event handlers.
-// Its ordinary next-page loader is kept idle by the real, tall document layout.
+// The initial read-ahead prepares one page. The tall first page keeps the next
+// boundary distant, so gestures must not trigger any further page requests.
 const probe = `(() => {
   const state = window.__noDiagnosticsTest = {
     copies: 0, objectURLs: 0, downloads: 0, diagnosticNodes: 0,
@@ -96,7 +97,7 @@ await page.route('**/*', route => {
   const url = new URL(route.request().url());
   requests.push(url.href);
   if (url.hostname === 'www.google.com' && url.pathname === '/search') {
-    return route.fulfill({ contentType: 'text/html', body: fixture });
+    return route.fulfill({ contentType: 'text/html', body: fixture(Number(url.searchParams.get('start')) || 0) });
   }
   return route.abort();
 });
@@ -113,7 +114,7 @@ async function state() {
       installed: window.__genericGoogleResultDiagnosticsV659 === true,
       dialogs: document.querySelectorAll('[role="dialog"],[id^="generic-google-diagnostics"]').length,
       appended: document.querySelectorAll('.generic-autopager-page').length,
-      native: document.getElementById('rso').innerHTML,
+      native: [...document.getElementById('rso').children].filter(node => !node.classList.contains('generic-autopager-page')).map(node => node.outerHTML).join(''),
       scrollY,
     };
   });
@@ -128,17 +129,18 @@ function noDiagnosticEffects(value, label) {
   assert.equal(value.downloads, 0, label + ': no export anchor activation');
   assert.deepEqual(downloads, [], label + ': no browser downloads');
   assert.equal(value.statusCount, 1, label + ': one original pager button');
-  assert.equal(value.appended, 0, label + ': tall first-page fixture leaves loading idle');
+  assert.equal(value.appended, 1, label + ': exactly one page has been prepared ahead');
 }
 
 try {
   await page.addInitScript({ content: probe + '\n' + built });
   await page.goto('https://www.google.com/search?q=diagnostic-removal', { waitUntil: 'load' });
   await page.locator(STATUS).waitFor({ state: 'visible', timeout: 5000 });
-  await page.waitForFunction(() => /^自動 1\//.test(document.getElementById('generic-autopager-status-v2')?.textContent || ''));
+  await page.waitForFunction(() => /^自動 2\//.test(document.getElementById('generic-autopager-status-v2')?.textContent || ''));
   const initial = await state();
   noDiagnosticEffects(initial, 'Initial state');
-  assert.match(initial.text, /^自動 1\/\d+$/);
+  assert.match(initial.text, /^自動 2\/\d+$/);
+  assert.deepEqual(requests.filter(url => new URL(url).searchParams.has('start')).map(url => Number(new URL(url).searchParams.get('start'))), [10], 'Initialization prepares only page 2');
 
   await page.locator(STATUS).click();
   await page.waitForFunction(() => getComputedStyle(document.getElementById('generic-autopager-status-v2')).opacity === '0');
@@ -179,7 +181,7 @@ try {
   assert(final.clicks.every(event => !event.defaultPrevented), 'No click is consumed by removed diagnostics');
   assert.equal(final.native, initial.native, 'Button gestures leave the actual search results unchanged');
   assert.equal(final.scrollY, initial.scrollY, 'Button gestures do not move the result list');
-  assert.equal(requests.filter(url => new URL(url).searchParams.has('start')).length, 0, 'No next-page network request is caused by the test gestures');
+  assert.deepEqual(requests.filter(url => new URL(url).searchParams.has('start')).map(url => Number(new URL(url).searchParams.get('start'))), [10], 'No additional next-page request is caused by the test gestures');
   assert.deepEqual(errors, [], 'No browser runtime errors');
   console.log('PASS full userscript: short-tap pause/resume, held-pointer release and context-menu clicks; no diagnostic UI, copying or downloads');
 } finally {
