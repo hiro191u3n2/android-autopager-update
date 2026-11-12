@@ -37,6 +37,7 @@ public final class MainActivity extends Activity {
     private String variant;
     private String theme;
     private String shape;
+    private String fixture;
     private boolean started;
 
     @Override public void onCreate(Bundle bundle) {
@@ -47,7 +48,10 @@ public final class MainActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         variant = "control".equals(getIntent().getStringExtra("variant")) ? "control" : "current";
         theme = "dark".equals(getIntent().getStringExtra("theme")) ? "dark" : "light";
-        shape = "plain".equals(getIntent().getStringExtra("shape")) ? "plain" : "mixed";
+        fixture = "root".equals(getIntent().getStringExtra("fixture")) ? "root" : "organic";
+        shape = "root".equals(fixture)
+                ? ("native".equals(getIntent().getStringExtra("shape")) ? "native" : "missing")
+                : ("plain".equals(getIntent().getStringExtra("shape")) ? "plain" : "mixed");
         webView = new WebView(this);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
@@ -108,10 +112,12 @@ public final class MainActivity extends Activity {
                 String start = url.getQueryParameter("start");
                 if (start == null || "0".equals(start)) start = "0";
                 if ("0".equals(start) || "10".equals(start) || "20".equals(start)) {
-                    asset = "fixture-" + shape + "-" + theme + "-" + start + ".html";
+                    asset = "fixture-" + ("root".equals(fixture) ? "root-" : "")
+                            + shape + "-" + theme + "-" + start + ".html";
                 }
             } else if ("/fixture-userscript.js".equals(url.getPath())) {
-                asset = "script-" + variant + ".js";
+                asset = "script-" + variant
+                        + ("control".equals(variant) && "root".equals(fixture) ? "-root" : "") + ".js";
                 mime = "application/javascript";
             } else if ("/fixture-probe.js".equals(url.getPath())) {
                 asset = "probe.js";
@@ -185,26 +191,27 @@ public final class MainActivity extends Activity {
                     report.put("variant", variant);
                     report.put("theme", theme);
                     report.put("shape", shape);
+                    report.put("fixture", fixture);
                     report.put("androidApi", Build.VERSION.SDK_INT);
                     report.put("viewX", location[0]); report.put("viewY", location[1]);
                     report.put("viewWidth", webView.getWidth()); report.put("viewHeight", webView.getHeight());
                     synchronized (javascriptErrors) { report.put("consoleErrors", new JSONArray(javascriptErrors)); }
-                    writeDiagnosticsAfterFrame(report, request);
+                    writeAfterFrame(report, "diagnostics-" + request + ".json", Long.parseLong(request));
                 } catch (Exception error) { fail(error.toString()); }
             }
         });
     }
 
-    private void writeDiagnosticsAfterFrame(final JSONObject report, final String request) {
+    private void writeAfterFrame(final JSONObject report, final String filename, final long request) {
         if (Build.VERSION.SDK_INT < 29 || !webView.isHardwareAccelerated()) {
-            fail("Diagnostic compositor synchronization requires API 29+ hardware rendering");
+            fail("Compositor synchronization requires API 29+ hardware rendering");
             return;
         }
         // evaluateJavascript confirms DOM state, not the pixels drawn by the
         // WebView. Wait for that state and its next submitted Android frame.
-        webView.postVisualStateCallback(Long.parseLong(request), new WebView.VisualStateCallback() {
+        webView.postVisualStateCallback(request, new WebView.VisualStateCallback() {
             @Override public void onComplete(final long requestId) {
-                if (!webView.isAttachedToWindow()) { fail("WebView detached before diagnostic frame"); return; }
+                if (!webView.isAttachedToWindow()) { fail("WebView detached before captured frame"); return; }
                 webView.getViewTreeObserver().registerFrameCommitCallback(new Runnable() {
                     @Override public void run() {
                         handler.post(new Runnable() {
@@ -213,7 +220,7 @@ public final class MainActivity extends Activity {
                                     report.put("visualStateRequest", requestId);
                                     report.put("frameCommitted", true);
                                     report.put("frameCommittedAtMs", android.os.SystemClock.uptimeMillis());
-                                    write("diagnostics-" + request + ".json", report.toString(2));
+                                    write(filename, report.toString(2));
                                 } catch (Exception error) { fail(error.toString()); }
                             }
                         });
@@ -234,6 +241,7 @@ public final class MainActivity extends Activity {
                 report.put("variant", variant);
                 report.put("theme", theme);
                 report.put("shape", shape);
+                report.put("fixture", fixture);
                 report.put("androidApi", Build.VERSION.SDK_INT);
                 report.put("androidRelease", Build.VERSION.RELEASE);
                 report.put("viewX", location[0]); report.put("viewY", location[1]);
@@ -242,7 +250,7 @@ public final class MainActivity extends Activity {
                 report.put("webviewPackage", provider == null ? JSONObject.NULL : provider.packageName);
                 report.put("webviewVersion", provider == null ? JSONObject.NULL : provider.versionName);
                 synchronized (javascriptErrors) { report.put("consoleErrors", new JSONArray(javascriptErrors)); }
-                write("ready-" + number + ".json", report.toString(2));
+                writeAfterFrame(report, "ready-" + number + ".json", 1000000L + number);
                 Log.i(TAG, "READY page=" + number + " variant=" + variant + " theme=" + theme);
             } catch (Exception error) { fail(error.toString()); }
     }
