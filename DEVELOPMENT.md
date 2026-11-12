@@ -1,5 +1,29 @@
 # Recovered development source
 
+## Capture helper v1.1: export without assuming a download exists
+
+On 2026-11-13 the owner reported that the JSON file was absent from Downloads.
+Helper v1.0 initiated a synthetic blob download after asynchronous collection;
+that did not establish that Berry or Android actually saved a file. The exact
+device-side failure is unknown. Do not send the owner back to a presumed path.
+
+The separate helper v1.1 retains the capture in memory and offers explicit
+download, capability-checked file sharing, and a selectable text export.
+Compression is lossless gzip/base64 when supported; otherwise the original JSON
+is split directly. Each text part has a format, capture ID and part/total header.
+Reassemble only matching capture IDs with every numbered part, then decode and
+validate JSON. Never treat an incomplete set as a usable capture. Copy happens
+only on an explicit tap; a denied clipboard write leaves manual selection
+available. No automatic download, clipboard write, upload or sharing occurs.
+Only the owner's finish confirmation disables the helper. A new completion key
+lets owners who finished v1.0 use v1.1 without clearing unrelated browser data.
+
+The production autopager remains byte-identical to v6.66.0. This is an export
+repair for the separate evidence tool; the grouped-result border fix still
+requires the affected device capture. Focused Chromium export checks and exact
+production package comparisons cover this change. Native Berry file sharing
+and clipboard behavior must not be claimed as verified by those checks.
+
 ## Selected-result evidence capture before changing grouped-card rendering
 
 On 2026-11-13 the owner approved investigating the still-missing boundaries
@@ -41,6 +65,23 @@ downloaded `Google_Result_Structure_YYYYMMDD.json` to the ongoing conversation.
 After verifying the file exists, `保存できたので終了` dismisses the helper for
 that Google origin. Do not publish the owner's resulting capture to the public
 repository; derive a minimized, anonymized regression fixture from it.
+
+The final helper passed eleven Chromium capture groups on candidate
+`9d554d47bcaa00bdfdbbdead402888cafaced97b`, Actions run `43301341590`.
+Its SHA-256 is
+`761c1ccd7679d034cd1d741345242921deb609ec72f121d07c0a1cc5209cb0ff`.
+The tests cover selection fidelity, sanitization, no result mutation or remote
+requests, save confirmation/cancellation, storage fallback, route changes,
+mid-capture structure/attribute/scroll changes, size limits and retries. They
+validate the collector, not the missing-divider fix or native Berry downloads.
+
+Published the optional helper in commit
+`be6b634c3f4bfe3d73a1ae1f05379519dd04bfc5` on 2026-11-13 (Asia/Tokyo).
+Pages deployment `43301657749` succeeded. The literal
+`https://hiro191u3n2.github.io/android-autopager-update/tools/google-result-capture.user.js`
+returned HTTP 200 with the exact validated SHA-256 above. The fixed production
+userscript, metadata and homepage also returned HTTP 200 and retained their
+verified v6.66.0 hashes. The divider fix remains pending the affected capture.
 
 ## v6.66: sustained Google page preparation, not only earlier triggering
 

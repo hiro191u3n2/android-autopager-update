@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Google 区切り箇所の一度だけ取得
 // @namespace    https://hiro191u3n2.github.io/android-autopager-update/
-// @version      1.0.0
-// @description  タップした検索結果のページ構造を端末内のJSONへ保存。通信・送信・常設ログなし。
+// @version      1.1.0
+// @description  タップした検索結果の構造をファイル・共有・コピー用の文字で取得。自動送信・常設ログなし。
 // @match        https://www.google.com/search*
 // @match        https://google.com/search*
 // @match        https://www.google.co.jp/search*
@@ -13,7 +13,7 @@
 
 (() => {
   'use strict';
-  const DONE = '__googleResultStructureCaptureDone_v1';
+  const DONE = '__googleResultStructureCaptureDone_v1_1';
   const UI = 'google-result-capture-ui';
   const limits = { maxNodes: 12000, maxBytes: 12 * 1024 * 1024, maxAncestors: 64 };
   const route = () => /^(?:www\.)?google\.(?:com|co\.jp)$/.test(location.hostname) &&
@@ -167,39 +167,148 @@
       environment: { userAgent: navigator.userAgent, url: safeURL(location.href), ...startViewport },
       pager: { installedVersion: 'unknown', statusText: document.getElementById('generic-autopager-status-v2')?.textContent || '',
         markers: [...root.attributes].filter(attribute => /^data-generic-/.test(attribute.name)).map(attribute => [attribute.name, attribute.value]) },
-      omissions: { counts: omitted, notes: ['Scripts, forms, input values and known account UI are excluded.', 'URL credentials, queries and fragments; non-HTTP media URLs; custom CSS properties; event/tracking attributes are excluded.', 'Hidden result branches and their layout are retained. Computed styles are shared through styleTable indexes.', 'No cookies, unrelated storage, clipboard, remote upload or network request is used.'] }, limits,
+      omissions: { counts: omitted, notes: ['Scripts, forms, input values and known account UI are excluded.', 'URL credentials, queries and fragments; non-HTTP media URLs; custom CSS properties; event/tracking attributes are excluded.', 'Hidden result branches and their layout are retained. Computed styles are shared through styleTable indexes.', 'Capture uses no cookies, unrelated storage or network requests. No automatic clipboard use or remote upload; export happens only on user action.'] }, limits,
     };
     const json = JSON.stringify(payload);
     if (new Blob([json]).size > limits.maxBytes) throw new Error('取得内容が12MBを超えるため保存を中止しました。別の区切り箇所を選んでください。');
     return json;
   }
+  async function prepareExport(json) {
+    const now = new Date(), day = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('');
+    const filename = `Google_Result_Structure_${day}.json`;
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    let body = json, format = 'GOOGLE_RESULT_CAPTURE_JSON_V1';
+    try {
+      if (typeof CompressionStream === 'function') {
+        const compressed = new Uint8Array(await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+        let binary = '';
+        for (let offset = 0; offset < compressed.length; offset += 24576) binary += String.fromCharCode(...compressed.subarray(offset, offset + 24576));
+        body = btoa(binary); format = 'GOOGLE_RESULT_CAPTURE_GZIP_V1';
+      }
+    } catch (_) { /* The original JSON remains available when compression is unsupported. */ }
+    const captureId = `${now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const chunks = [];
+    for (let offset = 0; offset < body.length;) {
+      let end = Math.min(offset + 12000, body.length);
+      if (end < body.length && /[\uD800-\uDBFF]/.test(body[end - 1]) && /[\uDC00-\uDFFF]/.test(body[end])) end--;
+      chunks.push(body.slice(offset, end)); offset = end;
+    }
+    const packets = chunks.map((chunk, index) => `${format} ${captureId} ${index + 1}/${chunks.length}\n${chunk}`);
+    let file = null;
+    if (typeof File === 'function' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+      for (const [name, type] of [[filename, 'application/json'], [filename.replace(/\.json$/, '.txt'), 'text/plain']]) {
+        try {
+          const candidate = new File([json], name, { type });
+          if (navigator.canShare({ files: [candidate] })) { file = candidate; break; }
+        } catch (_) { /* File sharing may reject a format even when the API is present. */ }
+      }
+    }
+    let blobURL = null;
+    try { blobURL = URL.createObjectURL(blob); } catch (_) { /* Text and supported file sharing remain available. */ }
+    return { filename, blobURL, file, packets, part: 0 };
+  }
   /* capture-test-export */
   const ui = document.createElement('div'); ui.id = UI;
-  ui.style.cssText = 'position:fixed;left:8px;bottom:12px;z-index:2147483647;max-width:280px;padding:8px;background:#fff;color:#202124;border:1px solid #777;border-radius:8px;font:13px/1.4 sans-serif;box-shadow:0 2px 8px #0003';
+  ui.style.cssText = 'position:fixed;left:8px;bottom:12px;z-index:2147483647;max-width:min(360px,calc(100vw - 32px));max-height:70vh;overflow:auto;box-sizing:border-box;padding:8px;background:#fff;color:#202124;border:1px solid #777;border-radius:8px;font:13px/1.4 sans-serif;box-shadow:0 2px 8px #0003';
   const start = document.createElement('button'); start.id = 'google-result-capture-start'; start.type = 'button'; start.textContent = '区切り箇所を取得';
   const cancel = document.createElement('button'); cancel.id = 'google-result-capture-cancel'; cancel.type = 'button'; cancel.textContent = 'キャンセル'; cancel.hidden = true;
-  const finish = document.createElement('button'); finish.id = 'google-result-capture-finish'; finish.type = 'button'; finish.textContent = '保存できたので終了'; finish.hidden = true;
+  const download = document.createElement('a'); download.id = 'google-result-capture-download'; download.textContent = 'ファイル保存'; download.hidden = true;
+  download.style.cssText = 'margin:4px;color:#1558d6;text-decoration:underline';
+  const share = document.createElement('button'); share.id = 'google-result-capture-share'; share.type = 'button'; share.textContent = 'ファイルを共有'; share.hidden = true;
+  const showText = document.createElement('button'); showText.id = 'google-result-capture-show-text'; showText.type = 'button'; showText.textContent = '文字で表示'; showText.hidden = true;
+  const textPanel = document.createElement('div'); textPanel.hidden = true;
+  const textHint = document.createElement('div'); textHint.id = 'google-result-capture-text-hint';
+  const text = document.createElement('textarea'); text.id = 'google-result-capture-text'; text.readOnly = true; text.rows = 6; text.setAttribute('aria-label', 'チャットに貼り付ける取得データ');
+  text.style.cssText = 'width:100%;box-sizing:border-box;font:12px/1.4 monospace;white-space:pre;overflow:auto;-webkit-user-select:text;user-select:text';
+  const copy = document.createElement('button'); copy.id = 'google-result-capture-copy'; copy.type = 'button'; copy.textContent = 'この文字をコピー';
+  const prev = document.createElement('button'); prev.id = 'google-result-capture-prev'; prev.type = 'button'; prev.textContent = '前の部分';
+  const next = document.createElement('button'); next.id = 'google-result-capture-next'; next.type = 'button'; next.textContent = '次の部分';
+  textPanel.append(textHint, text, copy, prev, next);
+  const finish = document.createElement('button'); finish.id = 'google-result-capture-finish'; finish.type = 'button'; finish.textContent = '送信・保存できたので終了'; finish.hidden = true;
   const status = document.createElement('div'); status.id = 'google-result-capture-status'; status.setAttribute('role', 'status');
-  ui.append(start, cancel, finish, status); document.body.appendChild(ui);
-  let armed = false, busy = false;
+  ui.append(start, cancel, status, download, share, showText, textPanel, finish); document.body.appendChild(ui);
+  let armed = false, busy = false, exporting = false, exportData = null;
+  const active = () => route() && ui.isConnected;
+  const clearExport = () => {
+    if (exportData?.blobURL) URL.revokeObjectURL(exportData.blobURL);
+    exportData = null; text.value = ''; download.removeAttribute('href'); download.removeAttribute('download');
+    download.hidden = share.hidden = showText.hidden = textPanel.hidden = finish.hidden = true;
+  };
+  const dismiss = () => { armed = false; clearExport(); ui.remove(); };
+  const updatePart = () => {
+    if (!exportData) return;
+    text.value = exportData.packets[exportData.part];
+    const count = exportData.packets.length;
+    textHint.textContent = count === 1 ? 'この文字をコピーし、チャットにそのまま貼り付けてください。' :
+      `${exportData.part + 1}/${count}部分です。この部分をチャットに貼り付け、次の部分へ進んで、全部を順番に送ってください。`;
+    prev.disabled = exportData.part === 0; next.disabled = exportData.part === count - 1;
+    prev.hidden = next.hidden = count === 1;
+  };
+  const selectText = () => {
+    textPanel.hidden = false;
+    try { text.focus({ preventScroll: true }); } catch (_) { text.focus(); }
+    text.select();
+    status.textContent = '文字欄を長押しして「すべて選択」→「コピー」で取り出せます。チャットに貼り付けてください。';
+  };
   start.addEventListener('click', () => {
-    if (!route() || !ui.isConnected) { armed = false; ui.remove(); return; }
-    if (busy) return; armed = true; cancel.hidden = false; status.textContent = '枠がない検索結果の見出しや説明文をタップしてください。';
+    if (!active()) { dismiss(); return; }
+    if (busy || exporting) return; armed = true; cancel.hidden = false; status.textContent = '枠がない検索結果の見出しや説明文をタップしてください。';
   });
   cancel.addEventListener('click', () => { armed = false; cancel.hidden = true; status.textContent = ''; });
-  finish.addEventListener('click', () => { if (busy || !ui.isConnected) return; armed = false; ownStorage(true); ui.remove(); });
+  download.addEventListener('click', event => {
+    if (!active() || busy || !exportData?.blobURL) { event.preventDefault(); return; }
+    status.textContent = '保存を試みています。保存先や完了は確認できません。ファイルが見つからなければ「文字で表示」を使ってください。';
+  });
+  showText.addEventListener('click', () => {
+    if (!active() || busy || !exportData) return;
+    textPanel.hidden = false; updatePart();
+    status.textContent = 'ファイルを保存せず、この文字をチャットに貼り付けられます。';
+  });
+  for (const [button, direction] of [[prev, -1], [next, 1]]) button.addEventListener('click', () => {
+    if (!active() || busy || !exportData) return;
+    exportData.part = Math.max(0, Math.min(exportData.packets.length - 1, exportData.part + direction)); updatePart();
+  });
+  copy.addEventListener('click', () => {
+    if (!active() || busy || !exportData) return;
+    const data = exportData, part = data.part;
+    try {
+      if (typeof navigator.clipboard?.writeText !== 'function') { selectText(); return; }
+      const copying = navigator.clipboard.writeText(text.value);
+      Promise.resolve(copying).then(() => {
+        if (active() && exportData === data && data.part === part) status.textContent = 'コピーしました。チャットに貼り付けてください。';
+      }, () => { if (active() && exportData === data && data.part === part) selectText(); });
+    } catch (_) { selectText(); }
+  });
+  share.addEventListener('click', () => {
+    if (!active() || busy || exporting || !exportData?.file) return;
+    const data = exportData;
+    exporting = true; share.disabled = start.disabled = finish.disabled = true;
+    const settled = () => { exporting = false; share.disabled = start.disabled = finish.disabled = false; };
+    try {
+      const sharing = navigator.share({ files: [data.file] });
+      Promise.resolve(sharing).then(() => {
+        if (active() && exportData === data) status.textContent = '共有先のアプリで添付を確認してください。ファイルが渡らなければ「文字で表示」を使えます。';
+      }, error => {
+        if (active() && exportData === data) status.textContent = error?.name === 'AbortError' ?
+          '共有をキャンセルしました。もう一度共有するか「文字で表示」を使えます。' : '共有できませんでした。「文字で表示」を使ってください。';
+      }).finally(settled);
+    } catch (_) { if (active()) status.textContent = '共有できませんでした。「文字で表示」を使ってください。'; settled(); }
+  });
+  finish.addEventListener('click', () => { if (busy || exporting || !active() || !exportData) return; ownStorage(true); dismiss(); });
   document.addEventListener('click', async event => {
-    if (!route()) { armed = false; ui.remove(); return; }
+    if (!route()) { dismiss(); return; }
     if (!armed || busy || ui.contains(event.target)) return;
     event.preventDefault(); event.stopImmediatePropagation();
     const target = event.target.nodeType === Node.ELEMENT_NODE ? event.target : event.target.parentElement;
-    armed = false; busy = true; start.disabled = true; finish.disabled = true; cancel.hidden = true; status.textContent = 'このページの構造を取得しています…';
+    armed = false; busy = true; clearExport(); start.disabled = true; finish.disabled = true; cancel.hidden = true; status.textContent = 'このページの構造を取得しています…';
     try {
-      const json = await capture(target), blobURL = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
-      const now = new Date(), day = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('');
-      const link = document.createElement('a'); link.href = blobURL; link.download = `Google_Result_Structure_${day}.json`;
-      ui.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(blobURL), 60000);
-      finish.hidden = false; status.textContent = 'JSONの保存を開始しました。保存できたら終了ボタンを押し、このファイルをチャットに添付してください。';
+      const data = await prepareExport(await capture(target));
+      if (!active()) { if (data.blobURL) URL.revokeObjectURL(data.blobURL); return; }
+      exportData = data;
+      if (data.blobURL) { download.href = data.blobURL; download.download = data.filename; download.hidden = false; }
+      share.hidden = !data.file; showText.hidden = finish.hidden = false;
+      updatePart();
+      status.textContent = '取得できました。保存は未確認です。「文字で表示」でチャットへ貼り付けるか、ファイル保存・共有を選んでください。';
     } catch (error) { status.textContent = error.message || '取得できませんでした。もう一度お試しください。'; }
     finally { busy = false; start.disabled = false; finish.disabled = false; }
   }, true);
