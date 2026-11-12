@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.57.0';
+export const VERSION = '6.58.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -21,6 +21,8 @@ export const GOOGLE_LAYOUT_REPLACEMENTS = [
   ['function y(t,e){if(!t?.querySelector)return!1;', 'function y(t,e){if(!t?.querySelector||hasGenericGoogleLayoutV647(t))return!1;'],
   ['function M(t){if(!t)return;', 'function M(t){if(!t||hasGenericGoogleLayoutV647(t))return;'],
   ['function _(t,e){if(!t)return!1;', 'function _(t,e){if(!t||hasGenericGoogleLayoutV647(t))return!1;'],
+  ['o<=3&&r.size<=4&&e.push({card:n,titleInfo:t})', 'o<=3&&r.size<=4&&!hasGenericGoogleMultipleResultsV658(n)&&e.push({card:n,titleInfo:t})'],
+  ['const m=()=>{r&&t.googleFixBrokenMultiImageRichResults&&(y(u,i),M(u))}', 'const m=()=>{r&&t.googleFixBrokenMultiImageRichResults&&(y(u,i),M(u));if(r)repairGenericGoogleResultBoundariesV658(u)}'],
 ];
 // Exact original ranges are pinned so unrelated legacy features cannot drift.
 export const MODULE_REPLACEMENTS = [
@@ -71,7 +73,7 @@ export async function buildUserscript() {
   const googleCleanup = await readFile(new URL('src/google-search-cleanup.js', root), 'utf8');
   header = header.replace('// @description  ', '// @description  Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。');
   header = header.replace('// @description  ', '// @description  Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。');
-  header = header.replace('// @description  ', '// @description  区切り修正前のv6.53.0へ復元。自動更新のため配信番号のみ6.57.0。');
+  header = header.replace('// @description  ', '// @description  Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
@@ -80,7 +82,7 @@ export async function buildUserscript() {
 export default {
   async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.57.js') {
+    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.58.js') {
       return new Response(await buildUserscript(), { headers: { 'content-type': 'application/javascript; charset=utf-8' } });
     }
     if (path === '/android-generic-autopager.meta.js') {
