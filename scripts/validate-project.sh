@@ -4,11 +4,12 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 release_version="${1:-}"
 test "$project_dir" = /workspace/sites/android-autopager-update
-test "$release_version" = 6.61.0
+test "$release_version" = 6.62.0
 test "$(git -C "$project_dir" remote get-url origin)" = https://github.com/hiro191u3n2/android-autopager-update.git
 test "$(git -C "$project_dir" branch --show-current)" = main
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.44.js)" = ee0c1d906375c7d34ebc3046719abef10d42c7ae
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.60.js)" = dfa28418b2ea6fb4af5ed7bcfa537ff903d5decd
+test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.61.js)" = a1f58d68dcb732d7803e28cc1764543cb006dfce
 
 git -C "$project_dir" diff --check
 git -C "$project_dir" diff --cached --check
@@ -32,6 +33,7 @@ node "$project_dir/tests/test_fashion_performance.mjs"
 node "$project_dir/tests/test_cityhill_gallery.mjs"
 node "$project_dir/tests/test_generic_commerce_images.mjs"
 node "$project_dir/tests/test_google_layout.mjs"
+node "$project_dir/tests/test_google_rich_import.mjs"
 node "$project_dir/tests/test_google_organic_groups.mjs"
 node "$project_dir/tests/test_google_root_results.mjs"
 node "$project_dir/tests/test_google_cleanup.mjs"
