@@ -70,7 +70,7 @@ function captureGenericGoogleSeparatorsV654(node, computed, rectangle, view) {
   // Requiring a leaf collapses the painted parent's height on import even
   // though none of its descendants contributes any content to that height.
   // Keep the geometry/paint guard and exclude controls and media at any depth.
-  const meaningful = 'a[href],input,textarea,select,button,iframe,object,embed,img,video,audio,canvas,svg,hr,h1,h2,h3,h4,h5,h6,[role="heading"],[role="button"],[role="link"],[role="img"],[contenteditable]:not([contenteditable="false"]),[tabindex]';
+  const meaningful = 'a[href],input,textarea,select,button,iframe,object,embed,img,video,audio,canvas,svg,h1,h2,h3,h4,h5,h6,[role="heading"],[role="button"],[role="link"],[role="img"],[contenteditable]:not([contenteditable="false"]),[tabindex]';
   const preserveHeight = rect.width >= 120 && rect.height > 0 && rect.height <= 24 &&
     rect.width >= rect.height * 5 && isGenericGoogleSeparatorPaintV654(computed) &&
     !node.textContent.trim() && !node.matches(meaningful) && !node.querySelector(meaningful);
