@@ -49,9 +49,14 @@ public final class MainActivity extends Activity {
         variant = "control".equals(getIntent().getStringExtra("variant")) ? "control" : "current";
         theme = "dark".equals(getIntent().getStringExtra("theme")) ? "dark" : "light";
         fixture = "root".equals(getIntent().getStringExtra("fixture")) ? "root" : "organic";
-        shape = "root".equals(fixture)
-                ? ("native".equals(getIntent().getStringExtra("shape")) ? "native" : "missing")
-                : ("plain".equals(getIntent().getStringExtra("shape")) ? "plain" : "mixed");
+        String requestedShape = getIntent().getStringExtra("shape");
+        if ("root".equals(fixture)) {
+            shape = "v661-nearwhite".equals(requestedShape) || "v661-alpha".equals(requestedShape)
+                    || "v661-native".equals(requestedShape) ? requestedShape
+                    : ("native".equals(requestedShape) ? "native" : "missing");
+        } else {
+            shape = "plain".equals(requestedShape) ? "plain" : "mixed";
+        }
         webView = new WebView(this);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
