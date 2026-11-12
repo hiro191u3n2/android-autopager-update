@@ -9,18 +9,25 @@ const inspector = await readFile(new URL('../src/google-boundary-inspection.js',
 const zero = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
 
 function fixture(mode) {
-  const source = n => mode === 'header-split-url'
+  const rootGapCase = ['root-gap', 'root-native-gutter', 'root-interrupted'].includes(mode);
+  const source = n => rootGapCase && n === 2
+    ? '<div class="source"><div><div>gnavi.co.jp</div></div><div><span>https://r.gnavi.co.jp</span></div></div>'
+    : mode === 'header-split-url'
     ? `<header class="source">https://<span>shop${n}</span><span>.example</span><textarea>HEADER_PRIVATE</textarea><span role="menu">HEADER_MENU_PRIVATE</span></header>`
     : mode === 'split-url' ? `<div class="source">https://<span>shop${n}</span><span>.example</span></div>`
     : `<div class="source"${mode === 'aria-hidden' ? ' aria-hidden="true"' : ''}>https://shop${n}.example${mode === 'privacy' ? '/menu?q=QUERY_SENTINEL#HASH_SENTINEL' : ''}</div>`;
   const card = n => {
     const hiddenHeading = mode === 'hidden-heading' ? '<h3 hidden>Hidden alternative</h3>' : '';
     const privacy = mode === 'privacy' ? '<input value="INPUT_SENTINEL"><textarea>TEXTAREA_SENTINEL</textarea><script>window.SECRET_SCRIPT_SENTINEL=1</script><img src="data:image/png;base64,BASE64_SENTINEL" onerror="SCRIPT_ATTRIBUTE_SENTINEL">' : '';
-    const value = `<div class="result" data-result="${n}">${source(n)}<a href="https://user:pass@shop${n}.example/menu?q=LINK_QUERY_SENTINEL#LINK_HASH_SENTINEL">${hiddenHeading}<h3>Visible restaurant ${n}</h3></a><p>Ordinary description</p>${privacy}</div>`;
+    const href = rootGapCase && n === 2 ? 'https://r.gnavi.co.jp/menu' : `https://user:pass@shop${n}.example/menu?q=LINK_QUERY_SENTINEL#LINK_HASH_SENTINEL`;
+    const link = `<a href="${href}">${rootGapCase ? source(n) : ''}${hiddenHeading}<h3>Visible restaurant ${n}</h3></a>`;
+    const contents = `${rootGapCase ? '' : source(n)}${link}<p>Ordinary description</p>${privacy}`;
+    const value = `<div class="result" data-result="${n}">${rootGapCase ? `<div class="transparent"><div class="surface">${contents}</div></div>` : contents}</div>`;
     return mode === 'contents' ? `<div class="contents">${value}</div>` : value;
   };
-  const cards = [1, 2, 3].map(card).join('');
-  const dom = new JSDOM(`<style>*{visibility:visible;opacity:1;background:#fff}.group{border-bottom:8px solid #e8eaed}.contents{display:contents}[hidden]{display:none}</style><section class="generic-autopager-page" data-page="2" data-source-url="https://www.google.com/search?q=SOURCE_QUERY_SENTINEL#SOURCE_HASH_SENTINEL"><div id="rso" class="generic-autopager-google-source-root">${mode === 'common-root' ? cards : `<div class="group">${cards}</div>`}</div></section>`, { url: 'https://www.google.com/search?q=LOCATION_QUERY_SENTINEL#LOCATION_HASH_SENTINEL', runScripts: 'outside-only' });
+  const cards = [1, 2, 3].map(n => card(n) + (mode === 'root-interrupted' && n === 1 ? '<div class="interruption">Related module</div>' : '')).join('');
+  const rootStyle = rootGapCase ? `html,body,section{background:${mode === 'root-native-gutter' ? '#e8eaed' : '#fff'}}#rso,.result,.transparent{background:transparent}.surface{background:#fff}` : '';
+  const dom = new JSDOM(`<style>*{visibility:visible;opacity:1;background:#fff}.group{border-bottom:8px solid #e8eaed}.contents{display:contents}[hidden]{display:none}${rootStyle}</style><section class="generic-autopager-page" data-page="2" data-source-url="https://www.google.com/search?q=SOURCE_QUERY_SENTINEL#SOURCE_HASH_SENTINEL"><div id="rso" class="generic-autopager-google-source-root">${mode === 'common-root' || rootGapCase ? cards : `<div class="group">${cards}</div>`}</div></section>`, { url: 'https://www.google.com/search?q=LOCATION_QUERY_SENTINEL#LOCATION_HASH_SENTINEL', runScripts: 'outside-only' });
   const w = dom.window;
   const originalStyle = w.getComputedStyle.bind(w);
   w.getComputedStyle = (node, pseudo) => pseudo ? { content: 'none', display: 'none', visibility: 'visible', opacity: '1', getPropertyValue: () => '' } : originalStyle(node);
@@ -28,7 +35,7 @@ function fixture(mode) {
     if (this.matches('.contents') || this.closest('[hidden]')) return zero;
     const n = Number(this.closest('[data-result]')?.getAttribute('data-result')) || 0;
     const width = mode === 'narrow' && n ? 260 : mode === 'root-width' ? 1000 : 360;
-    let top = n ? 20 + (n - 1) * 180 : 20, height = n ? 180 : 548;
+    let top = n ? 20 + (n - 1) * (rootGapCase ? 188 : 180) : 20, height = n ? 180 : 548;
     if (this.closest('.source')) { top += 10; height = 20; }
     else if (this.matches('h3,a')) { top += 45; height = 26; }
     else if (this.matches('p')) { top += 85; height = 50; }
@@ -42,7 +49,7 @@ function fixture(mode) {
 }
 
 let passed = 0;
-for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', 'contents', 'common-root', 'hidden-heading', 'narrow', 'root-width', 'marker', 'privacy']) {
+for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', 'contents', 'common-root', 'root-gap', 'root-native-gutter', 'root-interrupted', 'hidden-heading', 'narrow', 'root-width', 'marker', 'privacy']) {
   const { dom, w, page } = fixture(mode);
   try {
     const before = w.document.documentElement.outerHTML;
@@ -78,7 +85,18 @@ for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', '
       assert(plain.nearby.sources.some(source => source.observations.includes('source-excluded-ancestor')));
     }
     if (mode === 'contents') assert(plain.records.every(record => record.eligibility.reasons.includes('card-display-contents')));
-    if (mode === 'common-root') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['common-root', 'common-root']);
+    if (mode === 'common-root') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['root-gap-range', 'root-gap-range']);
+    if (['root-gap', 'root-native-gutter', 'root-interrupted'].includes(mode)) {
+      assert.equal(plain.counts.sources, 3, 'One source per result, including the base-domain/subdomain source header');
+      assert.equal(plain.counts.acceptedCards, 3);
+      assert(plain.records.every(record => record.surfaceCoversCard && record.surfaceColor === 'rgb(255, 255, 255)'));
+    }
+    if (mode === 'root-gap') {
+      assert.deepEqual(plain.pairs.map(pair => pair.reason), ['would-repair', 'would-repair']);
+      assert(plain.pairs.every(pair => pair.paintMode === 'existing-gap-shadow' && pair.gap === 8));
+    }
+    if (mode === 'root-native-gutter') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['different-background', 'different-background']);
+    if (mode === 'root-interrupted') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['root-intervening-content', 'would-repair']);
     if (mode === 'hidden-heading') assert(plain.records.every(record => record.eligibility.reasons.includes('title-no-box')));
     if (mode === 'narrow') assert(plain.records.every(record => record.eligibility.reasons.includes('card-width-below-75pct')));
     if (mode === 'root-width') assert.equal(plain.status, 'root-width-out-of-range');
