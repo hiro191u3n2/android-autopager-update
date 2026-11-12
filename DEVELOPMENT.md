@@ -1,5 +1,41 @@
 # Recovered development source
 
+## v6.60: root-level gaps identified by the owner's diagnostic
+
+The owner's v6.59 report captured on 2026-11-12 identified a concrete exclusion:
+three successful repair invocations found ten sources, nine records and eight
+eligible cards, but added no markers. Six adjacent pairs were rejected as
+`common-root`, each with an 8px gap. The imported root was transparent and about
+499.78 CSS px wide. Its independent `MjjYud` children wrapped full-size white
+`Ww4FFb` surfaces with 8px bottom margins. Another record remained its anchor
+because the site-name `gnavi.co.jp` and URL `r.gnavi.co.jp` were counted twice
+inside the same source header. The omitted record caused a 214.98px pair gap.
+These are reported facts about the selected page; its titles differ from the
+original three-store screenshot. The complete original Google HTML was not
+captured. Tests use neutral structural examples derived from this report.
+
+The existing parser now lets a plain base-domain name yield to an explicit
+subdomain URL only within the bounded source-only header ancestry. Separate
+headers and two explicit URLs retain their identities. Full-width cards that
+are direct children of the imported root can repair an existing 2-16px gap.
+The source/title ancestry must identify an opaque surface covering each card.
+Visible intervening modules, existing shadows, rounded/complex paint and
+clipping that would hide the gap reject this additional path. A contrasting
+native gutter and existing divider paint remain unchanged.
+
+The root path uses a zero-blur, zero-spread outer shadow to paint the existing
+gap. It does not add elements or change margins, borders, heights or positions.
+The earlier grouped-result border path is retained. The inspector calls the
+same new surface/root-gap helpers and includes surface and shadow evidence.
+Its schema remains v659; the running script version is now 6.60.0.
+
+The preservation test substitutes only the changed Google layout/classifier,
+its inspector and the version initializer back to frozen v6.59, then checks
+the entire executable byte-for-byte. The older v6.44 feature-preservation gate
+also remains active. Frozen v6.59 has Git blob
+32e645f7c7fef0bd561628581a7d8335369510b4. No unrelated site adapters or Google
+input/cleanup behavior are changed.
+
 ## v6.59: collect evidence for the unresolved Google result boundaries
 
 The owner reported that v6.58 did not fix the actual device display. The earlier

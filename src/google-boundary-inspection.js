@@ -1,4 +1,4 @@
-// On-demand, read-only evidence for the unchanged v6.58 boundary classifier.
+// On-demand, read-only evidence for the current boundary classifier.
 // No observer, timer, network request, DOM/style write, or automatic inspection.
 function inspectGenericGoogleResultBoundariesV659(page) {
   const MAX_BYTES = 140000;
@@ -142,6 +142,7 @@ function inspectGenericGoogleResultBoundariesV659(page) {
           style: {
             display: short(s.display, 24), visibility: short(s.visibility, 16), opacity: short(s.opacity, 12),
             position: short(s.position, 20), boxSizing: short(s.boxSizing, 20), background: short(s.backgroundColor, 55),
+            boxShadow: short(s.boxShadow, 150),
             borderTop: [s.borderTopWidth, s.borderTopStyle, s.borderTopColor].map(value => short(value, 55)),
             borderBottom: [s.borderBottomWidth, s.borderBottomStyle, s.borderBottomColor].map(value => short(value, 55)),
             overflow: [s.overflowX, s.overflowY].map(value => short(value, 16)),
@@ -199,7 +200,7 @@ function inspectGenericGoogleResultBoundariesV659(page) {
     report.counts.sources = result.sources.length;
     report.counts.records = result.records.length;
     report.counts.repairMarkers = scope.querySelectorAll('[data-generic-google-boundary-v658]').length;
-    const accepted = [];
+    const accepted = [], surfaces = new WeakMap();
     const eligibility = record => {
       const reasons = [], card = record.card;
       if (!card) return { accepted: false, reasons: ['card-missing'] };
@@ -218,18 +219,22 @@ function inspectGenericGoogleResultBoundariesV659(page) {
     if (result.records.length > chosenRecords.size) truncate('records');
     for (const record of result.records) {
       const decision = eligibility(record);
-      if (decision.accepted) accepted.push(record.card);
+      if (decision.accepted) {
+        accepted.push(record.card);
+        surfaces.set(record.card, getGenericGoogleResultSurfaceV660(record, root, rect, style));
+      }
       if (!chosenRecords.has(record)) continue;
       const promotion = [];
       for (let node = record.identity, depth = 0; node && node !== root && depth < 12; node = node.parentElement, depth++) {
         promotion.push({ nodeId: describe(node), sources: sourceCounts.get(node) || 0 });
         if (node === record.card) break;
       }
-      report.records.push({ sourceId: describe(record.source), titleId: describe(record.title), anchorId: describe(record.anchor), identityId: describe(record.identity), cardId: describe(record.card), title: safeText(textOf(record.title), 90), destination: external(record.anchor), eligibility: decision, promotion });
+      const surface = surfaces.get(record.card);
+      report.records.push({ sourceId: describe(record.source), titleId: describe(record.title), anchorId: describe(record.anchor), identityId: describe(record.identity), cardId: describe(record.card), surfaceId: surface ? describe(surface.node) : null, surfaceColor: surface?.color || null, surfaceCoversCard: Boolean(surface?.coversCard), title: safeText(textOf(record.title), 90), destination: external(record.anchor), eligibility: decision, promotion });
     }
     report.counts.acceptedCards = accepted.length;
     const bands = [], inspected = new Set();
-    const surface = accepted.length ? background(accepted[0]) : null;
+    const surface = accepted.length ? surfaces.get(accepted[0]).color : null;
     const addBand = (node, kind, top, bottom, left, right, color) => {
       const height = bottom - top;
       if (rootRect && height >= 1 && height <= 16 && right - left >= rootRect.width * 0.75 && colored(color) && color !== surface) bands.push({ node, kind, top, bottom, left, right, height, color });
@@ -275,6 +280,7 @@ function inspectGenericGoogleResultBoundariesV659(page) {
     };
     if (root && report.scope.rootWidthEligible && report.scope.routeEligible && accepted.length >= 2) {
       for (const card of accepted) {
+        if (surfaces.get(card).coversCard) inspectEdge(surfaces.get(card).node);
         for (let node = card; node && node !== root; node = node.parentElement) { inspectEdge(node); inspectEdge(node.previousElementSibling); inspectEdge(node.nextElementSibling); }
         for (const edge of ['firstElementChild', 'lastElementChild']) for (let node = card, depth = 0; node && depth < 6; depth++, node = node[edge]) inspectEdge(node);
       }
@@ -283,17 +289,23 @@ function inspectGenericGoogleResultBoundariesV659(page) {
         let common = previous.parentElement;
         while (common && !common.contains(current)) common = common.parentElement;
         const pair = { previousId: describe(previous), currentId: describe(current), commonId: common ? describe(common) : null, commonIsRoot: common === root, gap: rounded(b.top - a.bottom), leftDifference: rounded(b.left - a.left), rightDifference: rounded(b.right - a.right), reason: '' };
+        const rootGap = common === root ? getGenericGoogleRootGapV660(root, previous, current, rect, style, surfaces) : null;
+        const previousSurface = rootGap ? surfaces.get(previous).color : background(previous);
+        const currentSurface = rootGap ? surfaces.get(current).color : background(current);
         const matching = bands.find(band => band.left <= Math.max(a.left, b.left) + 8 && band.right >= Math.min(a.right, b.right) - 8 && band.top >= a.bottom - 24 && band.bottom <= b.top + 24);
         if (current.hasAttribute('data-generic-google-boundary-v658')) pair.reason = 'marker';
         else if (a.bottom > b.top + 1) pair.reason = 'overlap';
         else if (b.top - a.bottom > 120) pair.reason = 'gap';
         else if (Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12) pair.reason = 'horizontal-alignment';
         else if (!common) pair.reason = 'common-missing';
-        else if (common === root) pair.reason = 'common-root';
+        else if (rootGap && !rootGap.accepted) pair.reason = rootGap.reason;
         else if (matching) { pair.reason = 'native-band'; pair.bandIndex = bands.indexOf(matching); }
-        else if (b.top - a.bottom >= 2 && background(common) !== background(previous) && background(common) !== background(current)) pair.reason = 'different-background';
+        else if (b.top - a.bottom >= 2 && background(common) !== previousSurface && background(common) !== currentSurface) pair.reason = 'different-background';
         else if ((Number.parseFloat(style(current).borderTopWidth) || 0) > 0 && colored(style(current).borderTopColor) && style(current).borderTopColor !== surface) pair.reason = 'existing-top-border';
-        else pair.reason = 'would-repair';
+        else {
+          pair.reason = 'would-repair';
+          pair.paintMode = rootGap ? 'existing-gap-shadow' : 'group-border';
+        }
         if (report.pairs.length < 32) report.pairs.push(pair); else truncate('pairs');
       }
     }
