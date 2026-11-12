@@ -15,6 +15,28 @@ export const GOOGLE_ROOT_BOUNDARIES = {
   missing: { before: [0, 0, 0], after: [8, 8, 8] },
   native: { before: [8, 8, 8], after: [8, 8, 8] },
 };
+// The actual v6.60 report establishes the inner 1px outline and the erroneous
+// different-background decision. It does not establish the ancestor's color.
+// Near-white/alpha values below are representative regression inputs.
+export const GOOGLE_ROOT_V661_CASES = [
+  { id: 'nearwhite-light', variant: 'v661-nearwhite', theme: 'light',
+    underlayRgb: [248, 249, 250], paintRgb: [232, 234, 237], surfaceRgb: [255, 255, 255], ringRgb: [235, 237, 239], native: false },
+  { id: 'alpha-light', variant: 'v661-alpha', theme: 'light',
+    underlayRgb: [255, 255, 255], paintRgb: [232, 234, 237], surfaceRgb: [255, 255, 255], ringRgb: [235, 237, 239], native: false,
+    ancestorBackground: 'rgba(255, 255, 255, 0.8)' },
+  { id: 'native-light', variant: 'v661-native', theme: 'light',
+    underlayRgb: [232, 234, 237], paintRgb: [232, 234, 237], surfaceRgb: [255, 255, 255], ringRgb: [235, 237, 239], native: true },
+  { id: 'native-dark', variant: 'v661-native', theme: 'dark',
+    underlayRgb: [60, 64, 67], paintRgb: [60, 64, 67], surfaceRgb: [32, 33, 36], ringRgb: [52, 55, 59], native: true },
+];
+export const GOOGLE_ROOT_V661_CUSTOM_CASE = {
+  id: 'native-custom-light', variant: 'v661-native-custom', theme: 'light',
+  underlayRgb: [220, 224, 230], paintRgb: [220, 224, 230], surfaceRgb: [255, 255, 255], ringRgb: [235, 237, 239], native: true,
+};
+export function googleRootPaintCase(variant, dark = false) {
+  return [...GOOGLE_ROOT_V661_CASES, GOOGLE_ROOT_V661_CUSTOM_CASE]
+    .find(item => item.variant === variant && item.theme === (dark ? 'dark' : 'light')) || null;
+}
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const templates = [
@@ -65,11 +87,13 @@ function card(result, { main = false, line, gap = GOOGLE_ROOT_GAP_PX, border = f
 }
 
 export function renderGoogleRootFixture(start = 0, { dark = false, compact = true, variant = 'missing' } = {}) {
-  if (!['missing', 'native'].includes(variant)) throw new Error('Unknown root fixture variant: ' + variant);
+  const paintCase = googleRootPaintCase(variant, dark);
+  if (!['missing', 'native'].includes(variant) && !paintCase) throw new Error('Unknown root fixture variant/theme: ' + variant + '/' + dark);
   const colors = GOOGLE_ROOT_COLORS[dark ? 'dark' : 'light'];
-  const background = variant === 'native' ? colors.line : colors.page;
+  const background = paintCase ? `rgb(${paintCase.underlayRgb.join(',')})` : variant === 'native' ? colors.line : colors.page;
   const css = `*{box-sizing:border-box}html,body{margin:0;background:${background};color:${colors.ink};font:14px/20px Arial,sans-serif}#search,.rso,.MjjYud,.root-envelope{display:block;background:transparent;margin:0;padding:0}.rso{width:100%;max-width:${GOOGLE_ROOT_MAX_WIDTH}px}#organic-native{min-height:220px;padding:16px;background:${colors.page};border-bottom:${GOOGLE_ROOT_GAP_PX}px solid ${colors.line}}#organic-native h3{font-weight:400}.Ww4FFb.vt6azd{display:block;background:${colors.page};margin:0 0 ${GOOGLE_ROOT_GAP_PX}px;padding:0}.organic-copy{padding:12px}.organic-main-link{display:block;color:${colors.link};text-decoration:none}.organic-source-header{display:flex;align-items:center;gap:9px;color:${colors.ink};font-size:14px;line-height:18px}.organic-source-text{min-width:0}.organic-favicon{display:block;flex:0 0 24px;width:24px;height:24px}.organic-source-url{display:block;font-size:12px;line-height:17px;overflow-wrap:anywhere}.organic-title{margin:8px 0;font-size:20px;line-height:26px;color:${colors.link};font-weight:400}.organic-body{display:flex;gap:10px;align-items:flex-start}.organic-snippet{flex:1 1 0;min-width:0;font-size:13px;line-height:19px;color:${colors.muted}}.organic-thumbnail{display:block;flex:0 0 64px;width:64px;height:64px;border-radius:6px;object-fit:cover}.organic-sitelinks{padding-top:8px}.organic-sitelinks a{display:block;padding:3px 0;color:${colors.link};text-decoration:none}.organic-sitelinks h3{margin:0;font-size:14px;line-height:20px;font-weight:400}.root-section-label{height:32px;line-height:20px;padding:6px 12px;background:${colors.page};font-size:12px;overflow:hidden}.root-interruption{display:block;height:14px;padding:0 12px;margin:0;overflow:hidden;font-size:10px;line-height:14px;background:${colors.page};color:${colors.ink}}.root-interruption a{color:${colors.link}}.root-native-band{height:${GOOGLE_ROOT_GAP_PX}px;background:${colors.line}}.root-columns{display:flex;gap:12px;background:${colors.page};padding:0}.root-column{flex:1 1 0;min-width:0;background:transparent}.root-column .organic-source-header{display:block}.root-column .organic-title{font-size:16px;line-height:22px}`;
-  const head = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google root result structural fixture</title><style>${css}.root-native-band{height:auto;padding:4px 0}</style></head><body>`;
+  const outline = paintCase ? `.Ww4FFb.vt6azd{box-shadow:0 0 0 1px rgb(${paintCase.ringRgb.join(',')})}${paintCase.ancestorBackground ? `#search{background:${paintCase.ancestorBackground}}` : ''}` : '';
+  const head = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google root result structural fixture</title><style>${css}.root-native-band{height:auto;padding:4px 0}${outline}</style></head><body>`;
   const next = value => `<nav><a id="pnnext" href="/search?q=${GOOGLE_ROOT_QUERY}&start=${value}">次へ</a></nav>`;
   if (!start) return `${head}<main id="search"><div id="rso" class="rso">${googleRootNativeMarkup()}</div></main>${next(10)}</body></html>`;
   const expected = googleRootExpectedResults(start, { compact });

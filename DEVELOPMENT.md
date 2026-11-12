@@ -1,5 +1,45 @@
 # Recovered development source
 
+## v6.61: do not infer a painted gutter from ancestor color inequality
+
+The owner reported that v6.60 was still visually unresolved and supplied a
+second diagnostic captured at 2026-11-12T10:23:41.178Z. Nine records and all nine
+cards were accepted, with eight aligned 8px gaps and confirmed white result
+surfaces. Every pair was rejected by `different-background`; repair markers and
+detected bands were both zero after three normal repair invocations. Nested
+surfaces additionally showed an opaque 1px outline shadow in rgb(235,237,239).
+The report does not record the resolved ancestor backdrop or contain the full
+source HTML. The new fixtures therefore use explicit representative near-white
+and translucent backgrounds, not an invented claim about the owner's exact
+ancestor color or a capture of the original three-store DOM.
+
+The old background helper walks past the transparent imported root/page into
+the initial page's ancestors. That color string differing from the result face
+is not evidence that the imported gap contains a visible separator. Qualified
+direct-root gaps no longer use this inequality to cancel paint. The old grouped
+path and native border/pseudo/decorative-band guards remain unchanged.
+
+For root gaps, a known native band supplies the paint color first. Otherwise an
+opaque parsed sRGB ancestor color may be reused when its contrast against both
+opaque result faces is at least 1.12; weak, translucent or unsupported colors
+use the existing theme fallback. This threshold chooses a decorative color;
+it never decides whether to repair and is not an accessibility conformance
+threshold. No root/body background, source content, geometry, event handler or
+recurring work is added or changed.
+
+The existing zero-blur outer-shadow method paints only the existing gap. An
+opaque, simple hard surface outline up to 2px is retained at the previous
+result's bottom edge when its ancestry does not clip it; the new fill starts
+after that edge. Surface shadows and margins themselves are not overwritten.
+The inspector uses the renderer's shared paint helper and exposes the raw
+backdrop, source node, alpha, opaque contrast ratios, chosen color/basis and
+outline inset, including current decisions for already marked pairs.
+
+The preservation gate now restores only the layout module, inspector and
+diagnostic version initializer to frozen v6.60 and compares the whole executable
+byte-for-byte. Frozen v6.60 has Git blob
+dfa28418b2ea6fb4af5ed7bcfa537ff903d5decd. The v6.44 preservation gate remains.
+
 ## v6.60: root-level gaps identified by the owner's diagnostic
 
 The owner's v6.59 report captured on 2026-11-12 identified a concrete exclusion:

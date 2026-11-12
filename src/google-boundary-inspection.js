@@ -284,23 +284,31 @@ function inspectGenericGoogleResultBoundariesV659(page) {
         for (let node = card; node && node !== root; node = node.parentElement) { inspectEdge(node); inspectEdge(node.previousElementSibling); inspectEdge(node.nextElementSibling); }
         for (const edge of ['firstElementChild', 'lastElementChild']) for (let node = card, depth = 0; node && depth < 6; depth++, node = node[edge]) inspectEdge(node);
       }
+      const native = bands.find(band => band.height >= 4 && band.height <= 12) || bands[0];
+      const rgb = surface.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [255, 255, 255];
+      const fallbackColor = rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722 < 128 ? 'rgb(60, 64, 67)' : 'rgb(232, 234, 237)';
       for (let index = 1; index < accepted.length; index++) {
         const previous = accepted[index - 1], current = accepted[index], a = rect(previous), b = rect(current);
         let common = previous.parentElement;
         while (common && !common.contains(current)) common = common.parentElement;
         const pair = { previousId: describe(previous), currentId: describe(current), commonId: common ? describe(common) : null, commonIsRoot: common === root, gap: rounded(b.top - a.bottom), leftDifference: rounded(b.left - a.left), rightDifference: rounded(b.right - a.right), reason: '' };
         const rootGap = common === root ? getGenericGoogleRootGapV660(root, previous, current, rect, style, surfaces) : null;
-        const previousSurface = rootGap ? surfaces.get(previous).color : background(previous);
-        const currentSurface = rootGap ? surfaces.get(current).color : background(current);
+        const marked = current.hasAttribute('data-generic-google-boundary-v658');
+        if (rootGap && (rootGap.accepted || marked)) {
+          const paint = getGenericGoogleRootGapPaintV661(root, previous, current, rootGap, surfaces, style, fallbackColor, native?.color || null);
+          // This describes the current decision, including already marked
+          // boundaries; the actual applied shadow is retained in nodes.style.
+          pair.paint = { current: true, color: short(paint.color, 55), basis: short(paint.basis, 30), backgroundNodeId: describe(paint.backgroundNode), backgroundColor: short(paint.backgroundColor, 55), backgroundAlpha: Number.isFinite(paint.backgroundAlpha) ? paint.backgroundAlpha : null, contrast: paint.contrast.filter(Number.isFinite).slice(0, 2), edgeInset: rounded(paint.edgeInset), shadowHeight: rounded(paint.shadowHeight) };
+        }
         const matching = bands.find(band => band.left <= Math.max(a.left, b.left) + 8 && band.right >= Math.min(a.right, b.right) - 8 && band.top >= a.bottom - 24 && band.bottom <= b.top + 24);
-        if (current.hasAttribute('data-generic-google-boundary-v658')) pair.reason = 'marker';
+        if (marked) pair.reason = 'marker';
         else if (a.bottom > b.top + 1) pair.reason = 'overlap';
         else if (b.top - a.bottom > 120) pair.reason = 'gap';
         else if (Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12) pair.reason = 'horizontal-alignment';
         else if (!common) pair.reason = 'common-missing';
         else if (rootGap && !rootGap.accepted) pair.reason = rootGap.reason;
         else if (matching) { pair.reason = 'native-band'; pair.bandIndex = bands.indexOf(matching); }
-        else if (b.top - a.bottom >= 2 && background(common) !== previousSurface && background(common) !== currentSurface) pair.reason = 'different-background';
+        else if (!rootGap && b.top - a.bottom >= 2 && background(common) !== background(previous) && background(common) !== background(current)) pair.reason = 'different-background';
         else if ((Number.parseFloat(style(current).borderTopWidth) || 0) > 0 && colored(style(current).borderTopColor) && style(current).borderTopColor !== surface) pair.reason = 'existing-top-border';
         else {
           pair.reason = 'would-repair';

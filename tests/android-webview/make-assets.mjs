@@ -8,10 +8,10 @@ const root = resolve(process.argv[2] || '.');
 const output = resolve(process.argv[3] || resolve(harness, 'build/assets'));
 const { buildUserscript } = await import(pathToFileURL(resolve(root, 'worker/index.js')));
 const { renderGoogleOrganicFixture, organicExpectedResults, ORGANIC_COLORS } = await import(pathToFileURL(resolve(root, 'tests/fixtures/google-organic-groups.mjs')));
-const { renderGoogleRootFixture, googleRootExpectedResults, GOOGLE_ROOT_COLORS, GOOGLE_ROOT_GAP_PX } = await import(pathToFileURL(resolve(root, 'tests/fixtures/google-root-results.mjs')));
+const { renderGoogleRootFixture, googleRootExpectedResults, GOOGLE_ROOT_COLORS, GOOGLE_ROOT_GAP_PX, GOOGLE_ROOT_V661_CASES } = await import(pathToFileURL(resolve(root, 'tests/fixtures/google-root-results.mjs')));
 const current = await buildUserscript();
 const control = await readFile(resolve(root, 'Android_Generic_AutoPager_v6.53.js'), 'utf8');
-const rootControl = await readFile(resolve(root, 'Android_Generic_AutoPager_v6.59.js'), 'utf8');
+const rootControl = await readFile(resolve(root, 'Android_Generic_AutoPager_v6.60.js'), 'utf8');
 await mkdir(output, { recursive: true });
 await writeFile(resolve(output, 'script-current.js'), current);
 await writeFile(resolve(output, 'script-control.js'), control);
@@ -26,7 +26,12 @@ for (const shape of ['mixed', 'plain']) for (const dark of [false, true]) for (c
   }
   await writeFile(resolve(output, `fixture-${shape}-${dark ? 'dark' : 'light'}-${start}.html`), html);
 }
-for (const shape of ['missing', 'native']) for (const dark of [false, true]) for (const start of [0, 10, 20]) {
+const rootCases = [
+  ...['missing', 'native'].flatMap(variant => ['light', 'dark'].map(theme => ({ variant, theme }))),
+  ...GOOGLE_ROOT_V661_CASES,
+];
+for (const { variant: shape, theme } of rootCases) for (const start of [0, 10, 20]) {
+  const dark = theme === 'dark';
   let html = renderGoogleRootFixture(start, { compact: true, variant: shape, dark });
   html = html.replace('</head>', '<style id="fixture-status-visibility">#generic-autopager-status-v2{visibility:hidden!important}</style></head>');
   if (!start) {
@@ -45,10 +50,11 @@ const manifest = {
   pageColors: Object.fromEntries(Object.entries(ORGANIC_COLORS).map(([theme, values]) => [theme,
     values.page.slice(1).match(/../g).map(channel => parseInt(channel, 16))])),
   rootResults: {
-    fixture: 'Controlled structure based on the supplied v6.59 diagnostic: independent root siblings, transparent wrappers, opaque surfaces with existing 8px gaps, and base/subdomain source labels in one header. Not captured HTML or live Google.',
+    fixture: 'Controlled structure based on supplied v6.59/v6.60 diagnostics: independent root siblings, existing 8px gaps, and a 1px inner-surface ring. Near-white/alpha underlays are representative background cases, not captured Google HTML or live traffic.',
     control: scriptMetadata(rootControl),
     expected: Object.fromEntries([10, 20].map(start => [String(start), googleRootExpectedResults(start, { compact: true })])),
     gap: GOOGLE_ROOT_GAP_PX,
+    cases: GOOGLE_ROOT_V661_CASES,
     colors: Object.fromEntries(Object.entries(GOOGLE_ROOT_COLORS).map(([theme, values]) => [theme, values.rgb])),
     pageColors: Object.fromEntries(Object.entries(GOOGLE_ROOT_COLORS).map(([theme, values]) => [theme,
       values.page.slice(1).match(/../g).map(channel => parseInt(channel, 16))])),

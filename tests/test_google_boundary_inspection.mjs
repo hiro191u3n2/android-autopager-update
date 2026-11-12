@@ -7,9 +7,10 @@ import { JSDOM } from 'jsdom';
 const layout = await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8');
 const inspector = await readFile(new URL('../src/google-boundary-inspection.js', import.meta.url), 'utf8');
 const zero = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+const ROOT_GAP_CASES = ['root-gap', 'root-native-gutter', 'root-interrupted', 'root-nearwhite', 'root-alpha', 'root-ring', 'root-native-ring', 'root-ring-small', 'root-painted'];
 
 function fixture(mode) {
-  const rootGapCase = ['root-gap', 'root-native-gutter', 'root-interrupted'].includes(mode);
+  const rootGapCase = ROOT_GAP_CASES.includes(mode);
   const source = n => rootGapCase && n === 2
     ? '<div class="source"><div><div>gnavi.co.jp</div></div><div><span>https://r.gnavi.co.jp</span></div></div>'
     : mode === 'header-split-url'
@@ -26,7 +27,9 @@ function fixture(mode) {
     return mode === 'contents' ? `<div class="contents">${value}</div>` : value;
   };
   const cards = [1, 2, 3].map(n => card(n) + (mode === 'root-interrupted' && n === 1 ? '<div class="interruption">Related module</div>' : '')).join('');
-  const rootStyle = rootGapCase ? `html,body,section{background:${mode === 'root-native-gutter' ? '#e8eaed' : '#fff'}}#rso,.result,.transparent{background:transparent}.surface{background:#fff}` : '';
+  const backdrop = ['root-native-gutter', 'root-native-ring'].includes(mode) ? '#e8eaed' : mode === 'root-nearwhite' ? '#f8f9fa' : mode === 'root-alpha' ? 'rgba(0,0,0,.01)' : '#fff';
+  const ring = ['root-ring', 'root-native-ring', 'root-ring-small'].includes(mode) ? 'box-shadow:rgb(235, 237, 239) 0px 0px 0px 1px;' : '';
+  const rootStyle = rootGapCase ? `html,body{background:${backdrop}}section,#rso,.result,.transparent{background:transparent}.surface{background:#fff;${ring}}` : '';
   const dom = new JSDOM(`<style>*{visibility:visible;opacity:1;background:#fff}.group{border-bottom:8px solid #e8eaed}.contents{display:contents}[hidden]{display:none}${rootStyle}</style><section class="generic-autopager-page" data-page="2" data-source-url="https://www.google.com/search?q=SOURCE_QUERY_SENTINEL#SOURCE_HASH_SENTINEL"><div id="rso" class="generic-autopager-google-source-root">${mode === 'common-root' || rootGapCase ? cards : `<div class="group">${cards}</div>`}</div></section>`, { url: 'https://www.google.com/search?q=LOCATION_QUERY_SENTINEL#LOCATION_HASH_SENTINEL', runScripts: 'outside-only' });
   const w = dom.window;
   const originalStyle = w.getComputedStyle.bind(w);
@@ -35,7 +38,7 @@ function fixture(mode) {
     if (this.matches('.contents') || this.closest('[hidden]')) return zero;
     const n = Number(this.closest('[data-result]')?.getAttribute('data-result')) || 0;
     const width = mode === 'narrow' && n ? 260 : mode === 'root-width' ? 1000 : 360;
-    let top = n ? 20 + (n - 1) * (rootGapCase ? 188 : 180) : 20, height = n ? 180 : 548;
+    let top = n ? 20 + (n - 1) * (mode === 'root-ring-small' ? 182 : rootGapCase ? 188 : 180) : 20, height = n ? 180 : 548;
     if (this.closest('.source')) { top += 10; height = 20; }
     else if (this.matches('h3,a')) { top += 45; height = 26; }
     else if (this.matches('p')) { top += 85; height = 50; }
@@ -45,11 +48,16 @@ function fixture(mode) {
   w.eval(layout + '\n' + inspector);
   const page = w.document.querySelector('.generic-autopager-page');
   if (mode === 'marker') for (const n of ['2', '3']) page.querySelector(`[data-result="${n}"]`).setAttribute('data-generic-google-boundary-v658', '1');
+  if (mode === 'root-painted') for (const n of ['2', '3']) {
+    const node = page.querySelector(`[data-result="${n}"]`);
+    node.setAttribute('data-generic-google-boundary-v658', '1');
+    node.style.setProperty('box-shadow', '0px -8px 0px 0px rgb(232, 234, 237)', 'important');
+  }
   return { dom, w, page };
 }
 
 let passed = 0;
-for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', 'contents', 'common-root', 'root-gap', 'root-native-gutter', 'root-interrupted', 'hidden-heading', 'narrow', 'root-width', 'marker', 'privacy']) {
+for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', 'contents', 'common-root', ...ROOT_GAP_CASES, 'hidden-heading', 'narrow', 'root-width', 'marker', 'privacy']) {
   const { dom, w, page } = fixture(mode);
   try {
     const before = w.document.documentElement.outerHTML;
@@ -86,7 +94,7 @@ for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', '
     }
     if (mode === 'contents') assert(plain.records.every(record => record.eligibility.reasons.includes('card-display-contents')));
     if (mode === 'common-root') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['root-gap-range', 'root-gap-range']);
-    if (['root-gap', 'root-native-gutter', 'root-interrupted'].includes(mode)) {
+    if (ROOT_GAP_CASES.includes(mode)) {
       assert.equal(plain.counts.sources, 3, 'One source per result, including the base-domain/subdomain source header');
       assert.equal(plain.counts.acceptedCards, 3);
       assert(plain.records.every(record => record.surfaceCoversCard && record.surfaceColor === 'rgb(255, 255, 255)'));
@@ -95,7 +103,32 @@ for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', '
       assert.deepEqual(plain.pairs.map(pair => pair.reason), ['would-repair', 'would-repair']);
       assert(plain.pairs.every(pair => pair.paintMode === 'existing-gap-shadow' && pair.gap === 8));
     }
-    if (mode === 'root-native-gutter') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['different-background', 'different-background']);
+    if (ROOT_GAP_CASES.includes(mode) && mode !== 'root-interrupted') {
+      const reason = mode === 'root-painted' ? 'marker' : 'would-repair';
+      assert.deepEqual(plain.pairs.map(pair => pair.reason), [reason, reason]);
+      const native = ['root-native-gutter', 'root-native-ring'].includes(mode);
+      const ring = ['root-ring', 'root-native-ring', 'root-ring-small'].includes(mode);
+      for (const pair of plain.pairs) {
+        assert.equal(pair.paint.current, true);
+        assert.equal(pair.paint.color, 'rgb(232, 234, 237)');
+        assert.equal(pair.paint.basis, native ? 'ancestor-background' : 'theme-fallback');
+        assert.equal(plain.nodes[pair.paint.backgroundNodeId]?.tag, 'body', 'Evidence identifies the backdrop outside the imported page');
+        assert.equal(pair.paint.edgeInset, ring ? 1 : 0);
+        assert.equal(pair.paint.shadowHeight, mode === 'root-ring-small' ? 1 : ring ? 7 : 8);
+        if (mode === 'root-ring-small') assert.equal(pair.gap, 2);
+        if (mode === 'root-nearwhite') {
+          assert.equal(pair.paint.backgroundColor, 'rgb(248, 249, 250)');
+          assert.equal(pair.paint.backgroundAlpha, 1);
+          assert(pair.paint.contrast.length === 2 && pair.paint.contrast.every(ratio => ratio > 1 && ratio < 1.12));
+        }
+        if (mode === 'root-alpha') {
+          assert.equal(pair.paint.backgroundAlpha, .01);
+          assert.equal(pair.paint.basis, 'theme-fallback', 'Transparent black cannot be reused as an opaque high-contrast background');
+          assert.deepEqual(pair.paint.contrast, [], 'No uncomposited contrast ratio for a translucent background');
+        }
+        if (native) assert(pair.paint.contrast.length === 2 && pair.paint.contrast.every(ratio => ratio >= 1.12));
+      }
+    }
     if (mode === 'root-interrupted') assert.deepEqual(plain.pairs.map(pair => pair.reason), ['root-intervening-content', 'would-repair']);
     if (mode === 'hidden-heading') assert(plain.records.every(record => record.eligibility.reasons.includes('title-no-box')));
     if (mode === 'narrow') assert(plain.records.every(record => record.eligibility.reasons.includes('card-width-below-75pct')));
@@ -111,6 +144,28 @@ for (const mode of ['control', 'split-url', 'header-split-url', 'aria-hidden', '
     passed++;
   } finally { dom.window.close(); }
 }
+
+// A marked card can later lose its opaque face. Its current paint diagnosis
+// must remain readable even though the original repair would now be ineligible.
+const markedWithoutFace = fixture('root-painted');
+try {
+  const { w, page } = markedWithoutFace;
+  for (const node of [w.document.documentElement, w.document.body, ...page.querySelectorAll('.surface')]) node.style.backgroundColor = 'transparent';
+  const before = w.document.documentElement.outerHTML;
+  const result = w.inspectGenericGoogleResultBoundariesV659(page);
+  assert.equal(w.document.documentElement.outerHTML, before);
+  assert.notEqual(result.status, 'error');
+  assert(result.records.every(record => record.surfaceId === null && !record.surfaceCoversCard));
+  assert.deepEqual(JSON.parse(JSON.stringify(result.pairs.map(pair => pair.reason))), ['marker', 'marker']);
+  for (const pair of result.pairs) {
+    assert.equal(pair.paint.current, true);
+    assert.equal(pair.paint.basis, 'theme-fallback');
+    assert.equal(pair.paint.backgroundNodeId, null);
+    assert.equal(pair.paint.edgeInset, 0);
+    assert.equal(pair.paint.shadowHeight, 8);
+  }
+  passed++;
+} finally { markedWithoutFace.dom.window.close(); }
 
 const initial = fixture('control');
 try {

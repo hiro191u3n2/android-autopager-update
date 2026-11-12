@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.60.0';
+export const VERSION = '6.61.0';
 export const GOOGLE_DIAGNOSTICS_INITIALIZER = `installGenericGoogleResultDiagnosticsV659(${JSON.stringify(VERSION)});`;
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
@@ -78,6 +78,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。');
   header = header.replace('// @description  ', '// @description  Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。');
   header = header.replace('// @description  ', '// @description  Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。右下のページ表示を長押ししてローカル診断をコピーできます。');
+  header = header.replace('// @description  ', '// @description  Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。診断に背景色と描画色の選択理由を追加。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
@@ -86,7 +87,7 @@ export async function buildUserscript() {
 export default {
   async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.60.js') {
+    if (path === '/android-generic-autopager.user.js' || path === '/Android_Generic_AutoPager_v6.61.js') {
       return new Response(await buildUserscript(), { headers: { 'content-type': 'application/javascript; charset=utf-8' } });
     }
     if (path === '/android-generic-autopager.meta.js') {
