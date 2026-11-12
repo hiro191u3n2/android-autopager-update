@@ -6,9 +6,9 @@ import shutil
 import subprocess
 import sys
 import time
-from math import isfinite
+from math import ceil, floor, isfinite
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 HARNESS = pathlib.Path(__file__).resolve().parent
 BUILD = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else HARNESS / 'build'
@@ -17,6 +17,7 @@ PACKAGE = 'jp.hiro.autopager.webviewtest'
 COMPONENT = PACKAGE + '/.MainActivity'
 MANIFEST = json.loads((BUILD / 'assets/build-manifest.json').read_text())
 ROOT = MANIFEST['rootResults']
+CASES = ROOT['cases']
 OUTPUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -45,8 +46,16 @@ def report(number):
     raise AssertionError(f'Timeout waiting for page {number} report')
 
 
+def screen_scale(geometry):
+    visual = geometry.get('visualViewport')
+    assert visual and abs(visual['scale'] - 1) <= 0.001, 'Fixture must be captured at its unzoomed viewport'
+    # WebView reports a separately rounded visual viewport width. Its quotient
+    # with the view width drifts from the actual screenshot raster scale.
+    return geometry['dpr']
+
+
 def painted_rows(image, geometry, previous, following, color):
-    scale = geometry['viewWidth'] / geometry['width']
+    scale = screen_scale(geometry)
     x0 = round(geometry['viewX'] + (previous['content']['left'] + 8) * scale)
     x1 = round(geometry['viewX'] + (previous['content']['right'] - 8) * scale)
     y0 = round(geometry['viewY'] + previous['content']['bottom'] * scale)
@@ -68,7 +77,38 @@ def painted_rows(image, geometry, previous, following, color):
     return {'cssPixels': len(rows) / scale, 'bands': bands, 'screenRows': len(rows)}
 
 
-def verify_geometry(geometry):
+def gap_region(geometry, previous, following, part='full'):
+    scale = screen_scale(geometry)
+    # Skia snaps each painted card edge to its nearest physical pixel before
+    # extending the 1 CSS px ring. Test full pixels inside those painted
+    # intervals; fractional ring/underlay coverage belongs to their edges.
+    x0 = ceil(geometry['viewX'] + (previous['rect']['left'] + 8) * scale)
+    x1 = floor(geometry['viewX'] + (previous['rect']['right'] - 8) * scale)
+    before = round(geometry['viewY'] + previous['rect']['bottom'] * scale)
+    after = round(geometry['viewY'] + following['rect']['top'] * scale)
+    if part == 'middle':
+        y0, y1 = ceil(before + scale), floor(after - scale)
+    elif part == 'previous-ring':
+        y0, y1 = before, floor(before + scale)
+    elif part == 'current-ring':
+        y0, y1 = ceil(after - scale), after
+    else:
+        assert part == 'full', part
+        y0, y1 = before, after
+    return (x0, y0, x1, y1)
+
+
+def verify_solid_region(image, bounds, color, label):
+    x0, y0, x1, y1 = bounds
+    assert 0 <= x0 < x1 <= image.width and 0 <= y0 < y1 <= image.height, ('Invalid screenshot sample', label, bounds, image.size)
+    pixels = image.load()
+    for y in range(y0, y1):
+        matches = sum(all(abs(pixels[x, y][channel] - color[channel]) <= 1 for channel in range(3)) for x in range(x0, x1))
+        assert matches / (x1 - x0) >= 0.95, ('Gap or outline pixels differ', label, y, matches, x1 - x0, color, pixels[(x0 + x1) // 2, y])
+    return {'bounds': list(bounds), 'screenRows': y1 - y0, 'expectedRgb': color}
+
+
+def verify_geometry(geometry, case):
     assert geometry['nativeUnchanged'], 'Initial native markup changed'
     assert not geometry['errors'] and not geometry['consoleErrors'], geometry
     assert geometry['documentWidth'] <= geometry['width'] + 1, 'Horizontal overflow'
@@ -85,6 +125,9 @@ def verify_geometry(geometry):
         surface = result['rootStructure']['surface']
         assert abs(surface['top'] - result['rect']['top']) <= 0.2 and abs(surface['height'] - result['rect']['height']) <= 0.2, ('Opaque surface does not fill its transparent root wrapper', result['id'], surface, result['rect'])
         assert result['rootStructure']['surfaceMarginBottom'] == '8px', ('Existing source margin changed', result['id'])
+        ring = case['ringRgb']
+        expected_shadow = f"rgb({ring[0]}, {ring[1]}, {ring[2]}) 0px 0px 0px 1px"
+        assert result['rootStructure']['surfaceShadow'] == expected_shadow, ('Original 1px inner surface outline changed', result['id'], result['rootStructure']['surfaceShadow'])
         if original.get('thumbnail'):
             assert result['thumbnail'] and result['thumbnail']['src'] == original['thumbnail'], 'Thumbnail lost or changed'
             assert result['thumbnail']['rect']['width'] >= 48 and result['thumbnail']['rect']['height'] >= 48, 'Thumbnail collapsed'
@@ -94,11 +137,11 @@ def verify_geometry(geometry):
     return gaps
 
 
-def verify_pixels(geometry, png):
+def verify_pixels(geometry, png, case):
     image = Image.open(png).convert('RGB')
     results = geometry['results']
-    scale = geometry['viewWidth'] / geometry['width']
-    background = ROOT['pageColors'][geometry['theme']]
+    scale = screen_scale(geometry)
+    background = case['surfaceRgb']
     for result in results:
         y = round(geometry['viewY'] + (result['content']['top'] + 6) * scale)
         for css_x in [result['rect']['left'] + 4, result['rect']['right'] - 4]:
@@ -106,20 +149,24 @@ def verify_pixels(geometry, png):
             assert 0 <= x < image.width and 0 <= y < image.height, 'Background sample outside screenshot'
             pixel = image.getpixel((x, y))
             assert all(abs(pixel[channel] - background[channel]) <= 3 for channel in range(3)), ('Screenshot obscured or stale background', result['id'], pixel, background)
-    color = ROOT['colors'][geometry['theme']]
-    boundaries = [painted_rows(image, geometry, results[index], results[index + 1], color) for index in range(len(results) - 1)]
-    target = 0 if geometry['variant'] == 'control' and geometry['shape'] == 'missing' else ROOT['gap']
-    for index, measurement in enumerate(boundaries):
-        assert abs(measurement['cssPixels'] - target) <= 0.8, ('Unexpected painted gap', index, measurement, target)
-        assert measurement['bands'] == (1 if target else 0), ('Missing or duplicate colored band', index, measurement)
+    color = case['underlayRgb'] if geometry['variant'] == 'control' else case['paintRgb']
+    boundaries = []
+    for index in range(len(results) - 1):
+        previous, following = results[index], results[index + 1]
+        middle = verify_solid_region(image, gap_region(geometry, previous, following, 'middle'), color, f'gap-{index}-middle6')
+        before_ring = verify_solid_region(image, gap_region(geometry, previous, following, 'previous-ring'), case['ringRgb'], f'gap-{index}-previous-ring1')
+        after_ring = verify_solid_region(image, gap_region(geometry, previous, following, 'current-ring'), case['ringRgb'], f'gap-{index}-current-ring1')
+        boundaries.append({'fullGapCssPixels': following['rect']['top'] - previous['rect']['bottom'],
+                           'middleCssPixels': 6, 'middle': middle, 'previousRing': before_ring, 'currentRing': after_ring})
+    divider = case['paintRgb']
     for result in results:
         content = result['content']
-        inside = painted_rows(image, geometry, {'content': {**content, 'bottom': content['top'] + 1}}, {'content': {'top': content['bottom'] - 1}}, color)
+        inside = painted_rows(image, geometry, {'content': {**content, 'bottom': content['top'] + 1}}, {'content': {'top': content['bottom'] - 1}}, divider)
         assert inside['bands'] == 0, ('Divider cuts through result content', result['id'], inside)
     return boundaries
 
 
-def capture(geometry, base):
+def capture(geometry, base, case):
     # A submitted Android frame may be presented after its callback. Retain
     # every compositor attempt and wait for the same strict paint assertions.
     deadline = time.monotonic() + 5
@@ -129,7 +176,7 @@ def capture(geometry, base):
         png = OUTPUT / f'{base}-paint-{attempt:02d}.png'
         png.write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
         try:
-            boundaries = verify_pixels(geometry, png)
+            boundaries = verify_pixels(geometry, png, case)
             shutil.copyfile(png, OUTPUT / f'{base}.png')
             return boundaries, attempt
         except AssertionError:
@@ -165,6 +212,7 @@ def verify_same_layout(current, control):
         compare_box(new['rect'], old['rect'], new['id'] + '/card')
         compare_box(new['content'], old['content'], new['id'] + '/content')
         compare_box(new['rootStructure']['surface'], old['rootStructure']['surface'], new['id'] + '/surface')
+        assert new['rootStructure']['surfaceShadow'] == old['rootStructure']['surfaceShadow'], ('Inner outline style changed', new['id'])
         assert bool(new['thumbnail']) == bool(old['thumbnail']), 'Thumbnail presence changed'
         if new['thumbnail']:
             compare_box(new['thumbnail']['rect'], old['thumbnail']['rect'], new['id'] + '/thumbnail')
@@ -177,8 +225,23 @@ def verify_same_layout(current, control):
             'controlRootDocumentTop': old_root['top'] + control['scrollY'] if 'scrollY' in control else None}
 
 
-assert MANIFEST['variants']['current']['version'] == '6.60.0', MANIFEST['variants']['current']
-assert ROOT['control']['version'] == '6.59.0', ROOT['control']
+def verify_native_gap_pixels(current, control, current_png, control_png):
+    new_image, old_image = Image.open(current_png).convert('RGB'), Image.open(control_png).convert('RGB')
+    comparisons = []
+    for index in range(len(current['results']) - 1):
+        new_bounds = gap_region(current, current['results'][index], current['results'][index + 1])
+        old_bounds = gap_region(control, control['results'][index], control['results'][index + 1])
+        new_gap, old_gap = new_image.crop(new_bounds), old_image.crop(old_bounds)
+        assert new_gap.size == old_gap.size, ('Native gap raster dimensions changed', index, new_bounds, old_bounds)
+        maximum = max(high for low, high in ImageChops.difference(new_gap, old_gap).getextrema())
+        assert maximum <= 1, ('Existing native gutter or ring pixels changed', index, maximum)
+        comparisons.append({'pair': index, 'maximumChannelDifference': maximum, 'currentBounds': list(new_bounds), 'controlBounds': list(old_bounds)})
+    return comparisons
+
+
+assert MANIFEST['variants']['current']['version'] == '6.61.0', MANIFEST['variants']['current']
+assert ROOT['control']['version'] == '6.60.0', ROOT['control']
+assert {case['id'] for case in CASES} == {'nearwhite-light', 'alpha-light', 'native-light', 'native-dark'} and len(CASES) == 4, 'Unexpected v6.61 case matrix'
 save_json('build-manifest.json', MANIFEST)
 save_json('environment.json', {
     'androidRelease': adb('shell', 'getprop', 'ro.build.version.release').strip(),
@@ -198,44 +261,47 @@ geometries = {}
 layout_comparisons = []
 try:
     for variant in ['current', 'control']:
-        for shape in ['missing', 'native']:
-            for theme in ['light', 'dark']:
-                adb('shell', 'am', 'force-stop', PACKAGE)
-                adb('shell', 'pm', 'clear', PACKAGE)
-                adb('logcat', '-c')
-                adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '--es', 'fixture', 'root', '--es', 'variant', variant, '--es', 'shape', shape, '--es', 'theme', theme)
-                for number in [2, 3]:
-                    base = f'{variant}-{shape}-{theme}-page{number}'
-                    try:
-                        if number == 3:
-                            adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '--ei', 'next_page', '3')
-                        geometry = report(number)
-                        assert (geometry['fixture'], geometry['variant'], geometry['shape'], geometry['theme'], geometry['page']) == ('root', variant, shape, theme, number), 'Stale or reset scenario'
-                        save_json(base + '.json', geometry)
-                        geometries[(variant, shape, theme, number)] = geometry
-                        gaps = verify_geometry(geometry)
-                        boundaries, attempts = capture(geometry, base)
-                        measurements.append({'variant': variant, 'shape': shape, 'theme': theme, 'page': number, 'gaps': gaps, 'boundaries': boundaries, 'paintAttempts': attempts})
-                        print(f'PASS {base}: gaps={gaps}; pixels={boundaries}', flush=True)
-                    except Exception as error:
-                        failure = {'scenario': base, 'error': str(error)}
-                        failures.append(failure)
-                        save_json(base + '.error.json', failure)
-                        (OUTPUT / (base + '-failure.png')).write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
-                        print(f'FAIL {base}: {error}', flush=True)
-                (OUTPUT / f'{variant}-{shape}-{theme}-logcat.txt').write_text(adb('logcat', '-d', '-s', 'AutoPagerTest:I', 'chromium:E', 'AndroidRuntime:E'))
-    for shape in ['missing', 'native']:
-        for theme in ['light', 'dark']:
+        for case in CASES:
+            shape, theme = case['variant'], case['theme']
+            adb('shell', 'am', 'force-stop', PACKAGE)
+            adb('shell', 'pm', 'clear', PACKAGE)
+            adb('logcat', '-c')
+            adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '--es', 'fixture', 'root', '--es', 'variant', variant, '--es', 'shape', shape, '--es', 'theme', theme)
             for number in [2, 3]:
-                current = geometries.get(('current', shape, theme, number))
-                control = geometries.get(('control', shape, theme, number))
-                if not current or not control:
-                    continue
+                base = f"{variant}-{case['id']}-page{number}"
                 try:
-                    comparison = verify_same_layout(current, control)
-                    layout_comparisons.append({'shape': shape, 'theme': theme, 'page': number, **comparison})
-                except AssertionError as error:
-                    failures.append({'scenario': f'unchanged-layout-{shape}-{theme}-page{number}', 'error': str(error)})
+                    if number == 3:
+                        adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '--ei', 'next_page', '3')
+                    geometry = report(number)
+                    assert (geometry['fixture'], geometry['variant'], geometry['shape'], geometry['theme'], geometry['page']) == ('root', variant, shape, theme, number), 'Stale or reset scenario'
+                    save_json(base + '.json', geometry)
+                    geometries[(variant, case['id'], number)] = geometry
+                    gaps = verify_geometry(geometry, case)
+                    boundaries, attempts = capture(geometry, base, case)
+                    measurements.append({'variant': variant, 'case': case['id'], 'shape': shape, 'theme': theme, 'page': number, 'gaps': gaps, 'boundaries': boundaries, 'paintAttempts': attempts})
+                    print(f'PASS {base}: gaps={gaps}; pixels={boundaries}', flush=True)
+                except Exception as error:
+                    failure = {'scenario': base, 'error': str(error)}
+                    failures.append(failure)
+                    save_json(base + '.error.json', failure)
+                    (OUTPUT / (base + '-failure.png')).write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
+                    print(f'FAIL {base}: {error}', flush=True)
+            (OUTPUT / f"{variant}-{case['id']}-logcat.txt").write_text(adb('logcat', '-d', '-s', 'AutoPagerTest:I', 'chromium:E', 'AndroidRuntime:E'))
+    for case in CASES:
+        shape, theme = case['variant'], case['theme']
+        for number in [2, 3]:
+            current = geometries.get(('current', case['id'], number))
+            control = geometries.get(('control', case['id'], number))
+            if not current or not control:
+                continue
+            try:
+                comparison = verify_same_layout(current, control)
+                if case['native']:
+                    comparison['nativePixelComparisons'] = verify_native_gap_pixels(current, control,
+                        OUTPUT / f"current-{case['id']}-page{number}.png", OUTPUT / f"control-{case['id']}-page{number}.png")
+                layout_comparisons.append({'case': case['id'], 'shape': shape, 'theme': theme, 'page': number, **comparison})
+            except Exception as error:
+                failures.append({'scenario': f"unchanged-layout-{case['id']}-page{number}", 'error': str(error)})
 finally:
     save_json('measurements.json', measurements)
     save_json('layout-comparisons.json', layout_comparisons)
@@ -244,4 +310,4 @@ finally:
 if failures:
     raise AssertionError(f'{len(failures)} root-result scenarios failed; remaining scenarios were still attempted. See verification-failures.json.')
 assert len(measurements) == 16, 'Missing Android root-result evidence'
-print('PASS Android root results: 16 pages, exact 8px painted gaps, native gutters retained, unchanged control/candidate layout, intact content and thumbnails.')
+print('PASS Android root results: 16 pages, filled middle6px of unchanged8px gaps, original1px rings and native gutter pixels preserved, unchanged control/candidate layout, intact content and thumbnails.')
