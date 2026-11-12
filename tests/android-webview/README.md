@@ -1,8 +1,13 @@
 # Offline Android WebView regression harness
 
-Candidate test infrastructure only. Copy these source files to
-`tests/android-webview/` and merge `job.yml` under the existing validation
-workflow's `jobs:`. No production publication is part of this job.
+The Android job in `.github/workflows/google-organic-6.58.yml` runs this
+integrated validation harness. No production publication is part of this job.
+On a machine with the SDK and a running emulator, the equivalent commands are:
+
+```bash
+bash tests/android-webview/build.sh "$PWD" /tmp/autopager-webview-build
+python3 tests/android-webview/run.py /tmp/autopager-webview-build /tmp/autopager-webview-evidence
+```
 
 The SDK-only Java Activity serves every HTTP(S) request from APK assets or
 returns an empty 404. It never contacts Google. The same complete built
@@ -23,6 +28,12 @@ destinations, thumbnail source/size, first-page DOM, horizontal overflow and
 script errors are also checked. Screenshots, geometry, WebView package/version, script hashes
 and logcat are uploaded even if a test fails.
 
+The Activity leaves Android's navigation bar visible and hides only its status
+bar, so the first-run immersive-mode confirmation does not cover the test.
+Screenshot coordinates use the recorded WebView origin and dimensions. Known
+blank background pixels are checked before divider colors, rejecting dimmed or
+obscured captures without weakening the expected divider color/size checks.
+
 This uses Android API 35 and its installed WebView. It is **not** Android 17,
 Galaxy S26 Ultra, Berry Browser, AdGuard or live Google testing. It complements
 the broader Chromium suite; it does not prove those untested environments.
@@ -41,3 +52,4 @@ Primary references checked when creating this candidate:
 - https://developer.android.com/tools/apksigner
 - https://developer.android.com/reference/android/webkit/WebViewClient
 - https://developer.android.com/develop/ui/views/layout/webapps/load-local-content
+- https://developer.android.com/develop/ui/views/layout/immersive

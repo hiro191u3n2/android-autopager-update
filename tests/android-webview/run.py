@@ -57,6 +57,22 @@ def painted_rows(image, geometry, previous, following, color):
     return {'cssPixels': len(rows) / scale, 'bands': len(bands), 'screenRows': len(rows)}
 
 
+def verify_unobscured(image, geometry, color):
+    # Each fixture result has a 12 CSS px blank horizontal inset. Check both
+    # sides inside that inset so a system modal/scrim cannot masquerade as a
+    # missing divider. Coordinates already include the actual WebView origin.
+    scale = geometry['viewWidth'] / geometry['width']
+    for result in geometry['results'][:3]:
+        y = round(geometry['viewY'] + (result['content']['top'] + 6) * scale)
+        for css_x in [result['rect']['left'] + 4, result['rect']['right'] - 4]:
+            x = round(geometry['viewX'] + css_x * scale)
+            assert 0 <= x < image.width and 0 <= y < image.height, 'Background sample outside screenshot'
+            pixel = image.getpixel((x, y))
+            assert all(abs(pixel[channel] - color[channel]) <= 3 for channel in range(3)), (
+                'Screenshot obscured or theme differs: expected fixture background',
+                result['id'], (x, y), pixel, color)
+
+
 def verify(geometry, png):
     assert geometry['nativeUnchanged'], 'Initial page markup changed'
     assert not geometry['errors'], geometry['errors']
@@ -76,6 +92,7 @@ def verify(geometry, png):
             assert result['thumbnail']['rect']['width'] >= 48 and result['thumbnail']['rect']['height'] >= 48, 'Thumbnail collapsed'
     color = MANIFEST['colors'][geometry['theme']]
     image = Image.open(png).convert('RGB')
+    verify_unobscured(image, geometry, MANIFEST['pageColors'][geometry['theme']])
     boundaries = [painted_rows(image, geometry, results[index], results[index + 1], color) for index in range(3)]
     expected = [0, 0, 8] if geometry['variant'] == 'control' else [8, 8, 8]
     for index, (measurement, target) in enumerate(zip(boundaries, expected)):

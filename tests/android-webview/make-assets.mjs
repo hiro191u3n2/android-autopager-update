@@ -32,6 +32,8 @@ const manifest = {
   }])),
   expected: Object.fromEntries([10, 20].map(start => [String(start), organicExpectedResults(start, { compact: true })])),
   colors: Object.fromEntries(Object.entries(ORGANIC_COLORS).map(([theme, values]) => [theme, values.rgb])),
+  pageColors: Object.fromEntries(Object.entries(ORGANIC_COLORS).map(([theme, values]) => [theme,
+    values.page.slice(1).match(/../g).map(channel => parseInt(channel, 16))])),
 };
 await writeFile(resolve(output, 'build-manifest.json'), JSON.stringify(manifest, null, 2));
 console.log(JSON.stringify({ ...manifest, expected: 'Stored per-page expectations in build-manifest.json.' }, null, 2));
