@@ -16,7 +16,7 @@ await writeFile(resolve(output, 'script-control.js'), control);
 await writeFile(resolve(output, 'probe.js'), await readFile(resolve(harness, 'probe.js')));
 for (const shape of ['mixed', 'plain']) for (const dark of [false, true]) for (const start of [0, 10, 20]) {
   let html = renderGoogleOrganicFixture(start, { compact: true, shape, dark });
-  html = html.replace('</head>', '<style>#generic-autopager-status-v2{visibility:hidden!important}</style></head>');
+  html = html.replace('</head>', '<style id="fixture-status-visibility">#generic-autopager-status-v2{visibility:hidden!important}</style></head>');
   if (!start) {
     html = html.replace('<head>', '<head><script src="/fixture-userscript.js"></script>');
     html = html.replace('</body>', '<script src="/fixture-probe.js"></script></body>');
