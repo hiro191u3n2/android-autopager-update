@@ -109,10 +109,18 @@ This uses Android API 35 and its installed WebView. It is **not** Android 17,
 Galaxy S26 Ultra, Berry Browser, AdGuard or live Google testing. It complements
 the broader Chromium suite; it does not prove those untested environments.
 
-## Diagnostic dialog smoke test
+## Historical diagnostic dialog smoke test (v6.59–v6.62 only)
 
-The v6.59 diagnostic addition has a separate, single-scenario UI command. Build
-the complete candidate, start an API 35 emulator, then run:
+Google's diagnostic feature was removed in v6.63 at the owner's request. The
+current release gate is `tests/test_google_no_diagnostics.mjs`, which checks
+that the full script has no diagnostic code or export UI and that the existing
+pause/resume control still works. Do not run the command below on v6.63 or later;
+it intentionally expects the removed dialog. These historical instructions and
+the probe are retained only for reproducing a v6.59–v6.62 checkout.
+
+On one of those old checkouts, the diagnostic addition has a separate,
+single-scenario UI command. Build the complete old candidate, start an API 35
+emulator, then run:
 
 ```bash
 bash tests/android-webview/build.sh "$PWD" /tmp/autopager-webview-build

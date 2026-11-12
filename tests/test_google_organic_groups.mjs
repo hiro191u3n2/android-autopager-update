@@ -27,7 +27,8 @@ const browser = await chromium.launch(launch);
 const built = await buildUserscript();
 const frozen657 = await readFile(resolve(ROOT, 'Android_Generic_AutoPager_v6.57.js'), 'utf8');
 const frozen656 = await readFile(resolve(ROOT, 'Android_Generic_AutoPager_v6.56.js'), 'utf8');
-const outputDir = process.env.GOOGLE_ORGANIC_ARTIFACT_DIR;
+const frozen662 = await readFile(resolve(ROOT, 'Android_Generic_AutoPager_v6.62.js'), 'utf8');
+const outputDir = process.env.GOOGLE_ORGANIC_ARTIFACT_DIR || process.env.GOOGLE_BOUNDARY_ARTIFACT_DIR;
 if (outputDir) await mkdir(outputDir, { recursive: true });
 const observations = [];
 let passed = 0;
@@ -39,14 +40,14 @@ function configure(code, rendered) {
   return code.replace(target, 'googleUseRenderedFrame:!1');
 }
 
-async function setup(code, { width = 360, dark = false, rendered = true, shape = 'mixed', large = false, price = false } = {}) {
+async function setup(code, { width = 360, dark = false, rendered = true, shape = 'mixed', large = false, price = false, groupGap = '', named = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 850 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, colorScheme: dark ? 'dark' : 'light' });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', route => {
     const url = new URL(route.request().url());
-    if (url.hostname === 'www.google.com' && url.pathname === '/search') return route.fulfill({ contentType: 'text/html', body: renderGoogleOrganicFixture(Number(url.searchParams.get('start')) || 0, { dark, shape, large, price }) });
+    if (url.hostname === 'www.google.com' && url.pathname === '/search') return route.fulfill({ contentType: 'text/html', body: renderGoogleOrganicFixture(Number(url.searchParams.get('start')) || 0, { dark, shape, large, price, groupGap, named }) });
     return route.abort();
   });
   await page.addInitScript({ content: configure(code, rendered) });
@@ -71,6 +72,7 @@ async function measure(page, start, dark, label = '') {
         .map(selector => node.querySelector(selector)).filter(Boolean).map(rect);
       return {
         id: node.getAttribute('data-organic-result'), rect: rect(node), copy: rect(node.querySelector('.organic-copy')),
+        sourceRect: rect(node.querySelector('.organic-source-header')), titleRect: rect(node.querySelector('.organic-title')), snippetRect: rect(node.querySelector('.organic-snippet')),
         content: { top: Math.min(...content.map(item => item.top)), bottom: Math.max(...content.map(item => item.bottom)) },
         title: node.querySelector('.organic-title').textContent,
         snippet: node.querySelector('.organic-snippet').textContent,
@@ -148,6 +150,51 @@ async function measure(page, start, dark, label = '') {
   return { ...geometry, paint };
 }
 
+async function sourceMainGeometry(options, start, label) {
+  const context = await browser.newContext({ viewport: { width: options.width || 360, height: 850 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, colorScheme: options.dark ? 'dark' : 'light' });
+  try {
+    const page = await context.newPage();
+    await page.route('**/*', route => {
+      const url = new URL(route.request().url());
+      return url.hostname === 'www.google.com' && url.pathname === '/search'
+        ? route.fulfill({ contentType: 'text/html', body: renderGoogleOrganicFixture(Number(url.searchParams.get('start')) || 0, options) }) : route.abort();
+    });
+    await page.goto(`https://www.google.com/search?q=organic-fixture&start=${start}`, { waitUntil: 'load' });
+    const result = await page.evaluate(() => {
+      const rect = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+      const group = document.querySelector('[data-organic-group^="main-"]');
+      return { group: rect(group), results: [...group.querySelectorAll('[data-organic-result]')].map(node => ({
+        rect: rect(node), copy: rect(node.querySelector('.organic-copy')),
+        sourceRect: rect(node.querySelector('.organic-source-header')), titleRect: rect(node.querySelector('.organic-title')), snippetRect: rect(node.querySelector('.organic-snippet')),
+        thumbnail: node.querySelector('.organic-thumbnail') ? { rect: rect(node.querySelector('.organic-thumbnail')) } : null,
+      })) };
+    });
+    if (outputDir) await page.screenshot({ path: resolve(outputDir, `${label}-source-${start}.png`), fullPage: true, animations: 'disabled', scale: 'css' });
+    return result;
+  } finally { await context.close(); }
+}
+
+function verifyMainGeometry(value, source, label) {
+  const actual = value.results.filter(result => result.id.startsWith('main-'));
+  assert.equal(actual.length, source.results.length, label + ': all source cards remain');
+  let maximumDelta = 0;
+  actual.forEach((card, index) => {
+    const original = source.results[index];
+    for (const key of ['rect', 'copy', 'sourceRect', 'titleRect', 'snippetRect', 'thumbnail']) {
+      const a = key === 'thumbnail' ? card[key]?.rect : card[key], b = key === 'thumbnail' ? original[key]?.rect : original[key];
+      if (!a && !b) continue;
+      assert(a && b, label + ': source geometry remains present: ' + key);
+      for (const axis of ['left', 'right', 'top', 'bottom', 'width', 'height']) {
+        const offset = ['top', 'bottom'].includes(axis) ? 'top' : ['left', 'right'].includes(axis) ? 'left' : null;
+        const delta = Math.abs((a[axis] - (offset ? value.groupRects.main[offset] : 0)) - (b[axis] - (offset ? source.group[offset] : 0)));
+        maximumDelta = Math.max(maximumDelta, delta);
+        assert(delta <= 0.25, `${label}: ${key}.${axis} stays at its source geometry (delta ${delta})`);
+      }
+    }
+  });
+  return maximumDelta;
+}
+
 function verify(value, label, start, { large = false, price = false } = {}) {
   const expected = organicExpectedResults(start, { price });
   assert.equal(value.results.length, expected.length, label + ': every original organic result survives once');
@@ -199,6 +246,8 @@ async function runScenario(code, options, label, control = false) {
       assert.deepEqual(first.paint.groups.existing, [{ rows: 8, runs: [8] }, { rows: 8, runs: [8] }], label + ': existing borders prove the pixel measurement is working');
     } else {
       verify(first, label + ' page 2', 10, options);
+      let geometryDelta = 0;
+      if (options.groupGap) geometryDelta = verifyMainGeometry(first, await sourceMainGeometry(options, 10, label), label + ' page 2');
       // Existing immediate/RAF/delayed import passes must be idempotent. Also
       // catch delayed cleanup that removes a newly introduced empty divider.
       await current.page.waitForTimeout(1200);
@@ -209,7 +258,8 @@ async function runScenario(code, options, label, control = false) {
       await current.page.waitForTimeout(750);
       const third = await measure(current.page, 20, options.dark, label + '-page3');
       verify(third, label + ' page 3', 20, options);
-      observations.push({ label, page2: first.paint, page3: third.paint, importedNodeCount: first.importedNodeCount });
+      if (options.groupGap) geometryDelta = Math.max(geometryDelta, verifyMainGeometry(third, await sourceMainGeometry(options, 20, label), label + ' page 3'));
+      observations.push({ label, page2: first.paint, page3: third.paint, importedNodeCount: first.importedNodeCount, maximumSourceGeometryDelta: options.groupGap ? geometryDelta : null });
     }
     assert.deepEqual(current.errors, [], label + ': no runtime errors');
     passed++;
@@ -233,6 +283,8 @@ try {
   }
   await runScenario(frozen656, { rendered: true, shape: 'plain' }, 'control-v656-plain-div-titles', true);
   await runScenario(frozen656, { rendered: true, shape: 'mixed', large: true }, 'control-v656-large-dom', true);
+  await runScenario(frozen662, { rendered: true, groupGap: 'nearwhite' }, 'control-v662-grouped-nearwhite-gaps', true);
+  await runScenario(frozen662, { rendered: true, groupGap: 'alpha' }, 'control-v662-grouped-alpha-gaps', true);
   if (!process.env.GOOGLE_ORGANIC_CONTROL_ONLY) {
     for (const rendered of [true, false]) for (const width of [360, 412]) for (const dark of [false, true]) {
       await runScenario(built, { rendered, width, dark, shape: 'mixed' }, `current-${rendered ? 'iframe' : 'fetch'}-${width}-${dark ? 'dark' : 'light'}`);
@@ -242,6 +294,9 @@ try {
     await runScenario(built, { rendered: false, width: 412, dark: true, shape: 'mixed', large: true }, 'current-large-dom-fetch-dark');
     await runScenario(built, { rendered: true, width: 360, dark: false, shape: 'mixed', price: true }, 'current-price-mention-iframe');
     await runScenario(built, { rendered: false, width: 360, dark: false, shape: 'mixed', price: true }, 'current-price-mention-fetch');
+    await runScenario(built, { rendered: true, width: 360, groupGap: 'nearwhite', named: true }, 'current-grouped-nearwhite-named-source');
+    await runScenario(built, { rendered: true, width: 412, groupGap: 'alpha', named: true }, 'current-grouped-alpha-named-source');
+    await runScenario(built, { rendered: true, width: 360, dark: true, groupGap: 'native', named: true }, 'current-grouped-native-dark-named-source');
   }
   if (outputDir) await writeFile(resolve(outputDir, 'organic-paint-results.json'), JSON.stringify({ passed, fixtureType: 'controlled synthetic DOM, not captured live Google', observations }, null, 2) + '\n');
   console.log(`Google organic grouping paint tests passed: ${passed} scenarios. Controlled mobile Chromium fixtures; not live Android/Berry verification.`);

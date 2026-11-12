@@ -1,5 +1,58 @@
 # Recovered development source
 
+## v6.63: grouped separators, stable imports and Google diagnostic removal
+
+The owner's second recording on 2026-11-12 shows two missing separators within
+three-result groups, the repeated initial-page related searches/footer moving
+away when another page arrives, and a YouTube heading changing immediately
+after import. The requested scope is those three display problems and removal
+of the recently added Google diagnostic feature. Page-boundary duplicate
+results and the status button's position are outside this revision.
+
+The grouped-gap path still treated any unequal background color string as
+evidence of an existing painted divider. The frozen v6.62 reproduces both
+missing separators with three recognized cards and 8px margins on near-white
+and translucent backgrounds. Qualified sibling cards inside a group now reuse
+the existing root-gap shadow painter, including its surface, clipping, native
+paint and outline checks. This changes only the existing gap's paint. A site
+name/time without a visible URL can identify its result when the same primary
+heading link contains a small favicon and a short separate source row. Body
+links, sitelinks, questions, carousels and large-image captions are excluded.
+The full device DOM is unavailable; these are reproducible code failures and
+controlled structural fixtures, not proof of the exact device branch.
+
+Google's initial-page tail is hidden reversibly while continuous loading is
+active, so imported results do not repeatedly push the same footer away.
+Known or semantically identified tail modules are removed from detached imports
+before display. Ordinary results, shared result containers, input controls and
+non-Google pages remain protected. Pausing or a load failure restores usable
+manual pagination, and leaving the search restores the saved page state.
+
+YouTube title restoration runs on the detached imported page. The existing
+resolver and cache remain in use, with at most three concurrent resolutions and
+one shared 2.2-second deadline. Completed titles are applied before insertion;
+failure or timeout retains Google's visible title. The old attribute-label
+intermediate write and all post-insertion title writes from that import task
+are removed. Late network completions may populate the cache but cannot mutate
+the displayed imported page.
+
+The Google inspector, repair-history wrapper, diagnostic dialog, long-press and
+context-menu interception, clipboard/export UI and initialization are removed
+from the current build. There was no persistent diagnostic store to migrate.
+Normal pause/resume behavior and unrelated site adapters are retained. Frozen
+release aliases and historical failure controls remain unchanged; the old
+Android diagnostic runner is explicitly documented as v6.59–v6.62 only.
+
+The v6.62 preservation gate reverses only the new named import hooks and layout
+module, then compares the entire executable with frozen v6.62 minus its Google
+diagnostic addition. The original v6.44 preservation gate also remains active.
+New fixtures check missing/native grouped gaps and source-relative geometry,
+the first visible imported title and late completions, reversible tail behavior,
+and real status-button gestures after diagnostic removal. Validation results
+are recorded below after the complete release gate finishes. The workspace's
+Chromium launch restriction requires browser validation in GitHub Actions;
+these checks do not imply verification on the owner's Berry/AdGuard device.
+
 ## v6.62: preserve shopping columns and generated decorations
 
 The owner's 23.71-second screen recording supplied on 2026-11-12 shows native

@@ -260,6 +260,29 @@ function hasGenericGoogleLayoutV647(root) {
 const genericGoogleBoundaryMarkV658 = 'data-generic-google-boundary-v658';
 const genericGoogleMultipleResultsV658 = new WeakMap();
 
+// Some mobile results show a site/channel name and a time in place of a URL.
+// Accept that source only inside its own main heading link, paired with a small
+// rendered favicon. A separate body link or sitelink cannot borrow this row.
+function getGenericGoogleNamedSourceV663(anchor, title, identities, rendered) {
+  if (!rendered || !title.matches('h1,h2,h3,h4,h5,h6,[role="heading"],[aria-level]')) return null;
+  const view = anchor.ownerDocument.defaultView;
+  for (const image of anchor.querySelectorAll('img')) {
+    if (image.closest('[hidden],[inert],[aria-hidden="true"]') || title.contains(image) || !(image.compareDocumentPosition(title) & 4)) continue;
+    const box = image.getBoundingClientRect(), imageStyle = view.getComputedStyle(image);
+    if (box.width < 8 || box.width > 48 || box.height < 8 || box.height > 48 ||
+        imageStyle.visibility !== 'visible' || Number.parseFloat(imageStyle.opacity || '1') === 0) continue;
+    for (let node = image.parentElement; node && node !== anchor; node = node.parentElement) {
+      if (node.contains(title) || node.querySelector('h1,h2,h3,h4,h5,h6,[role="heading"],[aria-level],button,[role="button"]')) break;
+      const text = node.textContent.trim(), rect = node.getBoundingClientRect();
+      if (text.length < 2) continue;
+      if (text.length > 180 || rect.height > 80 || node.querySelectorAll('img').length !== 1) break;
+      if (identities.some(source => node.contains(source.node))) break;
+      if (rect.width > 0 && rect.height > 0 && view.getComputedStyle(node).visibility === 'visible') return node;
+    }
+  }
+  return null;
+}
+
 function getGenericGoogleResultRecordsV658(root, rendered = false) {
   if (!root?.querySelectorAll) return { records: [], sources: [] };
   const excluded = 'script,style,template,nav,footer,[hidden],[inert],[aria-hidden="true"],g-scrolling-carousel,g-inner-card,[role="grid"],[role="listbox"],[role="tablist"],[role="dialog"],details,g-related-question';
@@ -335,6 +358,14 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
       if (!owned.length) continue;
       source = owned[owned.length - 1];
       break;
+    }
+    if (!source) {
+      const node = getGenericGoogleNamedSourceV663(anchor, title, identities, rendered);
+      if (node) {
+        source = { node, host, explicitURL: false };
+        identities.push(source);
+        unit = anchor;
+      }
     }
     // A sitelink cannot borrow the source identity already owned by the main
     // result. Same-domain results with separate source rows remain separate.
@@ -589,8 +620,16 @@ function repairGenericGoogleResultBoundariesV658(page) {
     let common = previous.parentElement;
     while (common && !common.contains(current)) common = common.parentElement;
     if (!common) continue;
-    const rootGap = common === root ? getGenericGoogleRootGapV660(root, previous, current, rect, style, surfaces) : null;
+    let rootGap = common === root ? getGenericGoogleRootGapV660(root, previous, current, rect, style, surfaces) : null;
     if (rootGap && !rootGap.accepted) continue;
+    // The same independent white surfaces and small margins also occur inside
+    // a grouped result wrapper. Background-string inequality did not establish
+    // a visible separator there either. Reuse the validated gap-only paint so
+    // its existing spacing/outline are preserved instead of adding a border.
+    if (!rootGap && previous.parentElement === common && current.parentElement === common) {
+      const groupedGap = getGenericGoogleRootGapV660(common, previous, current, rect, style, surfaces);
+      if (groupedGap.accepted) rootGap = groupedGap;
+    }
     const exists = bands.some(band => band.left <= Math.max(a.left, b.left) + 8 && band.right >= Math.min(a.right, b.right) - 8 &&
       band.top >= a.bottom - 24 && band.bottom <= b.top + 24);
     if (exists) continue;
@@ -599,7 +638,7 @@ function repairGenericGoogleResultBoundariesV658(page) {
     // can be removed by Google cleanup and no repeated pass can append a copy.
     const currentStyle = style(current);
     if ((Number.parseFloat(currentStyle.borderTopWidth) || 0) > 0 && colored(currentStyle.borderTopColor) && currentStyle.borderTopColor !== surface) continue;
-    const paint = rootGap ? getGenericGoogleRootGapPaintV661(root, previous, current, rootGap, surfaces, style, color, native?.color) : null;
+    const paint = rootGap ? getGenericGoogleRootGapPaintV661(common, previous, current, rootGap, surfaces, style, color, native?.color) : null;
     missing.push({ current, paint });
   }
   for (const { current, paint } of missing) {

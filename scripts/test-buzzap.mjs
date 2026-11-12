@@ -2,7 +2,7 @@
 // Do not describe byte-preservation checks as live-site playback/browser tests.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, GOOGLE_DIAGNOSTICS_INITIALIZER, END, VERSION } from '../worker/index.js';
+import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, GOOGLE_STAGING_REPLACEMENTS, END, VERSION } from '../worker/index.js';
 
 const base = await readFile(new URL('../Android_Generic_AutoPager_v6.44.js', import.meta.url), 'utf8');
 const output = await buildUserscript();
@@ -14,38 +14,39 @@ const googleCleanup = (await readFile(new URL('../src/google-search-cleanup.js',
 const prefix = `\n\n${googleCleanup}\n${realtime}\n${gallery}\n`;
 const executable = output.slice(output.indexOf(END) + END.length);
 assert(executable.startsWith(prefix), 'Runtime module ordering changed');
-const googleInspection = (await readFile(new URL('../src/google-boundary-inspection.js', import.meta.url), 'utf8')).trim();
-const googleDiagnostics = (await readFile(new URL('../src/google-result-diagnostics.js', import.meta.url), 'utf8')).trim();
 const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
-const diagnosticAddition = `${googleInspection}\n${googleDiagnostics}\n${GOOGLE_DIAGNOSTICS_INITIALIZER}\n`;
-assert.equal(executable.split(diagnosticAddition).length, 2, 'Diagnostic addition must occur exactly once');
-const frozen661 = await readFile(new URL('../Android_Generic_AutoPager_v6.61.js', import.meta.url), 'utf8');
-const frozen661Body = frozen661.slice(frozen661.indexOf(END) + END.length);
+const googleStaging = (await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim();
+for (const marker of [
+  'installGenericGoogleResultDiagnosticsV659', 'inspectGenericGoogleResultBoundariesV659',
+  '__genericGoogleResultDiagnosticsV659', 'generic-google-diagnostics-v659',
+  'android-autopager-google-diagnostics/v659',
+]) assert(!output.includes(marker), `Removed Google diagnostic feature remains: ${marker}`);
+const frozen662 = await readFile(new URL('../Android_Generic_AutoPager_v6.62.js', import.meta.url), 'utf8');
+const frozen662Body = frozen662.slice(frozen662.indexOf(END) + END.length);
 const oldLayoutStart = '// Google loads result-specific CSS in each fetched document.';
 const oldInspectionStart = '// On-demand, read-only evidence for the current boundary classifier.';
 const diagnosticsStart = '/* generic-google-result-diagnostics-v659 */';
-for (const marker of [oldLayoutStart, oldInspectionStart, diagnosticsStart]) {
-  assert.equal(frozen661Body.split(marker).length, 2, 'Frozen v6.61 module boundary must be unique');
+const diagnosticsEnd = 'installGenericGoogleResultDiagnosticsV659("6.62.0");\n';
+for (const marker of [oldLayoutStart, oldInspectionStart, diagnosticsStart, diagnosticsEnd]) {
+  assert.equal(frozen662Body.split(marker).length, 2, 'Frozen v6.62 module boundary must be unique');
 }
-const frozenLayout = frozen661Body.slice(frozen661Body.indexOf(oldLayoutStart), frozen661Body.indexOf(oldInspectionStart)).trimEnd();
-const frozenInspection = frozen661Body.slice(frozen661Body.indexOf(oldInspectionStart), frozen661Body.indexOf(diagnosticsStart)).trimEnd();
-assert.equal(googleInspection, frozenInspection, 'Boundary diagnostics must remain unchanged');
-let restored661 = executable.replace(googleLayout, frozenLayout)
-  .replace(GOOGLE_DIAGNOSTICS_INITIALIZER, 'installGenericGoogleResultDiagnosticsV659("6.61.0");');
-for (const [current, previous] of [
-  ['await async function(t,e){await captureGenericGoogleLayoutRequiredV662(t);', 'function(t,e){captureGenericGoogleLayoutV647(t);'],
-  ['const u=await async function(e,n,o){const i=document.createElement("section");', 'const u=function(e,n,o){const i=document.createElement("section");'],
-  ['if(r&&isGenericGoogleLayoutSourceV647(e)&&!await applyGenericGoogleLayoutV647(e,u))throw new Error("検索結果の表示が更新されました。再読み込みしてください");', 'if(r)applyGenericGoogleLayoutV647(e,u);'],
-]) {
-  assert.equal(restored661.split(current).length, 2, 'Import-await boundary must be unique');
-  restored661 = restored661.replace(current, previous);
+const frozenLayout = frozen662Body.slice(frozen662Body.indexOf(oldLayoutStart), frozen662Body.indexOf(oldInspectionStart)).trimEnd();
+const frozenWithoutDiagnostics = frozen662Body.slice(0, frozen662Body.indexOf(oldInspectionStart)) +
+  frozen662Body.slice(frozen662Body.indexOf(diagnosticsEnd) + diagnosticsEnd.length);
+let restored662 = executable.replace(googleLayout, frozenLayout).replace(googleStaging + '\n', '');
+for (const [from, to] of GOOGLE_STAGING_REPLACEMENTS) {
+  assert.equal(restored662.split(to).length, 2, 'Google staging restoration boundary must be unique');
+  restored662 = restored662.replace(to, from);
 }
-assert.equal(restored661, frozen661Body, 'Only Google import layout, its awaited batches and the diagnostic version may differ from v6.61');
-const withoutDiagnostics = executable.replace(diagnosticAddition, '');
-let restored = withoutDiagnostics.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
+assert.equal(restored662, frozenWithoutDiagnostics, 'Only named Google display fixes and diagnostic removal may differ from v6.62');
+let restored = executable.slice(prefix.length).replace(helper + '\n', '').replace(REALTIME_GUARD, '').replace(PRODUCT_GUARD, '');
 assert.equal(restored.split(googleLayout).length, 2);
-restored = restored.replace(googleLayout + '\n', '');
+restored = restored.replace(googleLayout + '\n', '').replace(googleStaging + '\n', '');
 for (const [from, to] of GOOGLE_LAYOUT_REPLACEMENTS) {
+  assert.equal(restored.split(to).length, 2);
+  restored = restored.replace(to, from);
+}
+for (const [from, to] of GOOGLE_STAGING_REPLACEMENTS) {
   assert.equal(restored.split(to).length, 2);
   restored = restored.replace(to, from);
 }
