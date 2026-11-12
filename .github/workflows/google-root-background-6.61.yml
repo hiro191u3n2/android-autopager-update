@@ -1,0 +1,104 @@
+name: Google root gap background validation
+on:
+  push:
+    branches: [fix/google-root-background-6.61]
+    paths:
+      - '.github/workflows/google-root-background-6.61.yml'
+      - 'src/google-import-layout.js'
+      - 'src/google-boundary-inspection.js'
+      - 'worker/index.js'
+      - 'scripts/test-buzzap.mjs'
+      - 'tests/test_google_root_results.mjs'
+      - 'tests/test_google_boundary_inspection.mjs'
+      - 'tests/fixtures/google-root-results.mjs'
+      - 'tests/android-webview/**'
+      - 'package.json'
+      - 'index.html'
+permissions:
+  contents: read
+concurrency:
+  group: google-root-results-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned test dependencies and Chromium
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Verify frozen baselines and source syntax
+        run: |
+          test "$(git hash-object Android_Generic_AutoPager_v6.44.js)" = ee0c1d906375c7d34ebc3046719abef10d42c7ae
+          test "$(git hash-object Android_Generic_AutoPager_v6.60.js)" = dfa28418b2ea6fb4af5ed7bcfa537ff903d5decd
+          git diff --check
+          node --check worker/index.js
+          node --check src/google-import-layout.js
+          node --check src/google-boundary-inspection.js
+      - name: Run complete regression suite
+        env:
+          GOOGLE_ROOT_ARTIFACT_DIR: ${{ runner.temp }}/google-root-results
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/root-results-validation.log"
+      - name: Build and verify release package
+        run: |
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.61.0
+          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.61.0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: google-root-results-v661-validation
+          path: |
+            ${{ runner.temp }}/root-results-validation.log
+            ${{ runner.temp }}/google-root-results/
+            ${{ runner.temp }}/android-autopager-release/
+          retention-days: 7
+  android-root-results:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build isolated Android WebView test app
+        run: |
+          python3 -m pip install --disable-pip-version-check Pillow==11.3.0
+          bash tests/android-webview/build.sh "$PWD" "$RUNNER_TEMP/android-webview-build"
+      - name: Enable emulator KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Compare frozen and repaired root boundaries on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          script: python3 tests/android-webview/run-root-results.py "$RUNNER_TEMP/android-webview-build" "$RUNNER_TEMP/android-root-results-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-root-results-v661-validation
+          path: |
+            ${{ runner.temp }}/android-root-results-evidence/
+            ${{ runner.temp }}/android-webview-build/assets/build-manifest.json
+          retention-days: 7
