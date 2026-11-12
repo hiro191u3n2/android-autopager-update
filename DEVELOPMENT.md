@@ -1,5 +1,48 @@
 # Recovered development source
 
+## v6.65: prepare the next Google page before the scroll boundary
+
+The two 2026-11-12 Berry recordings repeatedly reach the loaded document's
+bottom while the status shows loading. In the second clip, the content stays
+fixed around 6.95–9.00 seconds despite moving touch indicators; page 4 then
+appears and scrolling resumes. The previous Google trigger waits until only
+1400px remain, then serially waits for navigation, iframe hydration, preserved
+layout and final title preparation. This can exhaust the available scrollable
+content before the next page is ready.
+
+Google now prepares page 2 immediately and advances again only when the reader
+approaches the beginning of the latest appended page. The direct section
+reference and passive, animation-frame-coalesced check avoid walking accumulated
+results. Short pages fill enough content ahead; page limits, duplicate checks,
+failure behavior and serial loading remain owned by the existing loader.
+The Google completion path rechecks promptly without the former 350ms delay.
+
+Input/composition and hidden documents defer new requests. Pause, route changes,
+detached targets and pagehide generation changes prevent old responses from
+being appended. The helper does not intercept gestures, write scroll positions
+or force smooth scrolling. All layout/title preparation remains unchanged.
+Exact reversible replacements and the frozen v6.64 body check preserve every
+unrelated executable byte. Browser tests use controlled fixtures, not a claim
+of native Berry/AdGuard verification on the owner's device.
+
+The complete migrated validator passed at
+`8601112b97567f9c462e5d1c7eb8410f0779836e`:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43239776527
+All 9 read-ahead browser scenarios and 4 lifecycle unit groups passed, as did
+the complete prior layout, title/tail, cleanup, input and non-Google suite.
+With a controlled 1.2-second response delay, the frozen release clamped repeated
+scroll attempts at 5094px; the new release continued the same trajectory to
+8000px across the boundary with no outer scroll writes or overlapping requests.
+Pending success and error responses were checked across pause, query changes
+and pagehide. Existing staging fixtures now wait for DOMContentLoaded and use
+a tall first result with a compact tail, preserving their original assertions
+without racing the intentionally earlier request.
+
+Validated userscript SHA-256:
+`8190a67dab751ae95f2ef03e13c25e32191d7ce494486dc8e8dcd00f3601627c`.
+Validated metadata SHA-256:
+`e953c5c59b57d1eb5eb3fd757536de85a344c9d1fe28233e2f1dd53b98046e58`.
+
 ## v6.64: touching results and inline source addresses
 
 The two 2026-11-12 22:46/22:47 Berry recordings still show missing grey
