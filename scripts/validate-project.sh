@@ -4,10 +4,11 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 release_version="${1:-}"
 test "$project_dir" = /workspace/sites/android-autopager-update
-test "$release_version" = 6.59.0
+test "$release_version" = 6.60.0
 test "$(git -C "$project_dir" remote get-url origin)" = https://github.com/hiro191u3n2/android-autopager-update.git
 test "$(git -C "$project_dir" branch --show-current)" = main
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.44.js)" = ee0c1d906375c7d34ebc3046719abef10d42c7ae
+test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.59.js)" = 32e645f7c7fef0bd561628581a7d8335369510b4
 
 git -C "$project_dir" diff --check
 git -C "$project_dir" diff --cached --check
@@ -32,6 +33,7 @@ node "$project_dir/tests/test_cityhill_gallery.mjs"
 node "$project_dir/tests/test_generic_commerce_images.mjs"
 node "$project_dir/tests/test_google_layout.mjs"
 node "$project_dir/tests/test_google_organic_groups.mjs"
+node "$project_dir/tests/test_google_root_results.mjs"
 node "$project_dir/tests/test_google_cleanup.mjs"
 node "$project_dir/tests/test_google_mobile_cleanup.mjs"
 node "$project_dir/tests/test_google_first_paint.mjs"
