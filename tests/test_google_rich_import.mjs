@@ -28,6 +28,7 @@ const output = process.env.GOOGLE_RICH_ARTIFACT_DIR;
 if (output) await mkdir(output, { recursive: true });
 const built = await buildUserscript();
 const frozen = await readFile(resolve(ROOT, 'Android_Generic_AutoPager_v6.61.js'), 'utf8');
+const moduleText = await readFile(resolve(ROOT, 'src/google-import-layout.js'), 'utf8');
 const browser = await chromium.launch(launch);
 const observations = [], references = new Map();
 let passed = 0;
@@ -37,6 +38,78 @@ function configure(code, rendered) {
   const preference = 'googleUseRenderedFrame:!0';
   assert.equal(code.split(preference).length, 2, 'Fetch case changes only the existing acquisition preference');
   return code.replace(preference, 'googleUseRenderedFrame:!1');
+}
+
+async function verifyAsyncCaptureConsistency() {
+  const page = await browser.newPage({ viewport: { width: 500, height: 983 } });
+  try {
+    await page.route('**/*', route => route.fulfill({ contentType: 'text/html',
+      body: '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body></body>' }));
+    await page.goto('https://www.google.com/search?q=async-layout-consistency');
+    await page.addScriptTag({ content: moduleText });
+    const value = await page.evaluate(async () => {
+      const makeSource = () => {
+        const root = document.createElement('div');
+        root.style.cssText = 'width:400px;min-height:200px';
+        root.innerHTML = '<h3>検索結果</h3>' + Array.from({ length: 160 }, (_, i) =>
+          `<span data-async-item="${i}" style="display:block;color:rgb(30,40,50)">結果 ${i}</span>`).join('');
+        document.body.appendChild(root);
+        return root;
+      };
+      // Keep element count, tag and namespace identical: stale detection must
+      // notice node identity, not merely a different number of descendants.
+      const replaceLeaf = root => {
+        const previous = root.querySelector('[data-async-item="0"]');
+        const next = previous.cloneNode(true);
+        next.style.color = 'rgb(71, 81, 91)';
+        previous.replaceWith(next);
+      };
+      const changing = makeSource();
+      let changedDuringCapture = false;
+      setTimeout(() => { replaceLeaf(changing); changedDuringCapture = true; }, 0);
+      const rejectedCapture = await captureGenericGoogleLayoutV647(changing);
+      const rejectedClone = changing.cloneNode(true), rejectedMarkup = rejectedClone.outerHTML;
+      const rejectedApply = await applyGenericGoogleLayoutV647(changing, rejectedClone);
+      const rejectedUnchanged = rejectedClone.outerHTML === rejectedMarkup;
+      changing.remove();
+
+      const retrying = makeSource();
+      const capture = captureGenericGoogleLayoutV647;
+      let attempts = 0, changedDuringRetry = false;
+      captureGenericGoogleLayoutV647 = function (...args) {
+        attempts++;
+        if (attempts === 1) setTimeout(() => { replaceLeaf(retrying); changedDuringRetry = true; }, 0);
+        return capture.apply(this, args);
+      };
+      try {
+        await captureGenericGoogleLayoutRequiredV662(retrying);
+      } finally { captureGenericGoogleLayoutV647 = capture; }
+      const stableClone = retrying.cloneNode(true);
+      const stableApply = await applyGenericGoogleLayoutV647(retrying, stableClone);
+      const retryColor = stableClone.querySelector('[data-async-item="0"]').style.getPropertyValue('color');
+      const stableDetached = !stableClone.isConnected;
+      retrying.remove();
+
+      const stale = makeSource();
+      const initialCapture = await captureGenericGoogleLayoutV647(stale);
+      replaceLeaf(stale);
+      const staleClone = stale.cloneNode(true), staleMarkup = staleClone.outerHTML;
+      const staleApply = await applyGenericGoogleLayoutV647(stale, staleClone);
+      const staleUnchanged = staleClone.outerHTML === staleMarkup;
+      stale.remove();
+      return { changedDuringCapture, rejectedCapture, rejectedApply, rejectedUnchanged,
+        changedDuringRetry, attempts, stableApply, retryColor, stableDetached,
+        initialCapture, staleApply, staleUnchanged };
+    });
+    assert.deepEqual(value, {
+      changedDuringCapture: true, rejectedCapture: false, rejectedApply: false, rejectedUnchanged: true,
+      changedDuringRetry: true, attempts: 2, stableApply: true, retryColor: 'rgb(71, 81, 91)', stableDetached: true,
+      initialCapture: true, staleApply: false, staleUnchanged: true,
+    }, 'Source replacements during/after yielded capture cannot leak a partial or stale layout');
+    observations.push({ label: 'async-capture-consistency', ...value });
+    console.log('PASS async capture: same-count source replacement rejected; stable retry captured; stale source rejected before clone mutation');
+    passed++;
+  } finally { await page.close(); }
 }
 
 async function open(code, options, start = 0) {
@@ -193,6 +266,7 @@ function verify(value, before, start, label) {
 }
 
 try {
+  await verifyAsyncCaptureConsistency();
   const scenarios = [
     { name: 'rendered-small-light', rendered: true, large: false, width: 500, dark: false },
     { name: 'rendered-small-dark', rendered: true, large: false, width: 360, dark: true },

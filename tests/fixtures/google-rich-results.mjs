@@ -5,7 +5,7 @@ export const GOOGLE_RICH_COLORS = {
   light: { page: '#ffffff', card: '#f1f3f4', text: '#202124', gap: '#e8eaed' },
   dark: { page: '#202124', card: '#303134', text: '#e8eaed', gap: '#171717' },
 };
-export const GOOGLE_RICH_NATIVE = '<article id="rich-native"><h3><a href="https://native.example/initial">初回の通常検索結果</a></h3><p>初回ページの結果と配置を保ちます。</p><div class="rich-card" data-native-card>初回だけのカード</div></article>';
+export const GOOGLE_RICH_NATIVE = '<article id="rich-native"><h3><a href="https://native.example/initial">初回の通常検索結果</a></h3><p>初回ページの結果と配置を保ちます。</p><div class="rich-card" data-native-card="">初回だけのカード</div></article>';
 export const GOOGLE_RICH_STAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M8 0 10 5 16 6 11.5 10 13 16 8 12.5 3 16 4.5 10 0 6 6 5Z" fill="black"/></svg>';
 export const GOOGLE_RICH_THUMB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="112" viewBox="0 0 144 112"><rect width="144" height="112" fill="#dfe8f2"/><rect x="52" y="14" width="40" height="84" rx="7" fill="#8ca7bf"/><rect x="58" y="44" width="28" height="34" fill="white"/></svg>';
 
