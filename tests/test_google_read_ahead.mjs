@@ -44,12 +44,12 @@ function fixture(start, short = false) {
     <nav><a id="pnnext" href="/search?q=continuity&amp;start=${start + 10}">次へ</a></nav></body></html>`;
 }
 
-async function open(code, { delay = 0, gated = false, short = false } = {}) {
+async function open(code, { delay = 0, gated = false, short = false, firstPageError = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 500, height: 983 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   const page = await context.newPage(), errors = [];
   let release;
   const gate = new Promise(resolve => { release = resolve; });
-  const state = { requests: [], active: 0, maxActive: 0 };
+  const state = { requests: [], active: 0, maxActive: 0, errorsSent: 0 };
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
@@ -62,7 +62,11 @@ async function open(code, { delay = 0, gated = false, short = false } = {}) {
       try {
         if (gated && start === 10) await gate;
         if (delay) await new Promise(resolve => setTimeout(resolve, delay));
-        await route.fulfill({ contentType: 'text/html', body: fixture(start, short) });
+        const blocked = firstPageError && start === 10 && state.errorsSent === 0;
+        if (blocked) state.errorsSent++;
+        await route.fulfill({ contentType: 'text/html', body: blocked
+          ? '<!doctype html><html><head><title>unusual traffic</title></head><body>通常と異なるトラフィック</body></html>'
+          : fixture(start, short) });
       } catch (error) {
         // Closing a context may cancel an intentionally delayed test request.
         if (!page.isClosed()) throw error;
@@ -171,24 +175,29 @@ try {
     passed++;
   } finally { await fresh.close(); }
 
-  const paused = await open(current, { gated: true });
-  try {
-    await requested(paused, 10);
-    await paused.page.locator(STATUS).evaluate(node => node.click());
-    paused.release();
-    await paused.page.waitForFunction(() => !document.getElementById('generic-autopager-google-frame'), undefined, { timeout: 25000 });
-    assert.equal(await paused.page.locator('.generic-autopager-page').count(), 0, 'Pausing while a response is pending prevents publishing that prepared page');
-    assert.equal((await snapshot(paused, 'current-paused-pending')).y, 0);
-    await paused.page.locator(STATUS).evaluate(node => node.click());
-    await appended(paused, 2);
-    assert.equal(await paused.page.locator('.generic-autopager-page').count(), 1, 'Explicit resume continues the same next page once');
-    assert.deepEqual(paused.errors, []);
-    console.log('PASS pending pause: no background append after pause; the original pause/resume control continues correctly');
-    passed++;
-  } finally { await paused.close(); }
+  for (const firstPageError of [false, true]) {
+    const paused = await open(current, { gated: true, firstPageError });
+    try {
+      await requested(paused, 10);
+      await paused.page.locator(STATUS).evaluate(node => node.click());
+      paused.release();
+      await paused.page.waitForFunction(() => !document.getElementById('generic-autopager-google-frame'), undefined, { timeout: 25000 });
+      assert.equal(await paused.page.locator('.generic-autopager-page').count(), 0, 'Pausing while a response is pending prevents publishing that prepared page');
+      const afterPause = await snapshot(paused, 'current-paused-pending' + (firstPageError ? '-blocked-response' : ''));
+      assert.equal(afterPause.y, 0);
+      assert.notEqual(afterPause.status, '失敗', 'An obsolete blocked response must not overwrite the paused status');
+      assert.equal(paused.state.errorsSent, firstPageError ? 1 : 0, 'The intended normal/error response actually settled');
+      await paused.page.locator(STATUS).evaluate(node => node.click());
+      await appended(paused, 2);
+      assert.equal(await paused.page.locator('.generic-autopager-page').count(), 1, 'Explicit resume continues the same next page once');
+      assert.deepEqual(paused.errors, []);
+      console.log(`PASS pending pause (${firstPageError ? 'blocked' : 'normal'} response): no background append or obsolete error; the original pause/resume control continues correctly`);
+      passed++;
+    } finally { await paused.close(); }
+  }
 
-  for (const lifecycle of ['query-change', 'pagehide']) {
-    const pending = await open(current, { gated: true });
+  for (const lifecycle of ['query-change', 'pagehide']) for (const firstPageError of [false, true]) {
+    const pending = await open(current, { gated: true, firstPageError });
     try {
       await requested(pending, 10);
       await pending.page.evaluate(kind => {
@@ -198,6 +207,8 @@ try {
       pending.release();
       await pending.page.waitForFunction(() => !document.getElementById('generic-autopager-google-frame'), undefined, { timeout: 25000 });
       assert.equal(await pending.page.locator('.generic-autopager-page').count(), 0, `${lifecycle}: a stale pending response cannot append`);
+      assert.notEqual(await pending.page.locator(STATUS).textContent(), '失敗', `${lifecycle}: an obsolete blocked response must not overwrite the current status`);
+      assert.equal(pending.state.errorsSent, firstPageError ? 1 : 0, 'The intended normal/error response actually settled');
       const starts = pending.state.requests.length;
       await pending.page.evaluate(() => { window.__readerScroll(1000); dispatchEvent(new Event('resize')); });
       await pending.page.waitForTimeout(250);
@@ -207,9 +218,9 @@ try {
         await appended(pending, 2);
         assert.equal(await pending.page.locator('.generic-autopager-page').count(), 1, 'BFCache pageshow resumes the same valid query');
       }
-      await snapshot(pending, 'current-' + lifecycle);
+      await snapshot(pending, 'current-' + lifecycle + (firstPageError ? '-blocked-response' : ''));
       assert.deepEqual(pending.errors, []);
-      console.log(`PASS pending ${lifecycle}: stale preparation is discarded; ${lifecycle === 'pagehide' ? 'valid pageshow resumes' : 'changed query stays untouched'}`);
+      console.log(`PASS pending ${lifecycle} (${firstPageError ? 'blocked' : 'normal'} response): stale preparation/error is discarded; ${lifecycle === 'pagehide' ? 'valid pageshow resumes' : 'changed query stays untouched'}`);
       passed++;
     } finally { await pending.close(); }
   }

@@ -35,7 +35,10 @@ let passed = 0;
 
 function fixture(start) {
   const related = '<section data-staging-related><h2>他の人はこちらも検索</h2><a href="/search?q=staging-related-one">関連語1</a><a href="/search?q=staging-related-two">関連語2</a></section>';
-  const head = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:14px/1.5 Arial,sans-serif;background:#fff;color:#202124}h3{font-size:20px;font-weight:400}a{color:#1a0dab}article{padding:16px}#staging-native{min-height:250px}#footer{padding:20px;background:#e8eaed;min-height:160px}[data-staging-related]{padding:16px}[data-staging-related] a{display:block;padding:12px}#manual-next{padding:12px}</style></head><body>';
+  // Keep page 2 beyond the new one-viewport lead while the compact native tail
+  // still places the frozen pager's sentinel within its 1400px trigger range.
+  // The explicit height belongs only to the initial, unimported result.
+  const head = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:14px/1.5 Arial,sans-serif;background:#fff;color:#202124}h3{font-size:20px;font-weight:400}a{color:#1a0dab}article{padding:16px}#staging-native{box-sizing:border-box;min-height:2000px}#footer{padding:8px;background:#e8eaed}[data-staging-related]{padding:8px}[data-staging-related] h2{margin:4px 0;font-size:18px;line-height:24px}[data-staging-related] a{display:block;padding:4px}#manual-next{padding:8px}</style></head><body>';
   if (!start) return `${head}<header><input id="staging-query" value="staging"></header><main id="search"><div id="rso">${nativeMarkup}</div></main>${related}<nav id="manual-next" style="display:flex"><a id="pnnext" href="/search?q=staging&start=10">次へ</a></nav><footer id="footer" style="display:grid">日本・ヘルプ・プライバシー</footer></body></html>`;
   return `${head}<main id="search"><div id="rso"><article class="MjjYud" data-staging-video="${start}"><cite>YouTube・動画チャンネル</cite><a href="https://www.youtube.com/watch?v=clip00000${start}"><h3>${googleTitle(start)}</h3><img width="100" height="60" alt="${placeholder}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='60'%3E%3Crect width='100' height='60' fill='%238ca7bf'/%3E%3C/svg%3E"></a><p>映像の説明文と元のリンクを保持します。</p></article>${related}<footer data-import-footer>追加ページのフッター</footer><div class="fixture-spacer" style="height:2600px" aria-hidden="true"></div></div></main>${start === 10 ? '<nav><a id="pnnext" href="/search?q=staging&start=20">次へ</a></nav>' : ''}</body></html>`;
 }
@@ -94,7 +97,9 @@ async function open(code, { late = false } = {}) {
     document.addEventListener('GenericAutoPagerLoaded', () => record('loaded'));
   });
   await page.addInitScript({ content: code });
-  await page.goto('https://www.google.com/search?q=staging', { waitUntil: 'load' });
+  // The first read-ahead iframe can start before the parent's load event.
+  // Observe its gated loading state without waiting for that iframe to finish.
+  await page.goto('https://www.google.com/search?q=staging', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('generic-autopager-status-v2')?.textContent.startsWith('読込'), { timeout: 20000 });
   return { context, page, state, errors, releasePage2, titleRequested };
 }
