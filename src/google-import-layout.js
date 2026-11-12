@@ -65,18 +65,24 @@ function isGenericGoogleSeparatorPaintV654(style) {
 }
 
 function captureGenericGoogleSeparatorsV654(node, computed, rectangle, view) {
-  const empty = node.childElementCount === 0 && !node.textContent.trim() &&
-    !node.matches('input,textarea,select,button,iframe,object,embed,img,video,canvas,svg');
   const rect = rectangle(node);
-  const preserveHeight = empty && rect.width >= 120 && rect.height > 0 && rect.height <= 24 &&
-    rect.width >= rect.height * 5 && isGenericGoogleSeparatorPaintV654(computed);
+  // Decorative strips can contain empty wrappers (or tracking/style nodes).
+  // Requiring a leaf collapses the painted parent's height on import even
+  // though none of its descendants contributes any content to that height.
+  // Keep the geometry/paint guard and exclude controls and media at any depth.
+  const meaningful = 'a[href],input,textarea,select,button,iframe,object,embed,img,video,audio,canvas,svg,hr,h1,h2,h3,h4,h5,h6,[role="heading"],[role="button"],[role="link"],[role="img"],[contenteditable]:not([contenteditable="false"]),[tabindex]';
+  const preserveHeight = rect.width >= 120 && rect.height > 0 && rect.height <= 24 &&
+    rect.width >= rect.height * 5 && isGenericGoogleSeparatorPaintV654(computed) &&
+    !node.textContent.trim() && !node.matches(meaningful) && !node.querySelector(meaningful);
   const pseudos = [];
   // Only paint a source divider, never synthesize result boundaries from titles.
   // This also preserves grouped results without splitting sitelinks/carousels.
   if (rect.width >= 120 && computed.display !== 'none' && computed.visibility === 'visible') {
     for (const pseudo of ['::before', '::after']) {
       const style = view.getComputedStyle(node, pseudo);
-      if (!/^(?:""|'')$/.test(style.content) || !isGenericGoogleSeparatorPaintV654(style)) continue;
+      // A quoted whitespace string also generates an otherwise empty box.
+      // Keep text/icon content excluded; do not copy arbitrary pseudo labels.
+      if (!/^(?:"\s*"|'\s*')$/.test(style.content) || !isGenericGoogleSeparatorPaintV654(style)) continue;
       const pixels = property => Number.parseFloat(style.getPropertyValue(property)) || 0;
       const border = pixels('border-top-width') + pixels('border-bottom-width');
       const padding = pixels('padding-top') + pixels('padding-bottom');
