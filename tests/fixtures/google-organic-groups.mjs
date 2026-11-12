@@ -43,21 +43,22 @@ export function organicExpectedResults(start, { compact = false, price = false }
   });
 }
 
-function sourceHeader(result, cite = false) {
+function sourceHeader(result, cite = false, named = false) {
   const urlTag = cite ? 'cite' : 'div';
-  return `<div class="organic-source-header"><img class="organic-favicon" width="24" height="24" alt="" src="${escape(ORGANIC_FAVICON)}"><div class="organic-source-text"><div>${escape(result.name)}</div><${urlTag} class="organic-source-url">${escape(result.origin)}</${urlTag}></div></div>`;
+  return `<div class="organic-source-header"><img class="organic-favicon" width="24" height="24" alt="" src="${escape(ORGANIC_FAVICON)}"><div class="organic-source-text"><div>${escape(result.name)}</div><${urlTag} class="organic-source-url">${named ? '3 時間前' : escape(result.origin)}</${urlTag}></div></div>`;
 }
 
-function card(result, { shape, line }) {
+function card(result, { shape, line, named }) {
   let title;
   if (shape === 'plain') title = `<div class="organic-title">${escape(result.title)}</div>`;
   else if (result.index === 2) title = `<div class="organic-title" role="heading" aria-level="2">${escape(result.title)}</div>`;
   else if (result.index === 3) title = `<div class="organic-title">${escape(result.title)}</div>`;
   else title = `<h3 class="organic-title">${escape(result.title)}</h3>`;
-  const header = sourceHeader(result, result.index === 2);
+  const namedSource = named && result.group === 'main' && result.index === 1;
+  const header = sourceHeader(result, result.index === 2, namedSource);
   // A primary link may contain both its source identity and its plain title.
   // Other results keep the source header outside the title anchor.
-  const combined = result.index === 3 || shape === 'plain' && result.index === 1;
+  const combined = namedSource || result.index === 3 || shape === 'plain' && result.index === 1;
   const link = `<a class="organic-main-link" href="${escape(result.href)}">${combined ? header : ''}${title}</a>`;
   const image = result.thumbnail ? `<img class="organic-thumbnail" width="64" height="64" src="${escape(result.thumbnail)}" alt="料理のサムネイル">` : '';
   const sites = result.group === 'sitelinks' ? `<div class="organic-sitelinks"><a href="${escape(result.href)}/menu"><h3>お品書き</h3></a><a href="${escape(result.href)}/access"><h3>アクセスとお問い合わせ</h3></a></div>` : '';
@@ -65,15 +66,20 @@ function card(result, { shape, line }) {
   return `<div class="organic-result" data-organic-result="${result.id}"${border}><div class="organic-copy">${combined ? '' : header}${link}<div class="organic-body"><p class="organic-snippet">${escape(result.snippet)}</p>${image}</div>${sites}</div></div>`;
 }
 
-export function renderGoogleOrganicFixture(start = 0, { dark = false, shape = 'mixed', large = false, compact = false, price = false } = {}) {
+export function renderGoogleOrganicFixture(start = 0, { dark = false, shape = 'mixed', large = false, compact = false, price = false, groupGap = '', named = false } = {}) {
   const colors = ORGANIC_COLORS[dark ? 'dark' : 'light'];
   const css = `*{box-sizing:border-box}html,body{margin:0;background:${colors.page};color:${colors.ink};font:14px/1.5 Arial,sans-serif}#rso{width:100%}#organic-native{padding:16px;min-height:220px;border-bottom:${ORGANIC_DIVIDER_PX}px solid ${colors.line}}#organic-native h3{font-weight:400}.MjjYud,.organic-result{display:block;position:relative;margin:0;padding:0;background:${colors.page}}.organic-group{border-bottom:${ORGANIC_DIVIDER_PX}px solid ${colors.line}}.organic-copy{padding:12px}.organic-source-header{display:flex;align-items:center;gap:9px;color:${colors.ink};font-size:14px;line-height:18px}.organic-source-text{min-width:0}.organic-favicon{display:block;flex:0 0 24px;width:24px;height:24px}.organic-source-url{display:block;margin:0;font-size:12px;line-height:17px;font-style:normal;overflow-wrap:anywhere}.organic-main-link{display:block;color:${colors.link};text-decoration:none}.organic-title{margin:9px 0;font-size:19px;line-height:25px;font-weight:400;color:${colors.link}}.organic-body{display:flex;gap:10px;align-items:flex-start}.organic-snippet{flex:1 1 0;min-width:0;margin:0;color:${colors.muted};font-size:13px;line-height:19px}.organic-thumbnail{display:block;flex:0 0 64px;width:64px;height:64px;object-fit:cover;border-radius:6px}.organic-sitelinks{padding-top:8px}.organic-sitelinks a{display:block;padding:4px 0;color:${colors.link};text-decoration:none}.organic-sitelinks h3{margin:0;font-size:15px;line-height:21px;font-weight:400}.organic-horizontal{display:flex;gap:14px;padding:12px;overflow:hidden}.organic-horizontal-card{flex:1 1 0;min-width:0}.organic-horizontal-card .organic-source-header{display:block}.organic-horizontal-card .organic-title{font-size:15px;line-height:21px}.organic-horizontal-card a{color:${colors.link};text-decoration:none}.organic-large-data,.organic-css-hidden,[data-organic-hidden]{display:none!important}`;
-  const head = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google organic import regression fixture</title><style>${css}</style></head><body>`;
+  // The near-white/alpha wrapper is deliberately not the native divider color.
+  // v6.62 recognized all results but treated this string difference as proof
+  // that the existing 8px margins already contained a visible separator.
+  const groupColor = groupGap === 'native' ? colors.line : groupGap === 'alpha' ? (dark ? 'rgba(32,33,36,.8)' : 'rgba(255,255,255,.8)') : (dark ? '#222326' : '#f8f9fa');
+  const gapCSS = groupGap ? `[data-organic-group^="main-"]{background:${groupColor}}[data-organic-result^="main-"]:not([data-organic-result$="-3"]){margin-bottom:${ORGANIC_DIVIDER_PX}px}` : '';
+  const head = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google organic import regression fixture</title><style>${css}${gapCSS}</style></head><body>`;
   if (!start) return `${head}<main id="search"><div id="rso">${organicNativeMarkup()}</div></main><nav><a id="pnnext" href="/search?q=organic-fixture&start=10">次へ</a></nav></body></html>`;
   const expected = organicExpectedResults(start, { compact, price });
   const groups = [...new Set(expected.map(result => result.group))];
   const contents = groups.map(group => {
-    const cards = expected.filter(result => result.group === group).map(result => card(result, { shape, line: colors.line }));
+    const cards = expected.filter(result => result.group === group).map(result => card(result, { shape, line: colors.line, named }));
     if (group === 'main') {
       // A hidden source/title pair must not split a real result or consume its
       // source identity. It also catches geometry-less node-count heuristics.
