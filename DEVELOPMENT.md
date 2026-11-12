@@ -56,6 +56,14 @@ CI artifacts and the local package are byte-identical: userscript SHA-256
 metadata `a4c1d38dfecc77e67166298b5819f42b9711a75b51c1260223943911ed7f3be1`,
 executable body `32d45b79faecea51f042070392e0fb6f37efdb6cf500b0d46e39fa1dde483c38`.
 
+Published on 2026-11-13 (Asia/Tokyo) through the fixed GitHub repository;
+package commit `83fdd2492ccdd328ed9de294c79215b656884df6`. The versioned alias,
+fixed userscript, metadata and installation page match the validated package
+in GitHub. The literal production userscript URL, metadata URL and homepage
+each returned HTTP 200 with exact local/CI bytes; homepage SHA-256
+`a15acaa559426b4407e9ce895b6431845f122388a7c8d9ec3ec378d1ac67e02c`.
+No native Berry device verification is claimed.
+
 ## v6.65: prepare the next Google page before the scroll boundary
 
 The two 2026-11-12 Berry recordings repeatedly reach the loaded document's
