@@ -89,18 +89,15 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
           script: python3 tests/android-webview/run.py "$RUNNER_TEMP/android-webview-build" "$RUNNER_TEMP/android-webview-evidence"
-      - name: Print compact visual evidence
+      - name: Print verification summary
         if: always()
         run: |
           python3 - <<'PY'
-          import base64, json, os, pathlib
+          import os, pathlib
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'android-webview-evidence'
           for name in ['environment.json', 'measurements.json']:
               path = root / name
               if path.exists(): print(name, path.read_text())
-          for name in ['control-mixed-light-page2.png', 'current-mixed-light-page2.png']:
-              path = root / name
-              if path.exists(): print('EVIDENCE_PNG', name, base64.b64encode(path.read_bytes()).decode())
           PY
       - uses: actions/upload-artifact@v4
         if: always()

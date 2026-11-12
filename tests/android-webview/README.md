@@ -9,8 +9,9 @@ returns an empty 404. It never contacts Google. The same complete built
 userscript that will be released runs in Android WebView, with a frozen v6.53
 control. Controlled HTML reproduces three complete organic entries inside a
 group that has only a final divider. It is modeled on the screenshot, not a
-captured Berry/Google DOM. Injection occurs at the end of the initial fixture
-body; this does not reproduce the userscript manager's document-start timing.
+captured Berry/Google DOM. The complete userscript is injected at the start of
+the initial fixture's head, before its result DOM is parsed. This models early
+injection without reproducing a particular userscript manager's implementation.
 
 The host runner captures the actual emulator compositor with `adb screencap`,
 then counts painted divider bands between the four intact results. It requires

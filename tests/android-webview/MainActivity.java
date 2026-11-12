@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -129,20 +130,41 @@ public final class MainActivity extends Activity {
     private void waitForPage(final int number, final int attempt) {
         if (attempt > 180) { fail("Timed out waiting for appended page " + number); return; }
         String exists = "!!document.querySelector('.generic-autopager-page[data-page=\"" + number + "\"]')";
-        webView.evaluateJavascript(exists, value -> {
-            if (!"true".equals(value)) {
-                handler.postDelayed(() -> waitForPage(number, attempt + 1), 250);
-                return;
+        // The standalone android.jar bootclasspath has no LambdaMetafactory.
+        webView.evaluateJavascript(exists, new ValueCallback<String>() {
+            @Override public void onReceiveValue(String value) {
+                if (!"true".equals(value)) {
+                    handler.postDelayed(new Runnable() {
+                        @Override public void run() { waitForPage(number, attempt + 1); }
+                    }, 250);
+                    return;
+                }
+                handler.postDelayed(new Runnable() {
+                    @Override public void run() {
+                        webView.evaluateJavascript("window.__autoPagerFixture.scroll(" + number + ")",
+                                new ValueCallback<String>() {
+                            @Override public void onReceiveValue(String ignored) {
+                                handler.postDelayed(new Runnable() {
+                                    @Override public void run() { record(number); }
+                                }, 500);
+                            }
+                        });
+                    }
+                }, 700);
             }
-            handler.postDelayed(() -> webView.evaluateJavascript(
-                "window.__autoPagerFixture.scroll(" + number + ")", ignored -> {
-                    handler.postDelayed(() -> record(number), 500);
-                }), 700);
         });
     }
 
     private void record(final int number) {
-        webView.evaluateJavascript("JSON.stringify(window.__autoPagerFixture.snapshot(" + number + "))", value -> {
+        webView.evaluateJavascript("JSON.stringify(window.__autoPagerFixture.snapshot(" + number + "))",
+                new ValueCallback<String>() {
+            @Override public void onReceiveValue(String value) {
+                recordSnapshot(number, value);
+            }
+        });
+    }
+
+    private void recordSnapshot(int number, String value) {
             try {
                 Object decoded = new JSONTokener(value).nextValue();
                 if (!(decoded instanceof String)) throw new IllegalStateException("No geometry: " + value);
@@ -163,7 +185,6 @@ public final class MainActivity extends Activity {
                 write("ready-" + number + ".json", report.toString(2));
                 Log.i(TAG, "READY page=" + number + " variant=" + variant + " theme=" + theme);
             } catch (Exception error) { fail(error.toString()); }
-        });
     }
 
     private void write(String filename, String text) throws Exception {

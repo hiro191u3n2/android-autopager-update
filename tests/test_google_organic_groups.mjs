@@ -82,13 +82,24 @@ async function measure(page, start, dark, label = '') {
     const horizontal = root.querySelector('[data-organic-horizontal-panel]');
     const hidden = root.querySelector('[data-organic-hidden]');
     const cssHidden = root.querySelector('[data-organic-css-hidden]');
+    const suppressed = (node, origin) => ({
+      present: Boolean(node),
+      display: node ? getComputedStyle(node).display : null,
+      rect: node ? rect(node) : null,
+      explicitHidden: node ? node.hasAttribute('hidden') || node.hasAttribute('aria-hidden') : null,
+      // Removing a marker alone must not let an exposed alternative pass.
+      visibleLinks: [...root.querySelectorAll(`a[href^="${origin}/"]`)].filter(link => {
+        const box = link.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && getComputedStyle(link).visibility === 'visible';
+      }).length,
+    });
     const groupRect = group => rect(root.querySelector(`[data-organic-group="${group}-${start}"]`));
     return {
       results, groupRects: { main: groupRect('main'), existing: groupRect('existing'), same: groupRect('same') },
       siteRect: rect(sites), siteLinks: [...sites.querySelectorAll('a')].map(node => ({ href: node.href, rect: rect(node) })),
       horizontalRect: rect(horizontal), horizontal: [...horizontal.querySelectorAll('[data-organic-horizontal]')].map(rect),
-      hidden: { display: getComputedStyle(hidden).display, rect: rect(hidden) },
-      cssHidden: { display: getComputedStyle(cssHidden).display, rect: rect(cssHidden), explicitHidden: cssHidden.hasAttribute('hidden') || cssHidden.hasAttribute('aria-hidden') },
+      hidden: suppressed(hidden, 'https://hidden.example'),
+      cssHidden: suppressed(cssHidden, 'https://css-hidden.example'),
       native: document.getElementById('organic-native').outerHTML,
       width: innerWidth, documentWidth: document.documentElement.scrollWidth, importedNodeCount: root.querySelectorAll('*').length,
     };
@@ -164,11 +175,16 @@ function verify(value, label, start, { large = false, price = false } = {}) {
   assert.equal(value.paint.horizontal.rows, 0, label + ': horizontal cards acquire no full-width band');
   assert.equal(value.horizontal.length, 2, label + ': both horizontal cards remain');
   assert(Math.abs(value.horizontal[0].top - value.horizontal[1].top) <= 1 && value.horizontal[1].left >= value.horizontal[0].right, label + ': plain flex cards remain side by side');
-  assert.equal(value.hidden.display, 'none', label + ': hidden alternative stays hidden');
-  assert.equal(value.hidden.rect.height, 0, label + ': hidden alternative does not create spacing');
-  assert.equal(value.cssHidden.explicitHidden, false, label + ': CSS-only visibility case is actually exercised');
-  assert.equal(value.cssHidden.display, 'none', label + ': CSS-hidden source/title pair stays hidden');
-  assert.equal(value.cssHidden.rect.height, 0, label + ': CSS-hidden source/title pair does not create spacing');
+  for (const [kind, alternative] of Object.entries({ hidden: value.hidden, cssHidden: value.cssHidden })) {
+    assert.equal(alternative.visibleLinks, 0, `${label}: ${kind} alternative has no exposed result link`);
+    // The existing importer deliberately removes [hidden]/[inert] subtrees.
+    // Either removal or zero-height display:none preserves the required UI.
+    if (alternative.present) {
+      assert.equal(alternative.display, 'none', `${label}: retained ${kind} alternative stays hidden`);
+      assert.equal(alternative.rect.height, 0, `${label}: retained ${kind} alternative creates no spacing`);
+    }
+  }
+  if (value.cssHidden.present) assert.equal(value.cssHidden.explicitHidden, false, label + ': retained CSS-only visibility case has no HTML/ARIA hiding attribute');
   assert.equal(value.native, organicNativeMarkup(), label + ': first-page markup is untouched');
   assert(value.documentWidth <= value.width + 1, label + ': no horizontal overflow');
   if (large) assert(value.importedNodeCount > 6500, label + ': large-DOM guard is actually exercised');
@@ -199,7 +215,14 @@ async function runScenario(code, options, label, control = false) {
     passed++;
     console.log('PASS ' + label);
   } catch (error) {
-    console.error('Organic boundary failure: ' + JSON.stringify({ label, observed: await measure(current.page, 10, options.dark, label + '-failure') }, null, 2));
+    // Print the original failure before attempting diagnostics: a missing node
+    // or closed page must not replace the real assertion with a second error.
+    console.error('Organic boundary failure: ' + JSON.stringify({ label, error: error?.stack || String(error), runtimeErrors: current.errors }, null, 2));
+    try {
+      console.error('Organic boundary observation: ' + JSON.stringify({ label, observed: await measure(current.page, 10, options.dark, label + '-failure') }, null, 2));
+    } catch (observationError) {
+      console.error('Organic boundary observation unavailable: ' + String(observationError));
+    }
     throw error;
   } finally { await current.context.close(); }
 }

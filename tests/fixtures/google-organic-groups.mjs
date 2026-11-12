@@ -87,7 +87,7 @@ export function renderGoogleOrganicFixture(start = 0, { dark = false, shape = 'm
   const horizontal = compact ? '' : `<div class="MjjYud organic-group"><div class="organic-horizontal" data-organic-horizontal-panel="${start}">${[1, 2].map(index => `<div class="organic-horizontal-card" data-organic-horizontal="${start}-${index}"><div class="organic-source-header"><img width="24" height="24" src="${escape(ORGANIC_FAVICON)}" alt=""><cite class="organic-source-url">https://horizontal${index}.example</cite></div><a href="https://horizontal${index}.example/${start}"><h3 class="organic-title">横並びの関連カード ${index}</h3></a><p>同じ段を保つ</p></div>`).join('')}</div></div>`;
   // The previous normalizer abandoned the whole page above 6500 elements.
   // Unrelated hidden bookkeeping must not suppress three visible results.
-  const bulk = large ? `<div class="organic-large-data" aria-hidden="true">${'<i></i>'.repeat(6700)}</div>` : '';
+  const bulk = large ? `<div class="organic-large-data">${'<i></i>'.repeat(6700)}</div>` : '';
   const next = start < 20 ? '<nav><a id="pnnext" href="/search?q=organic-fixture&start=20">次へ</a></nav>' : '';
   return `${head}<main id="search"><div id="rso">${bulk}${contents}${horizontal}</div></main>${next}</body></html>`;
 }
