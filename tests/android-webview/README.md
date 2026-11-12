@@ -1,5 +1,49 @@
 # Offline Android WebView regression harness
 
+## v6.60 root-level results from the supplied diagnosis
+
+The Android job in `.github/workflows/google-root-results-6.60.yml` runs the
+focused v6.60 command using the root-sibling structure identified in the
+user's v6.59 diagnostic. It is a controlled reconstruction of those measured
+wrappers and gaps, not captured Google HTML. It preserves the 499.78125 CSS px
+source width, independent transparent `.MjjYud` siblings, opaque nested
+`.Ww4FFb` surfaces with an 8px bottom margin, and a base-domain site label plus
+subdomain URL in one source header.
+
+```bash
+bash tests/android-webview/build.sh "$PWD" /tmp/autopager-webview-build
+python3 tests/android-webview/run-root-results.py /tmp/autopager-webview-build /tmp/autopager-root-results-evidence
+```
+
+The APK selects this fixture family with `--es fixture root`; the original
+organic fixture remains available. The root runner uses the complete candidate
+userscript and frozen v6.59 control. Missing versus already painted gutters,
+light/dark themes, and pages 2/3 give 16 screenshots. The shared renderer is
+`tests/fixtures/google-root-results.mjs`. An emulator density of 345 at a 1080px
+screen width gives approximately 501 CSS px, allowing the reconstructed root
+to retain its measured 499.78px width. Pixel coordinates always use the actual
+reported WebView origin and viewport width.
+
+The frozen control must paint zero separator pixels for each missing gap and
+one 8px band for each existing gutter. The candidate must paint exactly one
+8px band at every tested boundary. The actual gaps must remain 8px, every
+candidate card rectangle must match the frozen control, and no band may cut
+through a result. These checks reject doubled spacing, duplicate bands, or a
+border added inside the title/source anchor. Titles, descriptions, destinations,
+thumbnail source/size, initial-page markup and absence of horizontal overflow
+are also required.
+
+Every ready report waits for the WebView visual state and the subsequent
+Android frame submission. The compositor can present that frame later, so the
+runner retains each screenshot attempt and waits up to five seconds for the
+same strict pixel assertions to pass. It does not lower any divider threshold.
+Failures are collected while the remaining cases continue. Screenshots,
+geometry, script versions/SHA-256 hashes, provider details and logcat are saved.
+This remains an API 35 emulator WebView test, not Android 17, Berry or live
+Google validation.
+
+## Original grouped-result fixture
+
 The Android job in `.github/workflows/google-organic-6.58.yml` runs this
 integrated validation harness. No production publication is part of this job.
 On a machine with the SDK and a running emulator, the equivalent commands are:
@@ -73,7 +117,8 @@ alone cannot pass. This addresses the observed race where the first screencap
 still showed the old page while the immediately following failure capture
 already showed the complete dialog.
 
-The report must identify v6.59.0 and imported page 2, include four
+The report must identify the candidate version recorded in the build manifest
+(the diagnostic JSON schema remains v659) and imported page 2, include four
 sources/records/cards and the expected three pair reasons, and omit all private
 sentinels, URL queries and fragments. The form values, initial result, imported
 markup, scroll position and pager state must remain intact through open/close.
