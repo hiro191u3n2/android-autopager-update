@@ -46,15 +46,20 @@ async function open(code, { late = false } = {}) {
   let releasePage2, firstTitleRequest;
   const page2Gate = new Promise(resolve => { releasePage2 = resolve; });
   const titleRequested = new Promise(resolve => { firstTitleRequest = resolve; });
-  const state = { failNext: false, lateResponses: [], titleRequests: 0 };
+  const state = { failNext: false, lateResponses: [], titleRequests: 0, requestedStarts: [] };
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (url.hostname === 'www.google.com' && url.pathname === '/search') {
       const start = Number(url.searchParams.get('start')) || 0;
+      state.requestedStarts.push(start);
       if (start === 10) await page2Gate;
       if (start === 20 && state.failNext) return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>unusual traffic</title><p>通常と異なるトラフィック</p>' });
-      return route.fulfill({ contentType: 'text/html', body: fixture(start) });
+      // The existing Google pager synthesizes start+10 when no next link is
+      // present. Return the same external-result identity at the end so its
+      // unchanged duplicate-signature stop, rather than a new end heuristic,
+      // exercises final tail restoration.
+      return route.fulfill({ contentType: 'text/html', body: fixture(start >= 30 ? 20 : start) });
     }
     if (url.hostname === 'www.youtube.com' && url.pathname === '/oembed') {
       state.titleRequests++;
@@ -171,10 +176,18 @@ try {
     current.state.failNext = false;
     await current.page.locator('#generic-autopager-status-v2').evaluate(node => node.click());
     await ready(current, 3);
-    const last = await snapshot(current, 'current-retry-last-page');
-    assert.equal(last.footerDisplay, 'grid', 'Final page restores footer without another pending replacement');
+    const retried = await snapshot(current, 'current-retry-page3');
+    assert.equal(retried.footerDisplay, 'none', 'No explicit next link still uses the existing synthesized-page continuation');
+    assert.equal(new URL(retried.nextHref).searchParams.get('start'), '30');
+    const page3 = retried.trace.filter(entry => entry.page === '3');
+    assert(page3.length >= 1 && page3.every(entry => entry.titles[0] === finalTitle(20)));
+    await current.page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await current.page.waitForFunction(() => document.getElementById('generic-autopager-status-v2')?.style.display === 'none', undefined, { timeout: 20000 });
+    const last = await snapshot(current, 'current-duplicate-end-stopped');
+    assert(current.state.requestedStarts.includes(30), 'The synthesized next page is actually requested');
+    assert.equal(await current.page.locator('.generic-autopager-page[data-page="4"]').count(), 0, 'Existing duplicate-signature end does not append another page');
+    assert.equal(last.footerDisplay, 'grid', 'Existing duplicate-result stop restores footer without another pending replacement');
     assert.equal(last.nextDisplay, 'none', 'No stale next link is exposed after the final page');
-    assert(last.trace.filter(entry => entry.page === '3').every(entry => entry.titles[0] === finalTitle(20)));
     assert.deepEqual(current.errors, [], 'Full import/retry sequence has no uncaught runtime errors');
     console.log('PASS current append: prepared title and tail, preserved initial UI, pause/resume, page-3 failure/manual continuation, retry and final-page restoration');
     passed++;
