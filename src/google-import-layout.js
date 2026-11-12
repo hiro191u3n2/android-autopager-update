@@ -283,6 +283,48 @@ function getGenericGoogleNamedSourceV663(anchor, title, identities, rendered) {
   return null;
 }
 
+// A displayed URL can be split by inline emphasis/wbr or followed by a PDF
+// badge. Read only a short, URL-only inline row; a card, snippet, second source
+// or linked heading must never become one source identity through textContent.
+function getGenericGoogleInlineSourceTextV664(node, rendered) {
+  const elements = [], parts = [];
+  let visited = 0, badge = false, invalid = false;
+  const read = (parent, depth) => {
+    if (depth > 6) { invalid = true; return; }
+    for (const child of parent.childNodes) {
+      if (++visited > 40) { invalid = true; return; }
+      if (child.nodeType === 3) {
+        if (badge && child.textContent.trim()) { invalid = true; return; }
+        parts.push(child.textContent);
+        continue;
+      }
+      if (child.nodeType !== 1) continue;
+      if (!/^(?:SPAN|WBR|B|STRONG|EM|I|SMALL)$/.test(child.tagName) ||
+          child.matches('[hidden],[inert],[aria-hidden="true"],[role],[aria-level],[tabindex],[contenteditable]')) {
+        invalid = true; return;
+      }
+      elements.push(child);
+      if (!child.childElementCount && /^PDF$/i.test(child.textContent.trim())) {
+        if (badge || !parts.join('').trim()) { invalid = true; return; }
+        badge = true;
+      } else read(child, depth + 1);
+      if (invalid) return;
+    }
+  };
+  read(node, 0);
+  const text = parts.join('').trim();
+  if (invalid || !/^(?:https?:\/\/|www\.)(?:[\p{L}\p{N}-]+\.)+[a-z]{2,}(?:[/:?#][^\s<>]*)?$/iu.test(text) ||
+      (text.match(/https?:\/\//gi) || []).length > 1) return '';
+  if (rendered) {
+    const view = node.ownerDocument.defaultView;
+    for (const element of [node, ...elements]) {
+      const style = view.getComputedStyle(element);
+      if (style.display === 'none' || style.visibility !== 'visible' || Number.parseFloat(style.opacity || '1') === 0) return '';
+    }
+  }
+  return text;
+}
+
 function getGenericGoogleResultRecordsV658(root, rendered = false) {
   if (!root?.querySelectorAll) return { records: [], sources: [] };
   const excluded = 'script,style,template,nav,footer,[hidden],[inert],[aria-hidden="true"],g-scrolling-carousel,g-inner-card,[role="grid"],[role="listbox"],[role="tablist"],[role="dialog"],details,g-related-question';
@@ -295,26 +337,32 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
   for (const node of root.querySelectorAll('cite,[data-dtld],span,div')) {
     if (node.closest(excluded) || node.matches(heading)) continue;
     const explicit = node.matches('cite,[data-dtld]');
-    if (!explicit && node.childElementCount !== 0) continue;
-    const text = (node.getAttribute('data-dtld') || node.textContent || '').trim();
+    let text = (node.getAttribute('data-dtld') || node.textContent || '').trim();
     if (!text || text.length > 220 || node.querySelector(heading)) continue;
+    const inlineURL = !explicit && node.childElementCount !== 0;
+    if (inlineURL) text = getGenericGoogleInlineSourceTextV664(node, rendered);
+    if (!text) continue;
     const host = hostOf(text);
     if (host) {
       if (rendered && (!node.getClientRects().length || root.ownerDocument.defaultView.getComputedStyle(node).visibility !== 'visible')) continue;
-      sources.push({ node, host, explicitURL: /^(?:https?:\/\/|www\.)/i.test(text) });
+      sources.push({ node, host, explicitURL: /^(?:https?:\/\/|www\.)/i.test(text), inlineURL });
     }
   }
   // URL text is often nested in several spans. One source identity must not
   // become several results, nor prevent a result's wrapper from being found.
   const identities = sources.filter(source => !sources.some(other => {
     if (other === source) return false;
+    // A valid joined URL owns its inline fragments, even when a suffix such as
+    // "mple.com" happens to parse as another domain. Keep the narrowest complete
+    // row rather than letting that fragment inflate the result's source count.
+    if (other.inlineURL && !source.inlineURL && other.node.contains(source.node)) return true;
     const sameHost = other.host === source.host;
     // A source row can name the site by its base domain while displaying a
     // subdomain URL. Only the plain site-name label can yield to that URL; two
     // explicit URLs or separate source rows must keep their own identities.
     const siteNameForURL = !source.explicitURL && other.explicitURL && other.host.endsWith('.' + source.host);
     if (!sameHost && !siteNameForURL) return false;
-    if (sameHost && source.node.contains(other.node)) return true;
+    if (sameHost && source.node.contains(other.node)) return !source.inlineURL || other.inlineURL;
     // Some sites use their domain as the site name as well as the URL. Those
     // sibling labels are one identity when they share a source-only container.
     let common = source.node.parentElement;
@@ -525,6 +573,76 @@ function getGenericGoogleRootGapPaintV661(root, previous, current, rootGap, surf
     contrast, edgeInset, shadowHeight: rootGap.height - edgeInset };
 }
 
+// Some mobile result cards touch: the white separation is their own padding,
+// not an external margin. Paint inside confirmed empty top padding instead of
+// adding a border (which would move every following result and the scrollbar).
+function getGenericGoogleTouchingPaintV664(root, previous, current, records, rect, style, surfaces, color, height) {
+  const a = rect(previous), b = rect(current), gap = b.top - a.bottom;
+  if (gap < -0.5 || gap > 1 || height < 2 || height > 12 ||
+      previous.parentElement !== root || current.parentElement !== root ||
+      !surfaces.get(previous)?.coversCard || !surfaces.get(current)?.coversCard) return null;
+  let sibling = previous.nextElementSibling;
+  for (; sibling && sibling !== current; sibling = sibling.nextElementSibling) {
+    if (sibling.matches('script,style,template')) continue;
+    const r = rect(sibling), s = style(sibling);
+    if (r.width && r.height && s.visibility === 'visible' && Number.parseFloat(s.opacity || '1') !== 0) return null;
+  }
+  if (sibling !== current) return null;
+  const record = records.find(entry => entry.card === current);
+  const surface = surfaces.get(current).node;
+  if (!record || !surface) return null;
+  const limit = root.closest('.generic-autopager-page') || root;
+  const complex = s => s.visibility !== 'visible' || Number.parseFloat(s.opacity || '1') !== 1 ||
+    [s.transform, s.clipPath, s.maskImage, s.backgroundImage].some(value => value && value !== 'none') ||
+    ['borderTopLeftRadius', 'borderTopRightRadius'].some(property => Number.parseFloat(s[property]) > 0);
+  for (let node = surface; node; node = node.parentElement) {
+    const s = style(node), box = rect(node);
+    if (complex(s)) return null;
+    if (/^(?:hidden|clip|scroll|auto)$/.test(s.overflowY) &&
+        (b.top < box.top + (Number.parseFloat(s.borderTopWidth) || 0) - 0.5 ||
+         b.top + height > box.bottom - (Number.parseFloat(s.borderBottomWidth) || 0) + 0.5) ||
+        /^(?:hidden|clip|scroll|auto)$/.test(s.overflowX) &&
+        (b.left < box.left + (Number.parseFloat(s.borderLeftWidth) || 0) - 0.5 ||
+         b.right > box.right - (Number.parseFloat(s.borderRightWidth) || 0) + 0.5)) return null;
+    if (node === limit) break;
+  }
+  // The background surface and a transparent inner copy can have the same
+  // rectangle. Choose a box that actually owns the empty padding, never the
+  // title/source row itself or a box smaller than the result.
+  for (let node = record.title.parentElement; node && current.contains(node); node = node.parentElement) {
+    const r = rect(node), s = style(node);
+    if (Math.abs(r.left - b.left) > 0.5 || Math.abs(r.right - b.right) > 0.5 ||
+        Math.abs(r.top - b.top) > 0.5 || Math.abs(r.bottom - b.bottom) > 0.5 ||
+        Number.parseFloat(s.paddingTop) < height || !node.contains(record.source)) continue;
+    let unsafe = false;
+    for (let inner = node; inner && inner !== surface; inner = inner.parentElement) {
+      if (complex(style(inner))) { unsafe = true; break; }
+    }
+    if (unsafe) continue;
+    if ((Number.parseFloat(s.borderTopWidth) || 0) > 0 ||
+        [s.transform, s.clipPath, s.maskImage, s.backgroundImage].some(value => value && value !== 'none')) continue;
+    const shadow = s.boxShadow && s.boxShadow !== 'none' ? s.boxShadow : '';
+    // Do not repaint a pre-existing inset divider or an arbitrary card glow.
+    // The familiar thin hard outer outline can coexist without pixel changes.
+    if (shadow && !/^rgba?\([^)]*\)\s+0px\s+0px\s+0px\s+(?:1(?:\.\d+)?|2)px$/i.test(shadow)) continue;
+    const contentTop = b.top + height;
+    if (rect(record.source).top < contentTop - 0.5 || rect(record.title).top < contentTop - 0.5) continue;
+    // Whitespace is established from the box model AND rendered children.
+    // Negative margins, positioned decorations and direct text invalidate it.
+    if ([...node.childNodes].some(child => child.nodeType === 3 && child.textContent.trim())) continue;
+    if ([...node.children].some(child => {
+      if (child.matches('script,style,template')) return false;
+      const box = rect(child), css = style(child);
+      return box.width > 0 && box.height > 0 && css.visibility === 'visible' &&
+        Number.parseFloat(css.opacity || '1') !== 0 && box.top < contentTop - 0.5;
+    })) continue;
+    const pseudos = ['::before', '::after'].map(pseudo => node.ownerDocument.defaultView.getComputedStyle(node, pseudo));
+    if (pseudos.some(p => p && p.content && !/^(?:none|normal)$/.test(p.content) && p.display !== 'none')) continue;
+    return { node, color, insetHeight: height, originalShadow: shadow };
+  }
+  return null;
+}
+
 function repairGenericGoogleResultBoundariesV658(page) {
   if (!page?.isConnected || !/^(?:www\.)?google\.[a-z.]+$/i.test(location.hostname) || location.pathname !== '/search') return;
   const root = page.querySelector('.generic-autopager-google-source-root');
@@ -621,12 +739,17 @@ function repairGenericGoogleResultBoundariesV658(page) {
     while (common && !common.contains(current)) common = common.parentElement;
     if (!common) continue;
     let rootGap = common === root ? getGenericGoogleRootGapV660(root, previous, current, rect, style, surfaces) : null;
-    if (rootGap && !rootGap.accepted) continue;
+    let touchingPaint = null;
+    if (rootGap && !rootGap.accepted) {
+      if (rootGap.reason === 'root-gap-range') touchingPaint = getGenericGoogleTouchingPaintV664(root, previous, current, records, rect, style, surfaces, color, height);
+      if (!touchingPaint) continue;
+      rootGap = null;
+    }
     // The same independent white surfaces and small margins also occur inside
     // a grouped result wrapper. Background-string inequality did not establish
     // a visible separator there either. Reuse the validated gap-only paint so
     // its existing spacing/outline are preserved instead of adding a border.
-    if (!rootGap && previous.parentElement === common && current.parentElement === common) {
+    if (!rootGap && !touchingPaint && previous.parentElement === common && current.parentElement === common) {
       const groupedGap = getGenericGoogleRootGapV660(common, previous, current, rect, style, surfaces);
       if (groupedGap.accepted) rootGap = groupedGap;
     }
@@ -638,13 +761,14 @@ function repairGenericGoogleResultBoundariesV658(page) {
     // can be removed by Google cleanup and no repeated pass can append a copy.
     const currentStyle = style(current);
     if ((Number.parseFloat(currentStyle.borderTopWidth) || 0) > 0 && colored(currentStyle.borderTopColor) && currentStyle.borderTopColor !== surface) continue;
-    const paint = rootGap ? getGenericGoogleRootGapPaintV661(common, previous, current, rootGap, surfaces, style, color, native?.color) : null;
+    const paint = touchingPaint || (rootGap ? getGenericGoogleRootGapPaintV661(common, previous, current, rootGap, surfaces, style, color, native?.color) : null);
     missing.push({ current, paint });
   }
   for (const { current, paint } of missing) {
     // An outer, zero-blur shadow is clipped inside the border box. Its only
     // visible portion fills this existing gap; margins and heights stay intact.
-    if (paint) current.style.setProperty('box-shadow', `0px -${paint.shadowHeight}px 0px 0px ${paint.color}`, 'important');
+    if (paint?.insetHeight) paint.node.style.setProperty('box-shadow', `inset 0px ${paint.insetHeight}px 0px 0px ${paint.color}${paint.originalShadow ? ', ' + paint.originalShadow : ''}`, 'important');
+    else if (paint) current.style.setProperty('box-shadow', `0px -${paint.shadowHeight}px 0px 0px ${paint.color}`, 'important');
     else current.style.setProperty('border-top', `${height}px solid ${color}`, 'important');
     current.setAttribute(genericGoogleBoundaryMarkV658, '1');
   }
