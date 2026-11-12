@@ -51,6 +51,7 @@ def probe(action):
         '--es', 'diagnostic_action', action, '--es', 'diagnostic_request', token)
     value = read_report(f'diagnostics-{token}.json', timeout=12)
     assert value['request'] == token and value['action'] == action, 'Stale diagnostic probe'
+    assert value['visualStateRequest'] == request_number and value['frameCommitted'], 'Diagnostic report preceded its rendered Android frame'
     assert (value['variant'], value['shape'], value['theme']) == ('current', 'mixed', 'light'), 'Activity reset'
     save_json(f'probe-{request_number:03d}-{action}.json', value)
     return value
@@ -136,6 +137,27 @@ def verify_dialog_paint(before_path, opened_path, geometry):
     return {'changedPhysicalPixels': changed, 'dialogPhysicalPixels': area, 'bounds': bounds}
 
 
+def wait_for_dialog_paint(before_path, geometry, timeout=5):
+    # A submitted Android frame may still be waiting for SurfaceFlinger. Keep
+    # every actual screencap and require the original pixel threshold to pass.
+    deadline = time.monotonic() + timeout
+    attempt = 0
+    while True:
+        attempt += 1
+        path = screenshot(f'diagnostics-opened-attempt-{attempt:02d}.png')
+        try:
+            measurement = verify_dialog_paint(before_path, path, geometry)
+        except AssertionError as error:
+            if not error.args or not isinstance(error.args[0], tuple) or error.args[0][0] != 'Dialog exists in DOM but no substantial compositor paint':
+                raise
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)
+            continue
+        (OUTPUT / 'diagnostics-opened.png').write_bytes(path.read_bytes())
+        return {**measurement, 'compositorCaptureAttempts': attempt}
+
+
 result = {'scope': 'One Android API 35 emulator WebView current/mixed/light diagnostic UI smoke; offline controlled DOM, not Berry or live Google.'}
 failures = []
 try:
@@ -197,14 +219,14 @@ try:
                         bool(value['dialog']['reportText']))
     intact(opened)
     assert not opened['status']['paused'], 'Long press also toggled pause'
+    assert opened['dialog']['host']['role'] == 'dialog', 'Diagnostic overlay lost its dialog role'
     assert opened['dialog']['readonly'], 'Report textarea must be read-only'
     assert opened['dialog']['close']['visible'], 'Dialog close button is not visible'
-    opened_png = screenshot('diagnostics-opened.png')
-    result['paint'] = verify_dialog_paint(before, opened_png, opened)
     report_text = opened['dialog']['reportText']
     (OUTPUT / 'diagnostic-report.txt').write_text(report_text)
     diagnostic = json.loads(report_text)
     save_json('diagnostic-report.json', diagnostic)
+    result['paint'] = wait_for_dialog_paint(before, opened)
     assert diagnostic['schema'] == 'android-autopager-google-diagnostics/v659', diagnostic.get('schema')
     assert diagnostic['userscriptVersion'] == EXPECTED_VERSION, diagnostic.get('userscriptVersion')
     assert str(diagnostic['pager']['selectedPage']) == '2', diagnostic['pager']

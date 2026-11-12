@@ -64,7 +64,16 @@ a 1300 ms long press opens the diagnostic dialog, and its close button closes
 it. Touch coordinates come from the live WebView geometry and screen origin.
 An Activity intent calls a read-only probe through `evaluateJavascript` to save
 the textarea content and UI state; requests have distinct IDs so stale reports
-cannot pass. The report must identify v6.59.0 and imported page 2, include four
+cannot pass. The Activity waits for `WebView.postVisualStateCallback` and the
+following Android frame-commit callback before making each probe report ready.
+The compositor may present that submitted frame later, so the runner waits up
+to five seconds for actual screencap pixels in the inner dialog panel to pass
+the unchanged difference threshold, saving every attempt. A DOM-visible dialog
+alone cannot pass. This addresses the observed race where the first screencap
+still showed the old page while the immediately following failure capture
+already showed the complete dialog.
+
+The report must identify v6.59.0 and imported page 2, include four
 sources/records/cards and the expected three pair reasons, and omit all private
 sentinels, URL queries and fragments. The form values, initial result, imported
 markup, scroll position and pager state must remain intact through open/close.
@@ -88,5 +97,7 @@ Primary references checked when creating this candidate:
 - https://developer.android.com/tools/d8
 - https://developer.android.com/tools/apksigner
 - https://developer.android.com/reference/android/webkit/WebViewClient
+- https://developer.android.com/reference/android/webkit/WebView#postVisualStateCallback(long,%20android.webkit.WebView.VisualStateCallback)
+- https://developer.android.com/reference/android/view/ViewTreeObserver#registerFrameCommitCallback(java.lang.Runnable)
 - https://developer.android.com/develop/ui/views/layout/webapps/load-local-content
 - https://developer.android.com/develop/ui/views/layout/immersive

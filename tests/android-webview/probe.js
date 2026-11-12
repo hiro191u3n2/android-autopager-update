@@ -96,7 +96,7 @@
         errors: [...errors], status,
         dialog: host ? {
           host: control('#generic-google-diagnostics-v659'),
-          panel: control('#generic-google-diagnostics-v659[role="dialog"]'),
+          panel: control('#generic-google-diagnostics-v659 > div'),
           textarea: control('#generic-google-diagnostics-text-v659'),
           close: control('#generic-google-diagnostics-close-v659'),
           readonly: Boolean(textarea?.readOnly),

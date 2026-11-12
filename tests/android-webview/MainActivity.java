@@ -189,8 +189,37 @@ public final class MainActivity extends Activity {
                     report.put("viewX", location[0]); report.put("viewY", location[1]);
                     report.put("viewWidth", webView.getWidth()); report.put("viewHeight", webView.getHeight());
                     synchronized (javascriptErrors) { report.put("consoleErrors", new JSONArray(javascriptErrors)); }
-                    write("diagnostics-" + request + ".json", report.toString(2));
+                    writeDiagnosticsAfterFrame(report, request);
                 } catch (Exception error) { fail(error.toString()); }
+            }
+        });
+    }
+
+    private void writeDiagnosticsAfterFrame(final JSONObject report, final String request) {
+        if (Build.VERSION.SDK_INT < 29 || !webView.isHardwareAccelerated()) {
+            fail("Diagnostic compositor synchronization requires API 29+ hardware rendering");
+            return;
+        }
+        // evaluateJavascript confirms DOM state, not the pixels drawn by the
+        // WebView. Wait for that state and its next submitted Android frame.
+        webView.postVisualStateCallback(Long.parseLong(request), new WebView.VisualStateCallback() {
+            @Override public void onComplete(final long requestId) {
+                if (!webView.isAttachedToWindow()) { fail("WebView detached before diagnostic frame"); return; }
+                webView.getViewTreeObserver().registerFrameCommitCallback(new Runnable() {
+                    @Override public void run() {
+                        handler.post(new Runnable() {
+                            @Override public void run() {
+                                try {
+                                    report.put("visualStateRequest", requestId);
+                                    report.put("frameCommitted", true);
+                                    report.put("frameCommittedAtMs", android.os.SystemClock.uptimeMillis());
+                                    write("diagnostics-" + request + ".json", report.toString(2));
+                                } catch (Exception error) { fail(error.toString()); }
+                            }
+                        });
+                    }
+                });
+                webView.invalidate();
             }
         });
     }
