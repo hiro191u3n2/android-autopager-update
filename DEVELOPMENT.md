@@ -1,5 +1,21 @@
 # Recovered development source
 
+v6.57 is a rollback requested by the owner after separator changes worsened
+their device display. The executable is restored exactly to the frozen v6.53
+package, Git blob 1d0077630bb5cdbc80a85ff0b12862010b398f06. Only metadata is
+changed for forward delivery (version 6.57.0 and an explicit rollback notice).
+The fixed update/download URLs remain unchanged. Google layout source and
+worker assembly are restored from pre-separator commit
+61ffb0d8265bb5b9fe2f6aca8458862fbc8d32aa; v6.54/v6.55 separator capture and
+v6.56 boundary normalization are absent. The v6.53 search-input changes remain.
+
+Active test commands again use the pre-separator suites. The later separator
+test files and historical release aliases remain as history, not active
+release requirements. Rollback validation compares the complete executable
+bytes against frozen v6.53, plus syntax, preserved-module and package checks;
+this is not a new device/browser behavior claim. Historical investigations
+below describe superseded releases, not the current runtime.
+
 v6.56 adds result-boundary normalization after a Google page is appended. The
 v6.54/v6.55 fixes only preserved existing source paint; they could not supply
 missing dividers inside a grouped result wrapper. The user reported continuing
