@@ -1,5 +1,89 @@
 # Recovered development source
 
+## v6.61: do not infer a painted gutter from ancestor color inequality
+
+The owner reported that v6.60 was still visually unresolved and supplied a
+second diagnostic captured at 2026-11-12T10:23:41.178Z. Nine records and all nine
+cards were accepted, with eight aligned 8px gaps and confirmed white result
+surfaces. Every pair was rejected by `different-background`; repair markers and
+detected bands were both zero after three normal repair invocations. Nested
+surfaces additionally showed an opaque 1px outline shadow in rgb(235,237,239).
+The report does not record the resolved ancestor backdrop or contain the full
+source HTML. The new fixtures therefore use explicit representative near-white
+and translucent backgrounds, not an invented claim about the owner's exact
+ancestor color or a capture of the original three-store DOM.
+
+The old background helper walks past the transparent imported root/page into
+the initial page's ancestors. That color string differing from the result face
+is not evidence that the imported gap contains a visible separator. Qualified
+direct-root gaps no longer use this inequality to cancel paint. The old grouped
+path and native border/pseudo/decorative-band guards remain unchanged.
+
+For root gaps, an opaque parsed sRGB ancestor color is retained when its contrast
+against both opaque result faces is at least 1.12. Otherwise a known native band
+supplies the paint color, followed by the existing theme fallback for weak,
+translucent or unsupported backgrounds. A band elsewhere in the imported root
+cannot recolor an already contrasting local gutter. This threshold chooses a decorative color;
+it never decides whether to repair and is not an accessibility conformance
+threshold. No root/body background, source content, geometry, event handler or
+recurring work is added or changed.
+
+The existing zero-blur outer-shadow method paints only the existing gap. An
+opaque, simple hard surface outline up to 2px is retained at the previous
+result's bottom edge when its ancestry does not clip it; the new fill starts
+after that edge. Surface shadows and margins themselves are not overwritten.
+The inspector uses the renderer's shared paint helper and exposes the raw
+backdrop, source node, alpha, opaque contrast ratios, chosen color/basis and
+outline inset, including current decisions for already marked pairs.
+
+The preservation gate now restores only the layout module, inspector and
+diagnostic version initializer to frozen v6.60 and compares the whole executable
+byte-for-byte. Frozen v6.60 has Git blob
+dfa28418b2ea6fb4af5ed7bcfa537ff903d5decd. The v6.44 preservation gate remains.
+
+Validation passed at candidate 38a6b175dd18218c731ee2bd3b9cd2c23dc16032:
+https://github.com/hiro191u3n2/android-autopager-update/actions/runs/43203877673
+The complete npm regression suite, frozen-baseline checks and release package
+validation passed. The root-result Chromium suite passed 13 scenarios, including
+two actual frozen-v6.60 controls whose own diagnostic UI reports three
+`different-background` rejections and zero markers. Current near-white and
+translucent backgrounds are repaired. Native light, dark and custom-gray gaps
+retain every pixel when compared at the same position with only the added
+outer shadow temporarily disabled. The 25 inspector scenarios and 12 diagnostic
+UI scenarios also passed, together with the existing layout, input, cleanup and
+unrelated-site regressions.
+
+The actual Android 15 / API 35 emulator ran the complete userscript with
+WebView 124.0.6367.219. All 16 candidate/frozen-v6.60 screenshots passed on their
+first capture attempt: near-white, translucent, native light and native dark,
+each on pages 2/3. Forty-eight gap centers and 96 original outline edges matched
+the expected colors within one RGB level. Twelve entire native gap crops
+matched within one RGB level, and all eight source-relative layout comparisons
+passed with a maximum difference of 0.000026703 CSS px (0.2px allowed). Content,
+destinations, thumbnails, initial markup, 8px margins and inner shadows remained
+intact. The final evidence has 16 measurements and no verification failures;
+representative light/dark compositor screenshots were also inspected.
+
+Validation also corrected two measurement errors without relaxing paint/color
+expectations. The Chromium reference must temporarily override the outer
+inline-important shadow directly; a screenshot stylesheet cannot override it.
+Android raster coordinates use the measured DPR and snapped painted card edges,
+not viewWidth divided by the independently rounded visualViewport.width. The
+earlier Android run's original screenshots were preserved and all 16 passed
+offline reanalysis before the successful fresh emulator run. The executable
+was unchanged by those Android measurement corrections.
+
+These are controlled structural fixtures derived from the supplied diagnostic,
+not captured full Google HTML, the exact original three-store result list, or
+verification on the owner's Android 17 / Berry / AdGuard device. The resolved
+ancestor color on that device remains unknown; representative fixture colors
+must not be described as measured device colors.
+
+Verified release SHA-256 values:
+- userscript and v6.61 alias: 0c8cd1e6c9b21036cad21bff3a00cb22cc4837e16ffd7b7f895f569f10fbd5fd
+- metadata: c899a9598611eb8be80514df4be259eb1a776c3bdc8e49e3b3093345c219d910
+- executable body: 35602d372de0c651a12fa2ee50f85ade1a65e04b1910cde6efc5854d0dca35ba
+
 ## v6.60: root-level gaps identified by the owner's diagnostic
 
 The owner's v6.59 report captured on 2026-11-12 identified a concrete exclusion:
