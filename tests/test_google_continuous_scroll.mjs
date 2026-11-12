@@ -195,6 +195,7 @@ try {
   // Ample initial content separates gesture continuity from network starvation.
   // Release the pending next page only after the touch ends, so preparation and
   // append happen during the period in which the browser can still be flinging.
+  let nativeControl;
   for (const [name, code] of [['native-control', ''], ['current-native', current]]) {
     const test = await open(code, { ample: true, gated: true });
     try {
@@ -217,8 +218,28 @@ try {
       assert.deepEqual(result.outerWrites, [], 'Neither the pager nor the test forces outer scroll positions during native gestures');
       assert(result.frames.filter(frame => frame.at >= began.at).every(frame => frame.remaining > 983), 'Ample-content gesture never reaches the document end');
       if (code) {
-        assert(result.appends.some(entry => entry.at > ended.at), 'An actual next page is appended after touch release');
+        const appended = result.appends.find(entry => entry.at > ended.at);
+        assert(appended, 'An actual next page is appended after touch release');
+        const appendDelay = appended.at - ended.at;
+        const controlFrame = nativeControl.frames.find(frame => frame.at - nativeControl.endedAt >= appendDelay);
+        assert(controlFrame && appendDelay < nativeControl.motionDuration,
+          'Append must occur inside the independently observed native fling window, not after the control has naturally stopped');
+        const controlRemainingMotion = nativeControl.y - controlFrame.y;
+        assert(controlRemainingMotion > 30, 'The control must still have meaningful movement remaining at the append time');
+        const afterAppend = result.frames.find(frame => frame.at >= appended.at);
+        assert(afterAppend, 'Capture an actual rendered frame at or after append');
+        const continuedMotion = result.y - afterAppend.y;
+        result.postAppendMotion = { appendDelay, controlMotionDuration: nativeControl.motionDuration,
+          controlRemainingMotion, appendY: appended.y, firstFrameY: afterAppend.y, continuedMotion };
+        assert(continuedMotion > 10,
+          `Native fling must continue after append, not merely move before it; post-append motion was ${continuedMotion}px`);
         assert.equal(result.maxFrames, 1);
+      } else {
+        const released = result.frames.filter(frame => frame.at >= ended.at);
+        let lastMotion = ended.at;
+        for (let n = 1; n < released.length; n++) if (released[n].y > released[n - 1].y + 0.5) lastMotion = released[n].at;
+        nativeControl = { endedAt: ended.at, frames: released, y: result.y, motionDuration: lastMotion - ended.at };
+        result.nativeMotionDuration = nativeControl.motionDuration;
       }
       assert.deepEqual(test.errors, []);
       await cdp.detach();

@@ -30,7 +30,45 @@ function genericGoogleImageSlotReadyV666(image, view) {
   return (hasWidth || hasHeight) && !!ratio && !/\bauto\b/.test(ratio) && ratio !== 'none';
 }
 
-async function hydrateGenericGoogleFrameV666(view, doc, root) {
+function genericGoogleImagePlaceholderV666(value) {
+  const src = String(value || '').trim().toLowerCase();
+  return !src || src === 'about:blank' || src.startsWith('data:image/gif;base64,r0lgodlhaqaba') ||
+    src.startsWith('data:image/png;base64,ivborw0kgoaaaansuheugaaaaeaaaab') ||
+    src.startsWith('data:image/svg+xml') && /transparent|opacity%3d.?0|fill%3d.?none/.test(src);
+}
+
+function genericGoogleImageActivationPendingV666(image, isPlaceholder) {
+  const resource = value => !!String(value || '').trim() && !isPlaceholder(value);
+  const picture = image.parentElement?.tagName === 'PICTURE' ? image.parentElement : null;
+  const sources = picture ? [...picture.querySelectorAll('source')] : [];
+  if ([image.getAttribute('src'), image.getAttribute('srcset'), ...sources.map(source => source.getAttribute('srcset'))].some(resource)) return false;
+  return ['data-src', 'data-lazy-src', 'data-original', 'data-iurl', 'data-srcset'].some(name => resource(image.getAttribute(name))) ||
+    sources.some(source => resource(source.getAttribute('data-srcset')));
+}
+
+function genericGoogleActivateKnownImageV666(image, isPlaceholder) {
+  const usable = value => {
+    if (!value || isPlaceholder(value)) return false;
+    try {
+      const url = new URL(value, image.ownerDocument.baseURI);
+      return /^(?:https?:|blob:)$/.test(url.protocol) || url.protocol === 'data:' && /^data:image\//i.test(value);
+    } catch (_) { return false; }
+  };
+  const promoteSet = node => {
+    const value = node.getAttribute('data-srcset');
+    // Preserve ordinary responsive candidates; leave unusual data-URL srcsets
+    // to their own script instead of guessing where an embedded comma ends.
+    if (value && value.split(',').every(candidate => usable(candidate.trim().split(/\s+/)[0]))) node.setAttribute('srcset', value);
+  };
+  if (image.parentElement?.tagName === 'PICTURE') for (const source of image.parentElement.querySelectorAll('source')) promoteSet(source);
+  promoteSet(image);
+  const value = ['data-src', 'data-lazy-src', 'data-original', 'data-iurl'].map(name => image.getAttribute(name)).find(usable);
+  if (value) image.setAttribute('src', value);
+  image.setAttribute('loading', 'eager');
+  return !genericGoogleImageActivationPendingV666(image, isPlaceholder);
+}
+
+async function hydrateGenericGoogleFrameV666(view, doc, root, isPlaceholder = genericGoogleImagePlaceholderV666) {
   const live = () => genericGoogleFrameConnectedV666(view, doc, root);
   const requireLive = () => { if (!live()) throw new Error('Googleページの読み込みが中断されました'); };
   requireLive();
@@ -47,43 +85,79 @@ async function hydrateGenericGoogleFrameV666(view, doc, root) {
     await genericGooglePreparationFrameV666();
   }
   requireLive();
-  const waiting = [];
-  let batchStart = performance.now(), count = 0;
-  for (const image of root.querySelectorAll('img')) {
-    if (++count % 64 === 0 || performance.now() - batchStart >= 6) {
-      await genericGooglePreparationYieldV666(); requireLive(); batchStart = performance.now();
+  const waitingImages = async () => {
+    requireLive();
+    const waiting = [];
+    let batchStart = performance.now(), count = 0;
+    for (const image of root.querySelectorAll('img')) {
+      if (++count % 64 === 0 || performance.now() - batchStart >= 6) {
+        await genericGooglePreparationYieldV666(); requireLive(); batchStart = performance.now();
+      }
+      if (!image.getClientRects().length) continue;
+      const activation = genericGoogleImageActivationPendingV666(image, isPlaceholder);
+      if (activation || !image.complete && !genericGoogleImageSlotReadyV666(image, view)) waiting.push({ image, activation });
     }
-    if (image.complete || !image.getClientRects().length || genericGoogleImageSlotReadyV666(image, view)) continue;
-    waiting.push(image);
+    return waiting;
+  };
+  let waiting = await waitingImages();
+  let activated = false;
+  for (const item of waiting) if (item.activation && genericGoogleImageSlotReadyV666(item.image, view)) {
+    activated = genericGoogleActivateKnownImageV666(item.image, isPlaceholder) || activated;
+  }
+  if (activated) {
+    // A debounced source script may otherwise never activate an earlier
+    // viewport. Safe known URLs in reserved slots need no timer-based wait.
+    await genericGooglePreparationFrameV666(); requireLive();
+    waiting = await waitingImages();
   }
   // Known image slots can paint their pixels later without moving any result.
-  // Unsized pending images still get the existing bounded opportunity to load.
-  if (waiting.length) await new Promise(resolve => {
-    let remaining = waiting.length, timer = 0, closed = false;
-    const listeners = [];
-    const finish = () => {
+  // A complete transparent placeholder is not an activated image. Deferred
+  // lazy scripts get the same shared bound as unsized pending image pixels.
+  if (waiting.length) await new Promise((resolve, reject) => {
+    let timer = 0, frame = 0, closed = false, checking = false, again = false, expired = false;
+    const observer = new view.MutationObserver(() => { void check(); });
+    const finish = error => {
       if (closed) return;
       closed = true;
       window.clearTimeout(timer);
-      for (const [image, done] of listeners) {
-        image.removeEventListener('load', done);
-        image.removeEventListener('error', done);
-      }
-      resolve();
+      if (frame) window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      root.removeEventListener('load', onResource, true);
+      root.removeEventListener('error', onResource, true);
+      if (error) reject(error); else resolve();
     };
-    for (const image of waiting) {
-      let settled = false;
-      const done = () => {
-        if (settled || closed) return;
-        settled = true;
-        if (--remaining === 0) finish();
-      };
-      listeners.push([image, done]);
-      image.addEventListener('load', done, { once: true });
-      image.addEventListener('error', done, { once: true });
-      if (image.complete) done();
-    }
-    if (!closed) timer = window.setTimeout(finish, 1600);
+    const check = async () => {
+      if (closed) return;
+      if (checking) { again = true; return; }
+      checking = true;
+      try {
+        const pending = await waitingImages();
+        if (closed) return;
+        if (!pending.length) finish();
+        else if (expired) {
+          // A long page can have gaps between the visited viewports. At the
+          // shared deadline safely activate known lazy URLs in reserved slots
+          // so those pixels can load after import without changing geometry.
+          const activations = pending.filter(item => item.activation);
+          const unresolved = activations.some(({ image }) =>
+            !genericGoogleImageSlotReadyV666(image, view) || !genericGoogleActivateKnownImageV666(image, isPlaceholder));
+          if (!unresolved && activations.length) { await genericGooglePreparationFrameV666(); requireLive(); }
+          finish(unresolved ? new Error('Google画像の準備が完了しませんでした。再試行してください') : undefined);
+        }
+      } catch (error) { finish(error); }
+      finally {
+        checking = false;
+        if (again && !closed) { again = false; void check(); }
+      }
+    };
+    const onResource = () => { void check(); };
+    observer.observe(root, { subtree: true, childList: true, attributes: true,
+      attributeFilter: ['src', 'srcset', 'data-src', 'data-lazy-src', 'data-original', 'data-iurl', 'data-srcset', 'class', 'style', 'width', 'height'] });
+    root.addEventListener('load', onResource, true);
+    root.addEventListener('error', onResource, true);
+    timer = window.setTimeout(() => { expired = true; void check(); }, 1600);
+    frame = window.requestAnimationFrame(() => { frame = 0; void check(); });
+    void check();
   });
   requireLive();
 }

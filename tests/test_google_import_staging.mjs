@@ -46,8 +46,9 @@ function fixture(start) {
 async function open(code, { late = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 500, height: 983 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   const page = await context.newPage(), errors = [];
-  let releasePage2, firstTitleRequest;
+  let releasePage2, releaseFinal, firstTitleRequest;
   const page2Gate = new Promise(resolve => { releasePage2 = resolve; });
+  const finalGate = new Promise(resolve => { releaseFinal = resolve; });
   const titleRequested = new Promise(resolve => { firstTitleRequest = resolve; });
   const state = { failNext: false, lateResponses: [], titleRequests: 0, requestedStarts: [] };
   page.on('pageerror', error => errors.push(String(error)));
@@ -57,6 +58,9 @@ async function open(code, { late = false } = {}) {
       const start = Number(url.searchParams.get('start')) || 0;
       state.requestedStarts.push(start);
       if (start === 10) await page2Gate;
+      // Observe page 3's continuing state before the faster read-ahead can
+      // receive the duplicate final result and correctly restore the tail.
+      if (start >= 30) await finalGate;
       if (start === 20 && state.failNext) return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>unusual traffic</title><p>通常と異なるトラフィック</p>' });
       // The existing Google pager synthesizes start+10 when no next link is
       // present. Return the same external-result identity at the end so its
@@ -101,7 +105,8 @@ async function open(code, { late = false } = {}) {
   // Observe its gated loading state without waiting for that iframe to finish.
   await page.goto('https://www.google.com/search?q=staging', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('generic-autopager-status-v2')?.textContent.startsWith('読込'), { timeout: 20000 });
-  return { context, page, state, errors, releasePage2, titleRequested };
+  return { context, page, state, errors, releasePage2, releaseFinal, titleRequested,
+    close: async () => { releasePage2(); releaseFinal(); await context.close(); } };
 }
 
 async function snapshot(current, label) {
@@ -141,7 +146,7 @@ try {
     assert(titles.includes(placeholder) && titles.includes(finalTitle(10)), 'Frozen control visibly changes placeholder metadata to the fetched title');
     console.log('PASS frozen v6.62 control: loading exposes native tail; displayed title changes from metadata to final title');
     passed++;
-  } finally { await old.context.close(); }
+  } finally { await old.close(); }
 
   const current = await open(built);
   try {
@@ -186,6 +191,7 @@ try {
     assert.equal(new URL(retried.nextHref).searchParams.get('start'), '30');
     const page3 = retried.trace.filter(entry => entry.page === '3');
     assert(page3.length >= 1 && page3.every(entry => entry.titles[0] === finalTitle(20)));
+    current.releaseFinal();
     await current.page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     await current.page.waitForFunction(() => document.getElementById('generic-autopager-status-v2')?.style.display === 'none', undefined, { timeout: 20000 });
     const last = await snapshot(current, 'current-duplicate-end-stopped');
@@ -196,7 +202,7 @@ try {
     assert.deepEqual(current.errors, [], 'Full import/retry sequence has no uncaught runtime errors');
     console.log('PASS current append: prepared title and tail, preserved initial UI, pause/resume, page-3 failure/manual continuation, retry and final-page restoration');
     passed++;
-  } finally { await current.context.close(); }
+  } finally { await current.close(); }
 
   const late = await open(built, { late: true });
   try {
@@ -213,7 +219,7 @@ try {
     assert.deepEqual(late.errors, []);
     console.log('PASS title deadline: first-visible original title remains unchanged after the late resolver response');
     passed++;
-  } finally { await late.context.close(); }
+  } finally { await late.close(); }
   console.log(`Google import staging Chromium tests passed: ${passed} scenarios; controlled fixtures, not live Google or Android verification`);
 } finally {
   if (output) await writeFile(resolve(output, 'staging-trace.json'), JSON.stringify(observations, null, 2) + '\n');

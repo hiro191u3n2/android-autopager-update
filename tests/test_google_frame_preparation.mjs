@@ -28,6 +28,7 @@ if (process.env.GOOGLE_TEST_CHROMIUM_MODULE) {
 }
 const browser = await chromium.launch(launch);
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="blue"/></svg>';
+const placeholder = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 let passed = 0;
 async function open(kind) {
   const context = await browser.newContext({ viewport: { width: 500, height: 983 } });
@@ -42,7 +43,13 @@ async function open(kind) {
     }
     if (url.pathname === '/frame') {
       const image = kind === 'unsized' ? '<img id="pending" src="/image.svg">' : kind === 'reserved' ? '<img id="pending" width="160" height="100" src="/image.svg">' : kind === 'ready' ? '<img width="160" height="100" src="data:image/svg+xml,' + encodeURIComponent(svg) + '">' : '';
-      const lazy = kind === 'lazy' ? [1100, 2000, 2800].map((top, i) => `<img class="lazy" data-src="/image.svg?i=${i}" width="160" height="100" style="position:absolute;top:${top}px;left:0">`).join('') + '<script>const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.src=e.target.dataset.src;io.unobserve(e.target)}}));document.querySelectorAll(".lazy").forEach(e=>io.observe(e));</script>' : '';
+      const lazyKinds = ['lazy', 'delayed-lazy', 'delayed-placeholder', 'never-lazy', 'delayed-picture'];
+      const delayed = kind.startsWith('delayed-');
+      const images = [1100, 2000, 2800].map((top, i) => {
+        const img = `<img class="lazy" data-src="/image.svg?i=${i}" ${kind === 'delayed-placeholder' ? `src="${placeholder}"` : ''} ${delayed ? '' : 'width="160" height="100"'} style="position:absolute;top:${top}px;left:0">`;
+        return kind === 'delayed-picture' ? `<picture><source data-srcset="/image.svg?picture=${i} 1x">${img.replace(/data-src="[^"]*"/, '')}</picture>` : img;
+      }).join('');
+      const lazy = lazyKinds.includes(kind) ? images + (kind === 'never-lazy' ? '' : `<script>window.__activated=0;const activate=image=>{if(image.parentElement.tagName==='PICTURE'){const source=image.parentElement.querySelector('source');source.srcset=source.dataset.srcset}else image.src=image.dataset.src;window.__activated++};const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){${delayed ? 'setTimeout(()=>activate(e.target),120)' : 'activate(e.target)'};io.unobserve(e.target)}}));document.querySelectorAll('.lazy').forEach(e=>io.observe(e));</script>`) : '';
       return route.fulfill({ contentType: 'text/html', body: '<!doctype html><style>body{margin:0}#rso{position:relative;height:3200px;width:400px}</style><div id="rso">' + image + lazy + '</div>' });
     }
     return route.fulfill({ contentType: 'text/html', body: '<!doctype html><body></body>' });
@@ -89,6 +96,38 @@ try {
     assert(values.every(value => value.src?.startsWith('/image.svg?i=') && value.width === 160 && value.height === 100), 'Every lazy viewport receives its real source and retains reserved geometry');
     passed++; console.log('PASS frame preparation: actual iframe IntersectionObserver lazy images are activated across all visited viewports');
   } finally { await lazy.close(); }
+  for (const kind of ['delayed-lazy', 'delayed-placeholder', 'delayed-picture']) {
+    const delayed = await open(kind);
+    try {
+      await begin(delayed); await delayed.page.evaluate(() => window.__preparation);
+      const value = await delayed.page.evaluate(() => {
+        const frame = document.getElementById('source');
+        return { activated: frame.contentWindow.__activated, images: [...frame.contentDocument.querySelectorAll('.lazy')].map(image => ({
+          source: image.getAttribute('src') || image.parentElement.querySelector('source')?.getAttribute('srcset'),
+          width: image.getBoundingClientRect().width, height: image.getBoundingClientRect().height,
+        })) };
+      });
+      assert.equal(value.activated, 3, 'Unsized images await each delayed IntersectionObserver source activation');
+      assert(value.images.every(image => image.source?.startsWith('/image.svg?') && image.width === 160 && image.height === 100));
+      passed++; console.log(`PASS frame preparation: unsized ${kind} waits for 120ms asynchronous lazy activation before capture`);
+    } finally { await delayed.close(); }
+  }
+  const never = await open('never-lazy');
+  try {
+    await never.page.evaluate(() => {
+      const timeout = window.setTimeout; window.__waits = [];
+      window.setTimeout = (callback, delay, ...args) => { window.__waits.push(delay); return timeout(callback, delay, ...args); };
+    });
+    await begin(never); await never.page.evaluate(() => window.__preparation);
+    assert((await never.page.evaluate(() => window.__waits)).every(delay => delay === 0), 'Known safe reserved sources activate without a 1600ms deadline wait');
+    const values = await never.page.evaluate(async () => {
+      const root = document.getElementById('source').contentDocument.getElementById('rso');
+      await hydrateGenericGoogleCapturedImagesV666(root, root.ownerDocument.URL, genericGoogleImagePlaceholderV666, (node, key, value, base) => node.setAttribute(key, new URL(value, base).href));
+      return [...root.querySelectorAll('.lazy')].map(image => ({ src: image.getAttribute('src'), width: image.getBoundingClientRect().width, height: image.getBoundingClientRect().height }));
+    });
+    assert(values.every(image => image.src?.includes('/image.svg?') && image.width === 160 && image.height === 100), 'Unobserved known sources survive post-capture preparation without losing reserved geometry');
+    passed++; console.log('PASS frame preparation: missed lazy observers receive immediate safe source activation in reserved slots');
+  } finally { await never.close(); }
   const sized = await open('reserved');
   try {
     await begin(sized); await sized.page.evaluate(() => window.__preparation);
