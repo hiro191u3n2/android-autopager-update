@@ -1,0 +1,73 @@
+name: Google staged import validation
+on:
+  push:
+    branches: [fix/google-staged-import-6.63]
+permissions:
+  contents: read
+concurrency:
+  group: google-staged-import-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: android-autopager-update
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: android-autopager-update/package-lock.json
+      - name: Install test dependencies and Chromium
+        working-directory: android-autopager-update
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Prepare canonical validation checkout
+        run: |
+          sudo mkdir -p /workspace/sites
+          sudo chown "$USER" /workspace/sites
+          mv android-autopager-update /workspace/sites/android-autopager-update
+          ln -s /workspace/sites/android-autopager-update android-autopager-update
+          git -C /workspace/sites/android-autopager-update switch -c main
+          test "$(git -C /workspace/sites/android-autopager-update remote get-url origin)" = https://github.com/hiro191u3n2/android-autopager-update
+          git -C /workspace/sites/android-autopager-update remote set-url origin https://github.com/hiro191u3n2/android-autopager-update.git
+      - name: Verify frozen baselines and source
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          test "$(git hash-object Android_Generic_AutoPager_v6.44.js)" = ee0c1d906375c7d34ebc3046719abef10d42c7ae
+          test "$(git hash-object Android_Generic_AutoPager_v6.62.js)" = e74510bd3669085bab8a73f20b468757f4b166b4
+          git diff --check
+          node --check worker/index.js
+          node --check src/google-import-layout.js
+          node --check src/google-import-staging.js
+      - name: Run regressions and compare rendered output
+        working-directory: /workspace/sites/android-autopager-update
+        env:
+          GOOGLE_RICH_ARTIFACT_DIR: ${{ runner.temp }}/google-rich-results
+          GOOGLE_ROOT_ARTIFACT_DIR: ${{ runner.temp }}/google-root-results
+          GOOGLE_STAGING_ARTIFACT_DIR: ${{ runner.temp }}/google-staged-results
+          GOOGLE_BOUNDARY_ARTIFACT_DIR: ${{ runner.temp }}/google-boundary-results
+        run: |
+          set -o pipefail
+          bash scripts/validate-project.sh 6.63.0 2>&1 | tee "$RUNNER_TEMP/staged-import-validation.log"
+      - name: Build and verify release package
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.63.0
+          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.63.0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: google-staged-import-v663-validation
+          path: |
+            ${{ runner.temp }}/staged-import-validation.log
+            ${{ runner.temp }}/google-rich-results/
+            ${{ runner.temp }}/google-root-results/
+            ${{ runner.temp }}/google-staged-results/
+            ${{ runner.temp }}/google-boundary-results/
+            ${{ runner.temp }}/android-autopager-release/
+          retention-days: 7
