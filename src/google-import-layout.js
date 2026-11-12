@@ -345,6 +345,66 @@ function getGenericGoogleRootGapV660(root, previous, current, rect, style, surfa
   return { accepted: true, reason: 'root-gap-eligible', height };
 }
 
+// The first-page ancestor backdrop is not proof that an imported gap is a
+// visible separator. Use it only to retain an already contrasting gutter's
+// color; weak, translucent or unrecognized colors still receive explicit paint.
+function getGenericGoogleRootGapPaintV661(root, previous, current, rootGap, surfaces, style, fallbackColor, nativeColor) {
+  const parse = color => {
+    const match = String(color || '').match(/^rgba?\(([^)]+)\)$/i);
+    if (!match) return null;
+    const parts = match[1].trim().split(/[\s,/]+/);
+    if (parts.length < 3 || parts.length > 4 || parts.some(value => !/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(value))) return null;
+    const values = parts.map(Number), alpha = values.length === 4 ? values[3] : 1;
+    if (values.slice(0, 3).some(value => value < 0 || value > 255) || alpha < 0 || alpha > 1) return null;
+    const linear = values.slice(0, 3).map(value => {
+      const channel = value / 255;
+      return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+    });
+    return { alpha, luminance: linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722 };
+  };
+  const ratio = (a, b) => (Math.max(a.luminance, b.luminance) + .05) / (Math.min(a.luminance, b.luminance) + .05);
+  const previousSurface = surfaces.get(previous), currentSurface = surfaces.get(current);
+  const faces = [parse(previousSurface.color), parse(currentSurface.color)];
+  let backgroundNode = null, backgroundColor = 'transparent', background = null;
+  for (let node = root; node; node = node.parentElement) {
+    const color = style(node).backgroundColor, parsed = parse(color);
+    if (!color || color === 'transparent' || parsed?.alpha === 0) continue;
+    backgroundNode = node; backgroundColor = color; background = parsed;
+    break;
+  }
+  const contrast = background?.alpha === 1 && faces.every(face => face?.alpha === 1) ? faces.map(face => ratio(background, face)) : [];
+  let color = fallbackColor, basis = 'theme-fallback';
+  // This is a decorative-color choice, not an accessibility conformance rule
+  // or an eligibility test. A failed comparison must never cancel root paint.
+  // Preserve this gap's contrasting backdrop before borrowing a band color
+  // from another result group in the same imported root.
+  if (background?.alpha === 1 && contrast.length === 2 && contrast.every(value => value >= 1.12)) {
+    color = backgroundColor; basis = 'ancestor-background';
+  }
+  else if (nativeColor) { color = nativeColor; basis = 'native-band'; }
+  // Keep the observed thin, hard outline of the previous opaque surface. Its
+  // bottom edge already occupies part of the gap; paint the remaining space
+  // without overwriting that edge or changing any existing shadow property.
+  let edgeInset = 0;
+  const surfaceNode = previousSurface.node;
+  const outline = String(surfaceNode ? style(surfaceNode).boxShadow || '' : '').match(/^(rgba?\([^)]*\))\s+0px\s+0px\s+0px\s+(\d+(?:\.\d+)?)px$/i);
+  if (outline) {
+    const outlineColor = parse(outline[1]), spread = Number(outline[2]);
+    let unclipped = outlineColor?.alpha === 1 && faces[0]?.alpha === 1 &&
+      ratio(outlineColor, faces[0]) >= 1.12 && spread > 0 && spread <= 2 && spread < rootGap.height;
+    for (let node = surfaceNode; unclipped && node && node !== root; node = node.parentElement) {
+      const s = style(node);
+      if (s.visibility !== 'visible' || Number.parseFloat(s.opacity || '1') !== 1 ||
+          s.clipPath && s.clipPath !== 'none' || s.maskImage && s.maskImage !== 'none' ||
+          s.transform && s.transform !== 'none' ||
+          node !== surfaceNode && /^(?:hidden|clip|scroll|auto)$/.test(s.overflowY)) unclipped = false;
+    }
+    if (unclipped) edgeInset = spread;
+  }
+  return { color, basis, backgroundNode, backgroundColor, backgroundAlpha: background?.alpha ?? null,
+    contrast, edgeInset, shadowHeight: rootGap.height - edgeInset };
+}
+
 function repairGenericGoogleResultBoundariesV658(page) {
   if (!page?.isConnected || !/^(?:www\.)?google\.[a-z.]+$/i.test(location.hostname) || location.pathname !== '/search') return;
   const root = page.querySelector('.generic-autopager-google-source-root');
@@ -445,19 +505,18 @@ function repairGenericGoogleResultBoundariesV658(page) {
     const exists = bands.some(band => band.left <= Math.max(a.left, b.left) + 8 && band.right >= Math.min(a.right, b.right) - 8 &&
       band.top >= a.bottom - 24 && band.bottom <= b.top + 24);
     if (exists) continue;
-    const previousSurface = rootGap ? surfaces.get(previous).color : background(previous);
-    const currentSurface = rootGap ? surfaces.get(current).color : background(current);
-    if (b.top - a.bottom >= 2 && background(common) !== previousSurface && background(common) !== currentSurface) continue;
+    if (!rootGap && b.top - a.bottom >= 2 && background(common) !== background(previous) && background(common) !== background(current)) continue;
     // A border belongs to the existing result box, so no empty synthetic node
     // can be removed by Google cleanup and no repeated pass can append a copy.
     const currentStyle = style(current);
     if ((Number.parseFloat(currentStyle.borderTopWidth) || 0) > 0 && colored(currentStyle.borderTopColor) && currentStyle.borderTopColor !== surface) continue;
-    missing.push({ current, rootGap });
+    const paint = rootGap ? getGenericGoogleRootGapPaintV661(root, previous, current, rootGap, surfaces, style, color, native?.color) : null;
+    missing.push({ current, paint });
   }
-  for (const { current, rootGap } of missing) {
+  for (const { current, paint } of missing) {
     // An outer, zero-blur shadow is clipped inside the border box. Its only
     // visible portion fills this existing gap; margins and heights stay intact.
-    if (rootGap) current.style.setProperty('box-shadow', `0px -${rootGap.height}px 0px 0px ${color}`, 'important');
+    if (paint) current.style.setProperty('box-shadow', `0px -${paint.shadowHeight}px 0px 0px ${paint.color}`, 'important');
     else current.style.setProperty('border-top', `${height}px solid ${color}`, 'important');
     current.setAttribute(genericGoogleBoundaryMarkV658, '1');
   }
