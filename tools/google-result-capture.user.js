@@ -47,6 +47,12 @@
     if (!route()) throw new Error('Google検索の画面で実行してください。');
     const chosen = chooseRoot(target), root = chosen.root;
     const startURL = location.href, omitted = Object.create(null);
+    const viewportSnapshot = () => {
+      const vv = window.visualViewport;
+      return { viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY },
+        visualViewport: vv ? { width: vv.width, height: vv.height, scale: vv.scale, offsetTop: vv.offsetTop, offsetLeft: vv.offsetLeft } : null };
+    };
+    const startViewport = viewportSnapshot();
     const omit = reason => { omitted[reason] = (omitted[reason] || 0) + 1; };
     const safeURL = value => {
       if (!value) return '';
@@ -130,7 +136,8 @@
       copy.setAttribute('data-capture-node', String(index)); parent.appendChild(copy);
       const rect = rectOf(node), style = styleOf(node), computed = styleTable[style];
       elements.push({ index, parentIndex, tag: node.localName, rect, style, pseudos: pseudoOf(node) });
-      originals.push({ node, parent: node.parentNode, children: [...node.childNodes] });
+      originals.push({ node, parent: node.parentNode, children: [...node.childNodes],
+        attributes: [...node.attributes].map(attribute => [attribute.name, attribute.value]) });
       if (node === target || node.contains(target)) selectedIndex = index;
       if (node.matches('h1,h2,h3,h4,h5,h6,[role="heading"],[aria-level]') && rect.width > 0 && rect.height > 0 &&
           computed.visibility === 'visible' && Number.parseFloat(computed.opacity || '1') !== 0) headings.push({ index });
@@ -145,17 +152,19 @@
     }
     if (!root.isConnected || location.href !== startURL || originals.some(entry => !root.contains(entry.node) ||
         entry.node.parentNode !== entry.parent || entry.node.childNodes.length !== entry.children.length ||
-        entry.children.some((child, index) => entry.node.childNodes[index] !== child)) ||
-        texts.some(entry => entry.node.data !== entry.value || entry.node.parentNode !== entry.parent)) {
+        entry.children.some((child, index) => entry.node.childNodes[index] !== child) ||
+        entry.node.attributes.length !== entry.attributes.length ||
+        entry.attributes.some(([name, value]) => entry.node.getAttribute(name) !== value)) ||
+        texts.some(entry => entry.node.data !== entry.value || entry.node.parentNode !== entry.parent) ||
+        JSON.stringify(viewportSnapshot()) !== JSON.stringify(startViewport)) {
       throw new Error('取得中に検索結果が更新されました。もう一度取得してください。');
     }
-    const page = root.closest('.generic-autopager-page'), vv = window.visualViewport;
+    const page = root.closest('.generic-autopager-page');
     const payload = {
       schema: 'google-result-structure/v1', capturedAt: new Date().toISOString(),
       root: { kind: chosen.kind, pageNumber: page?.dataset.page || root.dataset.genericAutopagerPage || '1', html: holder.innerHTML },
       selection: { index: selectedIndex, headings }, elements, styleTable, ancestors,
-      environment: { userAgent: navigator.userAgent, url: safeURL(location.href), viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY },
-        visualViewport: vv ? { width: vv.width, height: vv.height, scale: vv.scale, offsetTop: vv.offsetTop, offsetLeft: vv.offsetLeft } : null },
+      environment: { userAgent: navigator.userAgent, url: safeURL(location.href), ...startViewport },
       pager: { installedVersion: 'unknown', statusText: document.getElementById('generic-autopager-status-v2')?.textContent || '',
         markers: [...root.attributes].filter(attribute => /^data-generic-/.test(attribute.name)).map(attribute => [attribute.name, attribute.value]) },
       omissions: { counts: omitted, notes: ['Scripts, forms, input values and known account UI are excluded.', 'URL credentials, queries and fragments; non-HTTP media URLs; custom CSS properties; event/tracking attributes are excluded.', 'Hidden result branches and their layout are retained. Computed styles are shared through styleTable indexes.', 'No cookies, unrelated storage, clipboard, remote upload or network request is used.'] }, limits,
@@ -169,23 +178,29 @@
   ui.style.cssText = 'position:fixed;left:8px;bottom:12px;z-index:2147483647;max-width:280px;padding:8px;background:#fff;color:#202124;border:1px solid #777;border-radius:8px;font:13px/1.4 sans-serif;box-shadow:0 2px 8px #0003';
   const start = document.createElement('button'); start.id = 'google-result-capture-start'; start.type = 'button'; start.textContent = '区切り箇所を取得';
   const cancel = document.createElement('button'); cancel.id = 'google-result-capture-cancel'; cancel.type = 'button'; cancel.textContent = 'キャンセル'; cancel.hidden = true;
+  const finish = document.createElement('button'); finish.id = 'google-result-capture-finish'; finish.type = 'button'; finish.textContent = '保存できたので終了'; finish.hidden = true;
   const status = document.createElement('div'); status.id = 'google-result-capture-status'; status.setAttribute('role', 'status');
-  ui.append(start, cancel, status); document.body.appendChild(ui);
+  ui.append(start, cancel, finish, status); document.body.appendChild(ui);
   let armed = false, busy = false;
-  start.addEventListener('click', () => { if (busy) return; armed = true; cancel.hidden = false; status.textContent = '枠がない検索結果の見出しや説明文をタップしてください。'; });
+  start.addEventListener('click', () => {
+    if (!route() || !ui.isConnected) { armed = false; ui.remove(); return; }
+    if (busy) return; armed = true; cancel.hidden = false; status.textContent = '枠がない検索結果の見出しや説明文をタップしてください。';
+  });
   cancel.addEventListener('click', () => { armed = false; cancel.hidden = true; status.textContent = ''; });
+  finish.addEventListener('click', () => { if (busy || !ui.isConnected) return; armed = false; ownStorage(true); ui.remove(); });
   document.addEventListener('click', async event => {
+    if (!route()) { armed = false; ui.remove(); return; }
     if (!armed || busy || ui.contains(event.target)) return;
     event.preventDefault(); event.stopImmediatePropagation();
     const target = event.target.nodeType === Node.ELEMENT_NODE ? event.target : event.target.parentElement;
-    armed = false; busy = true; start.disabled = true; cancel.hidden = true; status.textContent = 'このページの構造を取得しています…';
+    armed = false; busy = true; start.disabled = true; finish.disabled = true; cancel.hidden = true; status.textContent = 'このページの構造を取得しています…';
     try {
       const json = await capture(target), blobURL = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
       const now = new Date(), day = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('');
       const link = document.createElement('a'); link.href = blobURL; link.download = `Google_Result_Structure_${day}.json`;
       ui.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(blobURL), 60000);
-      ownStorage(true); status.textContent = 'JSONの保存を開始しました。このファイルをチャットに添付してください。';
+      finish.hidden = false; status.textContent = 'JSONの保存を開始しました。保存できたら終了ボタンを押し、このファイルをチャットに添付してください。';
     } catch (error) { status.textContent = error.message || '取得できませんでした。もう一度お試しください。'; }
-    finally { busy = false; start.disabled = false; }
+    finally { busy = false; start.disabled = false; finish.disabled = false; }
   }, true);
 })();

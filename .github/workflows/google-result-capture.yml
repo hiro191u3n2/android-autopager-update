@@ -44,15 +44,16 @@ jobs:
         working-directory: /workspace/sites/android-autopager-update
         run: |
           set -o pipefail
-          bash scripts/validate-project.sh 6.66.0 2>&1 | tee "$RUNNER_TEMP/production-regression.log"
-          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.66.0
-          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.66.0
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/android-autopager-release" 6.66.0 2>&1 | tee "$RUNNER_TEMP/production-package.log"
+          node scripts/verify-release.mjs "$RUNNER_TEMP/android-autopager-release" 6.66.0 2>&1 | tee -a "$RUNNER_TEMP/production-package.log"
           cmp Android_Generic_AutoPager_v6.66.js "$RUNNER_TEMP/android-autopager-release/android-generic-autopager.user.js"
+          cmp android-generic-autopager.user.js "$RUNNER_TEMP/android-autopager-release/android-generic-autopager.user.js"
+          cmp android-generic-autopager.meta.js "$RUNNER_TEMP/android-autopager-release/android-generic-autopager.meta.js"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: google-result-capture-validation
           path: |
             ${{ runner.temp }}/result-capture-validation.log
-            ${{ runner.temp }}/production-regression.log
+            ${{ runner.temp }}/production-package.log
           retention-days: 7

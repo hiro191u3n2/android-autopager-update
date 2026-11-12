@@ -26,6 +26,7 @@ const output = await mkdtemp(join(tmpdir(), 'google-result-capture-test-'));
 const UI = '#google-result-capture-ui';
 const START = '#google-result-capture-start';
 const CANCEL = '#google-result-capture-cancel';
+const FINISH = '#google-result-capture-finish';
 const STATUS = '#google-result-capture-status';
 const DONE = '__googleResultStructureCaptureDone_v1';
 const titles = ['JR東日本の時刻表', '駅探の時刻表', 'Yahoo!路線情報'];
@@ -42,6 +43,7 @@ function fixture() {
   <form><input type="password" value="SECRET_PASSWORD"><textarea>SECRET_TEXTAREA</textarea><select><option>SECRET_OPTION</option></select></form>
   <div contenteditable="true">SECRET_EDITABLE</div><script>window.__fixtureScript='SECRET_SCRIPT';</script>
   <img width="1" height="1" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-secret="SECRET_IMAGE_TOKEN">
+  <img width="24" height="24" src="https://assets.example/capture.png?token=SECRET_IMAGE_URL" alt="外部画像の取得抑止確認">
   </div></div></section>
   <section class="generic-autopager-page" data-page="3"><div class="generic-autopager-google-source-root"><article><a href="https://last.example/"><h3>別の追加ページの結果</h3></a></article></div></section>
   </div></main><button id="generic-autopager-status-v2">自動 3/30</button></body></html>`;
@@ -129,7 +131,7 @@ try {
     for (const title of titles) assert(report.root.html.includes(title), `Actual selected group's title survives: ${title}`);
     assert(!report.root.html.includes('別の追加ページの結果'));
     assert(!report.root.html.includes('最初のページの結果'));
-    for (const secret of ['SECRET_PASSWORD', 'SECRET_TEXTAREA', 'SECRET_OPTION', 'SECRET_EDITABLE', 'SECRET_SCRIPT', 'SECRET_EVENT', 'SECRET_CREDENTIAL', 'SECRET_URL_TOKEN', 'SECRET_HASH', 'SECRET_QUERY', 'SECRET_IMAGE_TOKEN', 'SECRET_COOKIE', 'SECRET_STORAGE', 'SECRET_SESSION']) {
+    for (const secret of ['SECRET_PASSWORD', 'SECRET_TEXTAREA', 'SECRET_OPTION', 'SECRET_EDITABLE', 'SECRET_SCRIPT', 'SECRET_EVENT', 'SECRET_CREDENTIAL', 'SECRET_URL_TOKEN', 'SECRET_HASH', 'SECRET_QUERY', 'SECRET_IMAGE_TOKEN', 'SECRET_IMAGE_URL', 'SECRET_COOKIE', 'SECRET_STORAGE', 'SECRET_SESSION']) {
       assert(!text.includes(secret), 'Private or executable fixture value must be omitted: ' + secret);
     }
     const mapping = await selected.page.evaluate(report => {
@@ -169,21 +171,46 @@ try {
     assert.equal(after.probe.cookieReads, 0);
     assert.equal(after.probe.clipboard, 0);
     assert(after.probe.storageReads.every(key => key === DONE), 'Only the helper consumption boolean may be read from storage');
-    assert(after.probe.storageWrites.every(([key, value]) => key === DONE && value === '1'), 'Storage contains only the consumed boolean');
+    assert.equal(after.probe.storageWrites.length, 0, 'Starting a download does not claim the file was saved successfully');
+    assert.equal(await selected.page.locator(FINISH).isVisible(), true, 'User can explicitly confirm that the file was saved');
     assert.deepEqual(selected.requests, [], 'Capturing makes no external requests');
     assert.deepEqual(selected.errors, []);
     passed++; console.log('PASS capture: selected imported page, exact indexed structure, styles/geometry, sanitization and no result mutation/network/clipboard');
 
+    await selected.page.locator(FINISH).click();
+    assert.equal(await selected.page.locator(UI).count(), 0, 'Confirming a saved file removes the capture UI');
+    assert.deepEqual((await selected.page.evaluate(() => window.__captureProbe.storageWrites)).map(([key, value]) => [key, value]), [[DONE, '1']]);
     await selected.page.goto('https://www.google.com/search?q=second-tab-check', { waitUntil: 'load' });
     await install(selected);
     assert.equal(await selected.page.locator(UI).count(), 0, 'Consumed helper stays inactive on later navigations');
     passed++; console.log('PASS capture: completed one-use flag suppresses subsequent-page UI');
   } finally { await selected.close(); }
 
+  const downloadCancelled = await open();
+  try {
+    await install(downloadCancelled);
+    await downloadCancelled.page.locator('#capture-target').scrollIntoViewIfNeeded();
+    await downloadCancelled.page.locator(START).click();
+    const downloading = downloadCancelled.page.waitForEvent('download');
+    await downloadCancelled.page.locator('#capture-target').click();
+    const download = await downloading;
+    await download.cancel();
+    assert.equal((await downloadCancelled.page.evaluate(() => window.__captureProbe.storageWrites)).length, 0, 'An unconfirmed download cancellation never sets the completion flag');
+    await downloadCancelled.page.reload({ waitUntil: 'load' });
+    await install(downloadCancelled);
+    assert.equal(await downloadCancelled.page.locator(UI).count(), 1, 'The helper remains available after a cancelled or unconfirmed download and reload');
+    const { report } = await capture(downloadCancelled);
+    assert.equal(Number(report.root.pageNumber), 2);
+    assert.deepEqual(downloadCancelled.errors, []);
+    passed++; console.log('PASS capture: cancelled/unconfirmed download does not consume the helper and retry remains available after reload');
+  } finally { await downloadCancelled.close(); }
+
   const fallback = await open('https://www.google.com/search?q=storage-fallback', { localStorageWriteFails: true });
   try {
     await install(fallback);
     await capture(fallback);
+    assert.equal((await fallback.page.evaluate(() => window.__captureProbe.storageWrites)).length, 0, 'Fallback storage is also untouched before explicit save confirmation');
+    await fallback.page.locator(FINISH).click();
     const completed = await fallback.page.evaluate(() => window.__captureProbe);
     assert.deepEqual(completed.storageWrites.map(([key, value, kind]) => ({ key, value, kind })),
       [{ key: DONE, value: '1', kind: 'local' }, { key: DONE, value: '1', kind: 'session' }],
@@ -224,16 +251,36 @@ try {
   }
   passed++; console.log('PASS capture: unrelated hosts, non-search routes and AI Mode stay untouched');
 
+  const changedRoute = await open();
+  try {
+    await install(changedRoute);
+    await changedRoute.page.locator('#capture-target').scrollIntoViewIfNeeded();
+    await changedRoute.page.locator(START).click();
+    await changedRoute.page.evaluate(() => history.pushState({}, '', '/search?q=changed-route&udm=50'));
+    let downloads = 0; changedRoute.page.on('download', () => { downloads++; });
+    await changedRoute.page.locator('#capture-target').click();
+    const state = await changedRoute.page.evaluate(() => window.__captureProbe);
+    assert.equal(state.clicks.length, 1, 'A route change releases the previously armed result click');
+    assert.equal(state.clicks[0].prevented, false, 'Unsupported-route clicks are not intercepted');
+    assert.equal(downloads, 0);
+    assert.equal(await changedRoute.page.locator(UI).count(), 0, 'Capture UI is removed after the route becomes unsupported');
+    assert.equal(state.storageWrites.length, 0);
+    assert.deepEqual(changedRoute.errors, []);
+    passed++; console.log('PASS capture: changing to AI Mode after arming releases normal result navigation');
+  } finally { await changedRoute.close(); }
+
+  for (const change of ['child', 'attribute', 'scroll']) {
   const changing = await open();
   try {
     await install(changing);
     await changing.page.locator('#capture-target').scrollIntoViewIfNeeded();
-    await changing.page.evaluate(() => {
+    await changing.page.evaluate(change => {
       const root = document.querySelector('.generic-autopager-page[data-page="2"] .generic-autopager-google-source-root');
       const padding = document.createElement('div'); padding.className = 'mutation-yield-fixture';
       for (let n = 0; n < 300; n++) padding.appendChild(document.createElement('span'));
       root.appendChild(padding);
       const timeout = window.setTimeout.bind(window), originalRect = root.getBoundingClientRect;
+      const originalAttribute = root.getAttribute('class'), originalY = scrollY;
       let rootMeasured = false;
       window.__captureMutationOccurred = false;
       root.getBoundingClientRect = function () {
@@ -245,29 +292,37 @@ try {
         return timeout(() => {
           if (delay === 0 && rootMeasured && !window.__captureMutationOccurred &&
               document.getElementById('google-result-capture-status')?.textContent.includes('取得しています')) {
-            const added = document.createElement('div'); added.className = 'during-capture-change';
-            added.textContent = '取得途中に追加された検索結果'; root.appendChild(added);
+            if (change === 'child') {
+              const added = document.createElement('div'); added.className = 'during-capture-change';
+              added.textContent = '取得途中に追加された検索結果'; root.appendChild(added);
+            } else if (change === 'attribute') root.setAttribute('class', originalAttribute + ' changed-during-capture');
+            else window.scrollTo(0, scrollY + 100);
             window.__captureMutationOccurred = true;
           }
           callback(...args);
         }, delay);
       };
-      window.__restoreCaptureMutation = () => { window.setTimeout = timeout; root.getBoundingClientRect = originalRect; };
-    });
+      window.__restoreCaptureMutation = () => {
+        window.setTimeout = timeout; root.getBoundingClientRect = originalRect;
+        root.querySelector('.during-capture-change')?.remove();
+        root.setAttribute('class', originalAttribute); window.scrollTo(0, originalY);
+      };
+    }, change);
     let downloads = 0; changing.page.on('download', () => { downloads++; });
     await changing.page.locator(START).click();
     await changing.page.locator('#capture-target').click();
     await changing.page.waitForFunction(selector => /取得中.*更新/.test(document.querySelector(selector)?.textContent || ''), STATUS, { timeout: 15000 });
-    assert.equal(await changing.page.evaluate(() => window.__captureMutationOccurred), true, 'The fixture really changes a captured parent during a yield');
+    assert.equal(await changing.page.evaluate(() => window.__captureMutationOccurred), true, `The fixture really applies the ${change} change during a yield`);
     assert.equal(downloads, 0, 'A changed subtree must not be exported as apparently consistent evidence');
     assert.equal((await changing.page.evaluate(() => window.__captureProbe.storageWrites)).length, 0, 'An inconsistent capture does not consume the helper');
-    await changing.page.evaluate(() => { window.__restoreCaptureMutation(); document.querySelector('.during-capture-change').remove(); });
+    await changing.page.evaluate(() => window.__restoreCaptureMutation());
     const { report } = await capture(changing);
     assert.equal(Number(report.root.pageNumber), 2);
     assert.equal(downloads, 1, 'Stable retry produces the only downloaded evidence file');
     assert.deepEqual(changing.errors, []);
-    passed++; console.log('PASS capture: a retained-parent change during a yield is rejected explicitly and stable retry remains available');
+    passed++; console.log(`PASS capture: ${change} change during a yield is rejected explicitly and stable retry remains available`);
   } finally { await changing.close(); }
+  }
 
   const oversized = await open();
   try {

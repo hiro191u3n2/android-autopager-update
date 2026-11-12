@@ -26,6 +26,22 @@ claimed or released. The fixed production userscript remains byte-identical
 to v6.66.0. The migrated repository validator remains authoritative; the old
 bundled validator still exits at the retired Sites identity check.
 
+The complete migrated v6.66.0 validator passed unchanged on candidate
+`844aecb690f89fe40e1bf4536f14b3061f00235d`, Actions run `43300078544`.
+Further collector-only refinements use the focused capture suite and exact
+package comparisons; they do not change the production executable. The helper
+now checks retained attributes, children, text and viewport consistency, and
+only persists its completion boolean after the owner confirms that the file
+was saved. A cancelled download remains retryable across navigation.
+
+To supply the missing evidence, install the separate helper while the regular
+autopager stays enabled, open the affected Google results, press
+`区切り箇所を取得` and select one of the three affected results. Attach the
+downloaded `Google_Result_Structure_YYYYMMDD.json` to the ongoing conversation.
+After verifying the file exists, `保存できたので終了` dismisses the helper for
+that Google origin. Do not publish the owner's resulting capture to the public
+repository; derive a minimized, anonymized regression fixture from it.
+
 ## v6.66: sustained Google page preparation, not only earlier triggering
 
 The 2026-11-13 00:07 Berry recording still reaches the loaded document end
