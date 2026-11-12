@@ -236,7 +236,10 @@ try {
       const timeout = window.setTimeout.bind(window), originalRect = root.getBoundingClientRect;
       let rootMeasured = false;
       window.__captureMutationOccurred = false;
-      root.getBoundingClientRect = function () { rootMeasured = true; return originalRect.call(this); };
+      root.getBoundingClientRect = function () {
+        if (document.getElementById('google-result-capture-status')?.textContent.includes('取得しています')) rootMeasured = true;
+        return originalRect.call(this);
+      };
       window.setTimeout = (callback, delay, ...args) => {
         if (typeof callback !== 'function') return timeout(callback, delay, ...args);
         return timeout(() => {
