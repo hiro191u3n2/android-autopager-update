@@ -1,14 +1,17 @@
 # Offline Android WebView regression harness
 
-## v6.60 root-level results from the supplied diagnosis
+## v6.61 root backgrounds and the original 1px outlines
 
-The Android job in `.github/workflows/google-root-results-6.60.yml` runs the
-focused v6.60 command using the root-sibling structure identified in the
-user's v6.59 diagnostic. It is a controlled reconstruction of those measured
+The Android job in `.github/workflows/google-root-background-6.61.yml` runs the
+focused v6.61 command using the root-sibling structure identified in the
+user's v6.59/v6.60 diagnostics. It is a controlled reconstruction of those measured
 wrappers and gaps, not captured Google HTML. It preserves the 499.78125 CSS px
 source width, independent transparent `.MjjYud` siblings, opaque nested
-`.Ww4FFb` surfaces with an 8px bottom margin, and a base-domain site label plus
-subdomain URL in one source header.
+`.Ww4FFb` surfaces with an 8px bottom margin and a 1px outer shadow around the
+inner surface, and a base-domain site label plus subdomain URL in one source
+header. The v6.60 report establishes the outline and the `different-background`
+rejection; it does not establish the ancestor's exact color. Near-white and
+alpha background values are representative regression inputs.
 
 ```bash
 bash tests/android-webview/build.sh "$PWD" /tmp/autopager-webview-build
@@ -17,21 +20,40 @@ python3 tests/android-webview/run-root-results.py /tmp/autopager-webview-build /
 
 The APK selects this fixture family with `--es fixture root`; the original
 organic fixture remains available. The root runner uses the complete candidate
-userscript and frozen v6.59 control. Missing versus already painted gutters,
-light/dark themes, and pages 2/3 give 16 screenshots. The shared renderer is
+userscript and frozen v6.60 control. Near-white light, alpha light, existing
+native light and existing native dark cases, on pages 2/3, give 16 screenshots.
+Each case's underlay, desired gap color, surface color and original ring color
+are recorded in the build manifest. The shared renderer is
 `tests/fixtures/google-root-results.mjs`. An emulator density of 345 at a 1080px
 screen width gives approximately 501 CSS px, allowing the reconstructed root
 to retain its measured 499.78px width. Pixel coordinates always use the actual
-reported WebView origin and viewport width.
+reported WebView origin and device pixel ratio at the unzoomed viewport.
 
-The frozen control must paint zero separator pixels for each missing gap and
-one 8px band for each existing gutter. The candidate must paint exactly one
-8px band at every tested boundary. The actual gaps must remain 8px, every
-candidate card rectangle must match the frozen control, and no band may cut
-through a result. These checks reject doubled spacing, duplicate bands, or a
-border added inside the title/source anchor. Titles, descriptions, destinations,
-thumbnail source/size, initial-page markup and absence of horizontal overflow
-are also required.
+The actual gaps must remain 8px. The central 6px must show the control's
+specified underlay or the candidate's specified separator color, while both
+original 1px surface outlines remain visible in the outer pixels. Only full
+physical pixels inside those CSS intervals are sampled, so fractional edge
+coverage cannot be mistaken for a missing band. A one-channel tolerance of 1
+distinguishes the light outline (235/237/239) from the separator (232/234/237).
+The whole native 8px gap raster must also match between candidate and control;
+painting the same native color is permitted. No marker-absence assertion is
+used for native gutters.
+
+The API 35 evidence reports a 1080px view, DPR 2.15625 and a separately rounded
+visual viewport width of 501.33334 CSS px. Dividing view width by that viewport
+width gives the wrong raster scale and moves lower samples into the adjacent
+outline. Coordinates therefore use DPR. Painted card edges are snapped to the
+nearest physical pixel before computing the 1 CSS px ring and middle intervals;
+only whole pixels inside each interval are tested. This also aligns native
+before/after crops when the viewport has scrolled, without changing the color
+or geometry tolerances.
+
+Root size and root-relative card, content, surface and thumbnail rectangles
+must match the control within 0.2px. This retains exact layout checks while
+allowing the observed viewport translation caused by asynchronous next-page
+availability and scroll clamping. No separator may cut through result content.
+Titles, descriptions, destinations, thumbnail source/size, initial-page markup
+and absence of horizontal overflow are also required.
 
 Every ready report waits for the WebView visual state and the subsequent
 Android frame submission. The compositor can present that frame later, so the
