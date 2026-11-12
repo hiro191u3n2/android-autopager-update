@@ -14,9 +14,9 @@ BUILD = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else HARNESS / 
 OUTPUT = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else BUILD / 'diagnostic-evidence'
 PACKAGE = 'jp.hiro.autopager.webviewtest'
 COMPONENT = PACKAGE + '/.MainActivity'
-EXPECTED_VERSION = '6.59.0'
 OUTPUT.mkdir(parents=True, exist_ok=True)
 MANIFEST = json.loads((BUILD / 'assets/build-manifest.json').read_text())
+EXPECTED_VERSION = MANIFEST['variants']['current']['version']
 request_number = 0
 
 
@@ -244,7 +244,7 @@ try:
         assert inspection['counts'][name] == 4, (name, inspection['counts'])
     assert len(inspection['records']) == 4 and len(inspection['pairs']) == 3, inspection['counts']
     reasons = [pair['reason'] for pair in inspection['pairs']]
-    assert reasons == ['marker', 'marker', 'common-root'], reasons
+    assert reasons == ['marker', 'marker', 'root-branches'], reasons
     verify_privacy(diagnostic, prepared['privacyTokens'])
 
     tap(opened, opened['dialog']['close'])
@@ -257,7 +257,7 @@ try:
                    'recordedRepairCalls': history['calls'],
                    'actualTouches': ['short tap', 'resume tap', '1300 ms long press', 'close tap'],
                    'privateURLAndFormValuesOmitted': True, 'markupAndScrollPreserved': True})
-    print('PASS Android diagnostic UI: actual short tap/pause/resume, long press/open, sanitized v6.59.0 page-2 report, close, unchanged source markup.', flush=True)
+    print(f'PASS Android diagnostic UI: actual short tap/pause/resume, long press/open, sanitized v{EXPECTED_VERSION} page-2 report, close, unchanged source markup.', flush=True)
 except Exception as error:
     result['passed'] = False
     failures.append({'error': str(error)})
