@@ -31,7 +31,10 @@ jobs:
           sudo mkdir -p /workspace/sites
           sudo chown "$USER" /workspace/sites
           mv android-autopager-update /workspace/sites/android-autopager-update
+          ln -s /workspace/sites/android-autopager-update android-autopager-update
           git -C /workspace/sites/android-autopager-update switch -c main
+          test "$(git -C /workspace/sites/android-autopager-update remote get-url origin)" = https://github.com/hiro191u3n2/android-autopager-update
+          git -C /workspace/sites/android-autopager-update remote set-url origin https://github.com/hiro191u3n2/android-autopager-update.git
       - name: Verify frozen baselines and source
         working-directory: /workspace/sites/android-autopager-update
         run: |
