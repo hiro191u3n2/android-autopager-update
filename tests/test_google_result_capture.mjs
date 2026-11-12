@@ -8,6 +8,8 @@ import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
+import { randomBytes } from 'node:crypto';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const helper = await readFile(resolve(ROOT, 'tools/google-result-capture.user.js'), 'utf8');
@@ -28,7 +30,14 @@ const START = '#google-result-capture-start';
 const CANCEL = '#google-result-capture-cancel';
 const FINISH = '#google-result-capture-finish';
 const STATUS = '#google-result-capture-status';
-const DONE = '__googleResultStructureCaptureDone_v1';
+const DOWNLOAD = '#google-result-capture-download';
+const SHARE = '#google-result-capture-share';
+const SHOW_TEXT = '#google-result-capture-show-text';
+const TEXT = '#google-result-capture-text';
+const COPY = '#google-result-capture-copy';
+const PREV = '#google-result-capture-prev';
+const NEXT = '#google-result-capture-next';
+const DONE = '__googleResultStructureCaptureDone_v1_1';
 const titles = ['JR東日本の時刻表', '駅探の時刻表', 'Yahoo!路線情報'];
 let passed = 0;
 
@@ -57,7 +66,7 @@ async function open(url = 'https://www.google.com/search?q=SECRET_QUERY&token=SE
   await page.route('**/*', route => route.request().isNavigationRequest()
     ? route.fulfill({ contentType: 'text/html', body: fixture() }) : route.abort());
   await page.addInitScript(({ localStorageWriteFails }) => {
-    const probe = window.__captureProbe = { cookieReads: 0, storageReads: [], storageReadKinds: [], storageWrites: [], clipboard: 0, scrollWrites: [], clicks: [], downloads: 0 };
+    const probe = window.__captureProbe = { cookieReads: 0, storageReads: [], storageReadKinds: [], storageWrites: [], clipboard: 0, clipboardTexts: [], clipboardActivations: [], scrollWrites: [], clicks: [], downloads: 0 };
     Object.defineProperty(document, 'cookie', { configurable: true, get() { probe.cookieReads++; return 'SECRET_COOKIE'; }, set() {} });
     const get = Storage.prototype.getItem, set = Storage.prototype.setItem;
     set.call(localStorage, 'unrelated-private-state', 'SECRET_STORAGE');
@@ -68,12 +77,14 @@ async function open(url = 'https://www.google.com/search?q=SECRET_QUERY&token=SE
     };
     Storage.prototype.setItem = function (key, value) {
       probe.storageWrites.push([String(key), String(value), this === localStorage ? 'local' : 'session']);
-      if (localStorageWriteFails && this === localStorage && key === '__googleResultStructureCaptureDone_v1') {
+      if (localStorageWriteFails && this === localStorage && key === '__googleResultStructureCaptureDone_v1_1') {
         throw new DOMException('Fixture localStorage quota exceeded', 'QuotaExceededError');
       }
       return set.call(this, key, value);
     };
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { probe.clipboard++; } } });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => {
+      probe.clipboard++; probe.clipboardTexts.push(text); probe.clipboardActivations.push(navigator.userActivation.isActive);
+    } } });
     const execCommand = document.execCommand.bind(document);
     document.execCommand = (command, ...args) => {
       if (String(command).toLowerCase() === 'copy') { probe.clipboard++; return false; }
@@ -96,12 +107,32 @@ async function snapshot(test) {
   return test.page.evaluate(() => ({ html: document.getElementById('rso').outerHTML, y: scrollY,
     x: scrollX, probe: structuredClone(window.__captureProbe) }));
 }
-async function capture(test, target = '#capture-target') {
+async function prepareCapture(test, target = '#capture-target') {
   await test.page.locator(target).scrollIntoViewIfNeeded();
   const before = await snapshot(test);
+  let downloads = 0;
+  const countDownload = () => downloads++;
+  test.page.on('download', countDownload);
   await test.page.locator(START).click();
-  const downloading = test.page.waitForEvent('download', { timeout: 15000 });
   await test.page.locator(target).click();
+  await test.page.locator(SHOW_TEXT).waitFor({ state: 'visible', timeout: 15000 });
+  await test.page.waitForFunction(selector => !document.querySelector(selector)?.disabled, START);
+  assert.equal(downloads, 0, 'Collecting evidence must not trigger an automatic download');
+  test.page.off('download', countDownload);
+  assert.match(await test.page.locator(STATUS).textContent(), /未確認/);
+  const after = await snapshot(test);
+  assert.equal(after.html, before.html, 'Collecting evidence must not modify the result DOM');
+  assert.equal(after.y, before.y, 'Collecting evidence must preserve vertical scroll');
+  assert.equal(after.x, before.x, 'Collecting evidence must preserve horizontal scroll');
+  assert.deepEqual(after.probe.scrollWrites, before.probe.scrollWrites, 'Collector never writes outer scroll positions');
+  assert.deepEqual(after.probe.clicks, before.probe.clicks, 'Armed selection suppresses the selected result navigation');
+  assert.equal(after.probe.clipboard, before.probe.clipboard, 'Capture itself never uses the clipboard');
+  return { before, after };
+}
+async function capture(test, target = '#capture-target') {
+  const { before } = await prepareCapture(test, target);
+  const downloading = test.page.waitForEvent('download', { timeout: 15000 });
+  await test.page.locator(DOWNLOAD).click();
   const download = await downloading;
   assert.match(download.suggestedFilename(), /^Google_Result_Structure_.*\.json$/);
   const destination = join(output, `${Date.now()}-${download.suggestedFilename()}`);
@@ -115,6 +146,33 @@ async function capture(test, target = '#capture-target') {
   assert.deepEqual(after.probe.scrollWrites, before.probe.scrollWrites, 'Collector never writes outer scroll positions');
   assert.deepEqual(after.probe.clicks, before.probe.clicks, 'Armed selection suppresses the selected result navigation');
   return { report, text, before, after };
+}
+
+async function readBlobExport(test) {
+  return test.page.locator(DOWNLOAD).evaluate(async anchor => (await fetch(anchor.href)).text());
+}
+
+async function readTextExport(test) {
+  await test.page.locator(SHOW_TEXT).click();
+  assert.equal(await test.page.locator(TEXT).getAttribute('readonly') !== null, true, 'Export text is selectable but not editable');
+  const packets = [];
+  let format, id, total;
+  for (let part = 1; ; part++) {
+    const packet = await test.page.locator(TEXT).inputValue();
+    const match = /^GOOGLE_RESULT_CAPTURE_(GZIP|JSON)_V1 (\S+) ([1-9]\d*)\/([1-9]\d*)\n([\s\S]*)$/.exec(packet);
+    assert(match, 'A text packet carries format, capture identity and explicit part count');
+    if (part === 1) { format = match[1]; id = match[2]; total = Number(match[4]); }
+    assert.equal(match[1], format); assert.equal(match[2], id);
+    assert.equal(Number(match[3]), part); assert.equal(Number(match[4]), total);
+    assert(match[5].length > 0 && match[5].length <= 12000, 'Every packet has a bounded non-empty body');
+    assert(!/[\uD800-\uDBFF]$/.test(match[5]) && !/^[\uDC00-\uDFFF]/.test(match[5]), 'A copied packet never splits a Unicode surrogate pair');
+    packets.push(packet);
+    if (part === total) break;
+    await test.page.locator(NEXT).click();
+  }
+  assert.equal(await test.page.locator(NEXT).isDisabled(), true, 'The last packet cannot advance past the export');
+  const body = packets.map(packet => packet.slice(packet.indexOf('\n') + 1)).join('');
+  return { packets, format, text: format === 'GZIP' ? gunzipSync(Buffer.from(body, 'base64')).toString('utf8') : body };
 }
 
 try {
@@ -189,10 +247,9 @@ try {
   const downloadCancelled = await open();
   try {
     await install(downloadCancelled);
-    await downloadCancelled.page.locator('#capture-target').scrollIntoViewIfNeeded();
-    await downloadCancelled.page.locator(START).click();
+    await prepareCapture(downloadCancelled);
     const downloading = downloadCancelled.page.waitForEvent('download');
-    await downloadCancelled.page.locator('#capture-target').click();
+    await downloadCancelled.page.locator(DOWNLOAD).click();
     const download = await downloading;
     await download.cancel();
     assert.equal((await downloadCancelled.page.evaluate(() => window.__captureProbe.storageWrites)).length, 0, 'An unconfirmed download cancellation never sets the completion flag');
@@ -204,6 +261,135 @@ try {
     assert.deepEqual(downloadCancelled.errors, []);
     passed++; console.log('PASS capture: cancelled/unconfirmed download does not consume the helper and retry remains available after reload');
   } finally { await downloadCancelled.close(); }
+
+  const textFallback = await open();
+  try {
+    const extra = randomBytes(24000).toString('base64');
+    await textFallback.page.evaluate(extra => {
+      const root = document.querySelector('.generic-autopager-page[data-page="2"] .generic-autopager-google-source-root');
+      const note = document.createElement('p'); note.hidden = true; note.textContent = extra; root.appendChild(note);
+      document.addEventListener('click', event => {
+        if (event.target.closest?.('#google-result-capture-download')) event.preventDefault();
+      }, true);
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+    }, extra);
+    await install(textFallback);
+    let downloads = 0; textFallback.page.on('download', () => downloads++);
+    await prepareCapture(textFallback);
+    assert.equal(await textFallback.page.locator(SHARE).isVisible(), false, 'Unsupported file sharing is not offered');
+    await textFallback.page.locator(DOWNLOAD).click();
+    assert.equal(downloads, 0, 'Fixture really suppresses the download path');
+    const expected = await readBlobExport(textFallback);
+    const restored = await readTextExport(textFallback);
+    assert.equal(restored.format, 'GZIP', 'Modern browser uses a losslessly compressed text export');
+    assert(restored.packets.length > 1, 'The incompressible fixture exercises actual multipart navigation');
+    assert.equal(restored.text, expected, 'All text packets reconstruct exactly the same JSON bytes as the file export');
+    assert(JSON.parse(restored.text).root.html.includes(extra), 'No selected report text is silently truncated for copying');
+    let probe = await textFallback.page.evaluate(() => window.__captureProbe);
+    assert.equal(probe.clipboard, 0, 'Displaying text never writes the clipboard automatically');
+    await textFallback.page.locator(COPY).click();
+    probe = await textFallback.page.evaluate(() => window.__captureProbe);
+    assert.equal(probe.clipboard, 1);
+    assert.equal(probe.clipboardTexts[0], restored.packets.at(-1));
+    assert.equal(probe.clipboardActivations[0], true, 'Clipboard is requested directly from the explicit user click');
+    await textFallback.page.locator(PREV).click();
+    assert.equal(await textFallback.page.locator(TEXT).inputValue(), restored.packets.at(-2), 'Previous packet remains available without recapturing');
+    await textFallback.page.evaluate(() => {
+      navigator.clipboard.writeText = async () => {
+        window.__captureProbe.clipboard++;
+        throw new DOMException('Fixture clipboard denied', 'NotAllowedError');
+      };
+    });
+    await textFallback.page.locator(COPY).click();
+    await textFallback.page.waitForFunction(selector => /長押し|手動/.test(document.querySelector(selector)?.textContent || ''), STATUS);
+    assert.equal(await textFallback.page.locator(TEXT).inputValue(), restored.packets.at(-2), 'Clipboard failure keeps the selected packet available for manual copying');
+    const selection = await textFallback.page.locator(TEXT).evaluate(field => ({ start: field.selectionStart, end: field.selectionEnd, length: field.value.length }));
+    assert.equal(selection.start, 0); assert.equal(selection.end, selection.length);
+    assert.equal((await textFallback.page.evaluate(() => window.__captureProbe.storageWrites)).length, 0, 'Export attempts do not mark the helper complete');
+    assert.deepEqual(textFallback.requests, []);
+    assert.deepEqual(textFallback.errors, []);
+    passed++; console.log('PASS export: ignored download still permits lossless multipart text, explicit copy and manual copy after permission denial');
+  } finally { await textFallback.close(); }
+
+  const rawFallback = await open();
+  try {
+    await rawFallback.page.evaluate(() => {
+      Object.defineProperty(window, 'CompressionStream', { configurable: true, value: undefined });
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+      localStorage.setItem('__googleResultStructureCaptureDone_v1', '1');
+      window.__captureProbe.storageWrites.length = 0;
+      const note = document.createElement('p'); note.hidden = true; note.textContent = '😀'.repeat(15000);
+      document.querySelector('.generic-autopager-page[data-page="2"] .generic-autopager-google-source-root').appendChild(note);
+    });
+    await install(rawFallback);
+    assert.equal(await rawFallback.page.locator(UI).count(), 1, 'The new helper remains available after an earlier version was marked complete');
+    await prepareCapture(rawFallback);
+    const expected = await readBlobExport(rawFallback);
+    const restored = await readTextExport(rawFallback);
+    assert.equal(restored.format, 'JSON');
+    assert.equal(restored.text, expected, 'Without compression support, raw text packets still reconstruct the complete JSON');
+    assert.equal(await rawFallback.page.locator(SHARE).isVisible(), false);
+    assert.deepEqual(rawFallback.errors, []);
+    passed++; console.log('PASS export: unavailable compression preserves complete JSON text and an old completion flag does not block the updated helper');
+  } finally { await rawFallback.close(); }
+
+  const noBlobURL = await open();
+  try {
+    await noBlobURL.page.evaluate(() => {
+      URL.createObjectURL = () => { throw new DOMException('Fixture blob export unavailable', 'NotSupportedError'); };
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+    });
+    await install(noBlobURL);
+    await prepareCapture(noBlobURL);
+    assert.equal(await noBlobURL.page.locator(DOWNLOAD).isVisible(), false, 'An unavailable file URL is not offered as a working download');
+    const restored = await readTextExport(noBlobURL), report = JSON.parse(restored.text);
+    assert.equal(report.schema, 'google-result-structure/v1');
+    assert.equal(Number(report.root.pageNumber), 2);
+    assert.deepEqual(report.selection.headings.map(heading => heading.text), titles);
+    assert.equal((await noBlobURL.page.evaluate(() => window.__captureProbe.storageWrites)).length, 0);
+    assert.deepEqual(noBlobURL.errors, []);
+    passed++; console.log('PASS export: unavailable blob URLs leave the complete selected report available through text');
+  } finally { await noBlobURL.close(); }
+
+  const shared = await open();
+  try {
+    await shared.page.evaluate(() => {
+      const probe = window.__captureProbe;
+      probe.shareMode = 'success'; probe.shareCalls = []; probe.shareTexts = [];
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: data =>
+        data.files?.length === 1 && data.files[0] instanceof File });
+      Object.defineProperty(navigator, 'share', { configurable: true, value: data => {
+        probe.shareCalls.push({ active: navigator.userActivation.isActive, names: data.files?.map(file => file.name), types: data.files?.map(file => file.type) });
+        return data.files[0].text().then(text => {
+          probe.shareTexts.push(text);
+          if (probe.shareMode === 'cancel') throw new DOMException('Fixture share cancelled', 'AbortError');
+          if (probe.shareMode === 'error') throw new DOMException('Fixture share failed', 'NotAllowedError');
+        });
+      } });
+    });
+    await install(shared);
+    await prepareCapture(shared);
+    assert.equal(await shared.page.locator(SHARE).isVisible(), true);
+    const expected = await readBlobExport(shared);
+    assert.equal((await shared.page.evaluate(() => window.__captureProbe.shareCalls)).length, 0, 'Preparing a file does not open a share sheet');
+    for (const mode of ['success', 'cancel', 'error']) {
+      await shared.page.evaluate(mode => { window.__captureProbe.shareMode = mode; }, mode);
+      const count = await shared.page.evaluate(() => window.__captureProbe.shareTexts.length);
+      await shared.page.locator(SHARE).click();
+      await shared.page.waitForFunction(count => window.__captureProbe.shareTexts.length > count, count);
+      const probe = await shared.page.evaluate(() => window.__captureProbe);
+      assert.equal(probe.shareTexts.at(-1), expected, 'Shared file contains the exact captured report');
+      assert.equal(probe.shareCalls.at(-1).active, true, 'Share is requested directly from the explicit user click');
+      assert.match(probe.shareCalls.at(-1).names[0], /^Google_Result_Structure_.*\.json$/);
+      assert.equal(probe.storageWrites.length, 0, 'Share resolution, cancellation and rejection never mark delivery or completion');
+      assert.equal(await shared.page.locator(DOWNLOAD).isVisible(), true);
+      assert.equal(await shared.page.locator(SHOW_TEXT).isVisible(), true);
+    }
+    assert.equal(await readBlobExport(shared), expected, 'The original export remains available after failed share attempts');
+    assert.deepEqual(shared.requests, []);
+    assert.deepEqual(shared.errors, []);
+    passed++; console.log('PASS export: feature-detected file sharing uses direct activation and preserves exact data through success, cancellation and failure (API mock, not native Android verification)');
+  } finally { await shared.close(); }
 
   const fallback = await open('https://www.google.com/search?q=storage-fallback', { localStorageWriteFails: true });
   try {

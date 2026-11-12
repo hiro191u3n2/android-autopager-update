@@ -1,5 +1,44 @@
 # Recovered development source
 
+## Capture helper v1.1: export without assuming a download exists
+
+On 2026-11-13 the owner reported that the JSON file was absent from Downloads.
+Helper v1.0 initiated a synthetic blob download after asynchronous collection;
+that did not establish that Berry or Android actually saved a file. The exact
+device-side failure is unknown. Do not send the owner back to a presumed path.
+
+The separate helper v1.1 retains the capture in memory and offers explicit
+download, capability-checked file sharing, and a selectable text export.
+Compression is lossless gzip/base64 when supported; otherwise the original JSON
+is split directly. Each text part has a format, capture ID and part/total header.
+Reassemble only matching capture IDs with every numbered part, then decode and
+validate JSON. Never treat an incomplete set as a usable capture. Copy happens
+only on an explicit tap; a denied clipboard write leaves manual selection
+available. No automatic download, clipboard write, upload or sharing occurs.
+Only the owner's finish confirmation disables the helper. A new completion key
+lets owners who finished v1.0 use v1.1 without clearing unrelated browser data.
+
+The production autopager remains byte-identical to v6.66.0. This is an export
+repair for the separate evidence tool; the grouped-result border fix still
+requires the affected device capture. Focused Chromium export checks and exact
+production package comparisons cover this change. Native Berry file sharing
+and clipboard behavior must not be claimed as verified by those checks.
+
+Candidate `875b0f4842375209e2b106214fca496c402eaea5` passed fifteen browser
+groups in Actions run `43332435926`. Tests reconstruct the exact original JSON
+from all gzip/base64 text parts, exercise ignored downloads and unavailable
+blob URLs, preserve raw JSON/Unicode when compression is unavailable, verify
+explicit copy and manual selection after clipboard denial, and simulate file
+sharing success/cancellation/failure with real File contents. The helper
+SHA-256 is `99d812e8b21244bcf9bb569af487b11f40c91086a258dddbdbb347369a3efa51`.
+The production userscript and metadata retain their verified v6.66.0 hashes.
+
+Text packet headers are `GOOGLE_RESULT_CAPTURE_GZIP_V1 ID PART/TOTAL` or
+`GOOGLE_RESULT_CAPTURE_JSON_V1 ID PART/TOTAL`, followed by one newline and the
+part body. Order the complete bodies by PART and concatenate them without
+adding separators. For GZIP, base64-decode and gunzip before parsing JSON.
+Do not strip or normalize whitespace inside a raw JSON body.
+
 ## Selected-result evidence capture before changing grouped-card rendering
 
 On 2026-11-13 the owner approved investigating the still-missing boundaries
