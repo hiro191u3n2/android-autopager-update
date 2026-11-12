@@ -44,7 +44,7 @@ function fixture(start, short = false) {
     <nav><a id="pnnext" href="/search?q=continuity&amp;start=${start + 10}">次へ</a></nav></body></html>`;
 }
 
-async function open(code, { delay = 0, gated = false, short = false, firstPageError = false } = {}) {
+async function open(code, { delay = 0, gated = false, short = false, firstPageError = false, afterInitialPageShow = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 500, height: 983 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   const page = await context.newPage(), errors = [];
   let release;
@@ -78,7 +78,10 @@ async function open(code, { delay = 0, gated = false, short = false, firstPageEr
   await page.addInitScript(() => {
     if (window.top !== window.self) return;
     const scroll = window.scrollTo.bind(window);
-    const probe = window.__continuity = { outerScrollWrites: [], appends: [], maxFrames: 0 };
+    const probe = window.__continuity = { outerScrollWrites: [], appends: [], maxFrames: 0, lifecycle: [] };
+    for (const type of ['pagehide', 'pageshow']) window.addEventListener(type, event => {
+      probe.lifecycle.push({ type, at: performance.now(), persisted: event.persisted, trusted: event.isTrusted });
+    });
     window.__readerScroll = y => scroll(0, y);
     window.scrollTo = (...args) => { probe.outerScrollWrites.push(args); return scroll(...args); };
     const frames = () => { probe.maxFrames = Math.max(probe.maxFrames, document.querySelectorAll('#generic-autopager-google-frame').length); };
@@ -87,8 +90,16 @@ async function open(code, { delay = 0, gated = false, short = false, firstPageEr
       probe.appends.push({ page: event.detail.page, y: scrollY, at: performance.now() });
     });
   });
-  await page.addInitScript({ content: code });
-  await page.goto('https://www.google.com/search?q=continuity', { waitUntil: 'domcontentloaded' });
+  if (!afterInitialPageShow) await page.addInitScript({ content: code });
+  await page.goto('https://www.google.com/search?q=continuity', { waitUntil: afterInitialPageShow ? 'load' : 'domcontentloaded' });
+  if (afterInitialPageShow) {
+    // A gated read-ahead iframe can hold the parent's very first load/pageshow.
+    // Dispatching a synthetic pagehide before that real pageshow would create
+    // a fictitious resume when the gate opens. Establish the initial lifecycle
+    // first, then start the exact same userscript and its pending preparation.
+    await page.waitForFunction(() => window.__continuity.lifecycle.some(event => event.type === 'pageshow' && event.trusted));
+    await page.addScriptTag({ content: code });
+  }
   await page.locator(STATUS).waitFor({ state: 'attached', timeout: 10000 });
   const initial = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, y: scrollY,
     native: document.querySelector('#rso > .result').outerHTML }));
@@ -197,13 +208,18 @@ try {
   }
 
   for (const lifecycle of ['query-change', 'pagehide']) for (const firstPageError of [false, true]) {
-    const pending = await open(current, { gated: true, firstPageError });
+    const pending = await open(current, { gated: true, firstPageError, afterInitialPageShow: true });
     try {
       await requested(pending, 10);
       await pending.page.evaluate(kind => {
         if (kind === 'query-change') history.pushState({}, '', '/search?q=another-query');
         else dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
       }, lifecycle);
+      if (lifecycle === 'pagehide') {
+        const events = await pending.page.evaluate(() => window.__continuity.lifecycle);
+        assert.deepEqual(events.map(event => event.type), ['pageshow', 'pagehide'], 'Initial native pageshow precedes the simulated history departure');
+        assert.equal(events[0].trusted, true, 'Observe the actual browser lifecycle before simulating BFCache departure');
+      }
       pending.release();
       await pending.page.waitForFunction(() => !document.getElementById('generic-autopager-google-frame'), undefined, { timeout: 25000 });
       assert.equal(await pending.page.locator('.generic-autopager-page').count(), 0, `${lifecycle}: a stale pending response cannot append`);
@@ -214,6 +230,8 @@ try {
       await pending.page.waitForTimeout(250);
       assert.equal(pending.state.requests.length, starts, `${lifecycle}: old pager does not start another request`);
       if (lifecycle === 'pagehide') {
+        assert.deepEqual(await pending.page.evaluate(() => window.__continuity.lifecycle.map(event => event.type)), ['pageshow', 'pagehide'],
+          'Settling the old iframe cannot produce an unintended native pageshow in the suspended interval');
         await pending.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
         await appended(pending, 2);
         assert.equal(await pending.page.locator('.generic-autopager-page').count(), 1, 'BFCache pageshow resumes the same valid query');
