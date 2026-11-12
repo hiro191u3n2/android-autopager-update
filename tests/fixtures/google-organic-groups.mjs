@@ -36,7 +36,7 @@ export function organicExpectedResults(start, { compact = false, price = false }
       return {
         id: `${group}-${start}-${index + 1}`, group, index: index + 1, name, origin, title,
         href: `${origin}/organic-fixture/${start}/${group}/${index + 1}`,
-        snippet: `${price && group === 'main' && index === 0 ? 'うなぎづくし 12,000円（税込）。' : ''}検索結果 ${start}-${group}-${index + 1}。うなぎ専門店の営業時間と店舗情報です。見出しや説明文を保って次の検索結果を表示します。`,
+        snippet: `${price && group === 'main' && index === 0 ? 'うなぎづくし 12,000円（税込）。' : ''}店舗情報 ${start}-${group}-${index + 1}。うなぎ専門店の公式サイト。営業時間は11時から19時まで、店内でのお食事と持ち帰りを案内しています。`,
         thumbnail: group === 'main' && index === 0 ? ORGANIC_THUMBNAIL : null,
       };
     });

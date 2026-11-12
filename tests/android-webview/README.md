@@ -27,6 +27,11 @@ generated from `tests/fixtures/google-organic-groups.mjs`. Title, text,
 destinations, thumbnail source/size, first-page DOM, horizontal overflow and
 script errors are also checked. Screenshots, geometry, WebView package/version, script hashes
 and logcat are uploaded even if a test fails.
+Candidate cases run before frozen controls. Individual page failures are saved
+and the remaining cases still run, then any failure fails the job. Zero-size
+results are reported as missing rendering, with ancestor computed styles and
+bounded container HTML in the geometry report; they are not treated as an image
+loading or divider-size failure. All original pixel assertions remain strict.
 
 The Activity leaves Android's navigation bar visible and hides only its status
 bar, so the first-run immersive-mode confirmation does not cover the test.

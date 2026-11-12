@@ -5,6 +5,7 @@ import pathlib
 import subprocess
 import sys
 import time
+from math import isfinite
 from PIL import Image
 
 HARNESS = pathlib.Path(__file__).resolve().parent
@@ -79,6 +80,11 @@ def verify(geometry, png):
     assert geometry['documentWidth'] <= geometry['width'] + 1, 'Horizontal overflow'
     results = geometry['results']
     assert len(results) == 4, f'Expected four complete results, found {len(results)}'
+    for result in results:
+        assert result['rect']['width'] > 0 and result['rect']['height'] > 0, (
+            'Imported result is not rendered; inspect geometry JSON diagnostics for ancestor styles and HTML', result['id'])
+        assert all(isinstance(result['content'][edge], (int, float)) and isfinite(result['content'][edge])
+                   for edge in ['top', 'bottom']), ('Non-finite result content geometry', result['id'])
     assert geometry['width'] >= 350 and geometry['width'] <= 430, geometry['width']
     start = (geometry['page'] - 1) * 10
     for result, expected_result in zip(results, MANIFEST['expected'][str(start)]):
@@ -120,8 +126,9 @@ adb('shell', 'settings', 'put', 'system', 'font_scale', '1.0')
 adb('shell', 'input', 'keyevent', '82')
 adb('install', '-r', str(BUILD / 'webview-fixture-test.apk'))
 measurements = []
+failures = []
 try:
-    for variant in ['control', 'current']:
+    for variant in ['current', 'control']:
       for shape in ['mixed', 'plain']:
         for theme in ['light', 'dark']:
             adb('shell', 'am', 'force-stop', PACKAGE)
@@ -129,19 +136,30 @@ try:
             adb('logcat', '-c')
             adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '--es', 'variant', variant, '--es', 'theme', theme, '--es', 'shape', shape)
             for number in [2, 3]:
-                if number == 3:
-                    adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '--ei', 'next_page', '3')
-                geometry = report(number)
-                assert (geometry['variant'], geometry['shape'], geometry['theme'], geometry['page']) == (variant, shape, theme, number), 'Activity reset or returned stale scenario evidence'
                 base = OUTPUT / f'{variant}-{shape}-{theme}-page{number}'
-                base.with_suffix('.json').write_text(json.dumps(geometry, ensure_ascii=False, indent=2))
                 png = base.with_suffix('.png')
-                png.write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
-                boundaries = verify(geometry, png)
-                measurements.append({'variant': variant, 'shape': shape, 'theme': theme, 'page': number, 'boundaries': boundaries})
-                print(f'PASS {variant} {shape} {theme} page {number}: {boundaries}', flush=True)
+                try:
+                    if number == 3:
+                        adb('shell', 'am', 'start', '-W', '-n', COMPONENT, '--ei', 'next_page', '3')
+                    geometry = report(number)
+                    assert (geometry['variant'], geometry['shape'], geometry['theme'], geometry['page']) == (variant, shape, theme, number), 'Activity reset or returned stale scenario evidence'
+                    base.with_suffix('.json').write_text(json.dumps(geometry, ensure_ascii=False, indent=2))
+                    png.write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
+                    boundaries = verify(geometry, png)
+                    measurements.append({'variant': variant, 'shape': shape, 'theme': theme, 'page': number, 'boundaries': boundaries})
+                    print(f'PASS {variant} {shape} {theme} page {number}: {boundaries}', flush=True)
+                except Exception as error:
+                    failure = {'variant': variant, 'shape': shape, 'theme': theme, 'page': number, 'error': str(error)}
+                    if not png.exists():
+                        png.write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
+                    base.with_suffix('.error.json').write_text(json.dumps(failure, ensure_ascii=False, indent=2))
+                    failures.append(failure)
+                    print(f'FAIL {variant} {shape} {theme} page {number}: {error}', flush=True)
             (OUTPUT / f'{variant}-{shape}-{theme}-logcat.txt').write_text(adb('logcat', '-d', '-s', 'AutoPagerTest:I', 'chromium:E', 'AndroidRuntime:E'))
 finally:
     (OUTPUT / 'last-logcat.txt').write_text(adb('logcat', '-d', '-s', 'AutoPagerTest:I', 'chromium:E', 'AndroidRuntime:E'))
     (OUTPUT / 'measurements.json').write_text(json.dumps(measurements, ensure_ascii=False, indent=2))
+    (OUTPUT / 'verification-failures.json').write_text(json.dumps(failures, ensure_ascii=False, indent=2))
+if failures:
+    raise AssertionError(f'{len(failures)} Android WebView scenarios failed; all remaining scenarios were still attempted. See verification-failures.json.')
 print('Android WebView fixtures passed: 16 page/shape/theme/control scenarios; see environment.json for the actual provider version.')
