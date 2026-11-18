@@ -9,6 +9,17 @@ concurrency:
   cancel-in-progress: true
 jobs:
   android:
+    name: Android WebView API ${{ matrix.api }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 37
+            image: '37.0'
+            target: google_apis_ps16k
+          - api: 35
+            image: '35'
+            target: google_apis
     runs-on: ubuntu-24.04
     timeout-minutes: 28
     steps:
@@ -31,22 +42,13 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Compare Android 17 WebView compositor pixels
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          system-image-api-level: '37.0'
-          target: google_apis_ps16k
-          arch: x86_64
-          profile: pixel_2
-          disk-size: 6G
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none -partition-size 6144
-          script: python tests/android-webview/run-mobile-frames.py "$RUNNER_TEMP/frame-build" "$RUNNER_TEMP/android-frame-evidence"
+      - name: Compare WebView compositor pixels
+        run: |
+          bash tests/android-webview/run-frame-emulator.sh '${{ matrix.image }}' '${{ matrix.target }}' '${{ matrix.api }}' "$RUNNER_TEMP/frame-build" "$RUNNER_TEMP/android-frame-evidence"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: android-webview-frame-pixels
+          name: android-webview-frame-pixels-api-${{ matrix.api }}
           path: |
             ${{ runner.temp }}/android-frame-evidence/
             ${{ runner.temp }}/frame-build/assets/frame-build.json

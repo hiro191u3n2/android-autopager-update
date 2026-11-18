@@ -6,7 +6,8 @@ import sys
 import time
 from PIL import Image
 
-build, output = map(pathlib.Path, sys.argv[1:])
+build, output = map(pathlib.Path, sys.argv[1:3])
+expected_api = int(sys.argv[3]) if len(sys.argv) == 4 else 37
 output.mkdir(parents=True, exist_ok=True)
 package = 'jp.hiro.autopager.webviewtest'
 component = package + '/.MainActivity'
@@ -88,7 +89,7 @@ def bands_in_region(image, report, start, end, color):
 
 
 def verify(png, report, variant, theme):
-    assert report['androidApi'] == 37 and report['webviewVersion'], report
+    assert report['androidApi'] == expected_api and report['webviewVersion'], report
     assert report['scale'] == 1 and report['documentWidth'] <= report['viewport'] + 1
     assert not report['consoleErrors'], report['consoleErrors']
     rows = report['results']
@@ -113,7 +114,7 @@ environment = adb('shell', 'dumpsys', 'webviewupdate')
 adb('shell', 'wm', 'size', '1080x2600')
 adb('shell', 'wm', 'density', '432')
 adb('shell', 'settings', 'put', 'system', 'font_scale', '1.0')
-adb('shell', 'input', 'keyevent', '82')
+adb('shell', 'input', 'keyevent', '82', check=False)
 measurements = []
 try:
     install_fixture()
