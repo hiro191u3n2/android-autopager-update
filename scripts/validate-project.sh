@@ -4,13 +4,14 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 release_version="${1:-}"
 test "$project_dir" = /workspace/sites/android-autopager-update
-test "$release_version" = 6.66.0
+test "$release_version" = 6.67.0
 test "$(git -C "$project_dir" remote get-url origin)" = https://github.com/hiro191u3n2/android-autopager-update.git
 test "$(git -C "$project_dir" branch --show-current)" = main
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.44.js)" = ee0c1d906375c7d34ebc3046719abef10d42c7ae
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.60.js)" = dfa28418b2ea6fb4af5ed7bcfa537ff903d5decd
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.61.js)" = a1f58d68dcb732d7803e28cc1764543cb006dfce
 test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.62.js)" = e74510bd3669085bab8a73f20b468757f4b166b4
+test "$(git -C "$project_dir" hash-object Android_Generic_AutoPager_v6.66.js)" = 884d36fa3657725af1b99f6c7b9ce8dee3fc35ac
 
 git -C "$project_dir" diff --check
 git -C "$project_dir" diff --cached --check
@@ -27,6 +28,7 @@ node --check "$project_dir/src/yahoo-realtime-autopager.js"
 node --check "$project_dir/src/cityhill-gallery-compat.js"
 node --check "$project_dir/src/fashion-product-guard.js"
 node "$project_dir/scripts/test-buzzap.mjs"
+node "$project_dir/tests/test_google_grouped_mobile_results.mjs"
 node "$project_dir/tests/test_google_title_preparation_v666.mjs"
 node "$project_dir/tests/test_google_frame_preparation.mjs"
 node "$project_dir/tests/test_google_continuous_scroll.mjs"

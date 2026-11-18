@@ -13,6 +13,18 @@ const helper = (await readFile(new URL('../src/fashion-product-guard.js', import
 const googleCleanup = (await readFile(new URL('../src/google-search-cleanup.js', import.meta.url), 'utf8')).trim();
 const prefix = `\n\n${googleCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const currentLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
+const frozen666 = await readFile(new URL('../Android_Generic_AutoPager_v6.66.js', import.meta.url), 'utf8');
+const frozen666Body = frozen666.slice(frozen666.indexOf(END) + END.length);
+const layoutMarker = '// Google loads result-specific CSS in each fetched document.';
+const stagingMarker = '// Prepare only a detached Google result page.';
+const layoutStart666 = frozen666Body.indexOf(layoutMarker);
+const layoutEnd666 = frozen666Body.indexOf(stagingMarker);
+assert(layoutStart666 >= 0 && layoutEnd666 > layoutStart666);
+const googleLayout = frozen666Body.slice(layoutStart666, layoutEnd666).trimEnd();
+assert.equal(executable.split(currentLayout).length, 2);
+executable = executable.replace(currentLayout, () => googleLayout);
+assert(executable === frozen666Body, 'Only the Google import layout module may differ from v6.66');
 const currentReadAhead = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
 const currentStaging = (await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim();
 const googleFramePreparation = (await readFile(new URL('../src/google-frame-preparation.js', import.meta.url), 'utf8')).trim();
@@ -40,7 +52,6 @@ for (const [from, to] of GOOGLE_READ_AHEAD_REPLACEMENTS) {
 const frozen664 = await readFile(new URL('../Android_Generic_AutoPager_v6.64.js', import.meta.url), 'utf8');
 assert.equal(executable, frozen664.slice(frozen664.indexOf(END) + END.length), 'Only the named Google read-ahead additions may differ from v6.64');
 assert(executable.startsWith(prefix), 'Runtime module ordering changed');
-const googleLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
 const frozen663 = await readFile(new URL('../Android_Generic_AutoPager_v6.63.js', import.meta.url), 'utf8');
 const frozen663Body = frozen663.slice(frozen663.indexOf(END) + END.length);
 const layout663Start = frozen663Body.indexOf('// Google loads result-specific CSS in each fetched document.');

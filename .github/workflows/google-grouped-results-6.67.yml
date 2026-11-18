@@ -1,0 +1,49 @@
+name: Google grouped result validation
+on:
+  push:
+    branches: [fix/google-grouped-results-6.67]
+permissions:
+  contents: read
+concurrency:
+  group: google-grouped-results-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Prepare validation checkout
+        run: |
+          sudo mkdir -p /workspace/sites
+          sudo chown "$USER" /workspace/sites
+          git clone --quiet --no-hardlinks "$GITHUB_WORKSPACE" /workspace/sites/android-autopager-update
+          cd /workspace/sites/android-autopager-update
+          git checkout -B main "$GITHUB_SHA"
+          git remote set-url origin https://github.com/hiro191u3n2/android-autopager-update.git
+      - name: Install test dependencies
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Validate and package the release
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          set -o pipefail
+          bash scripts/validate-project.sh 6.67.0 2>&1 | tee "$RUNNER_TEMP/validation.log"
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/release" 6.67.0
+          node scripts/verify-release.mjs "$RUNNER_TEMP/release" 6.67.0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grouped-results-validation
+          path: |
+            ${{ runner.temp }}/validation.log
+            ${{ runner.temp }}/release/
+          retention-days: 7
