@@ -13,12 +13,44 @@ const helper = (await readFile(new URL('../src/fashion-product-guard.js', import
 const googleCleanup = (await readFile(new URL('../src/google-search-cleanup.js', import.meta.url), 'utf8')).trim();
 const prefix = `\n\n${googleCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
-const currentLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
+const mobileFrames = (await readFile(new URL('../src/google-mobile-result-frames.js', import.meta.url), 'utf8')).trim();
+const paintHook = 'if(r){repairGenericGoogleResultBoundariesV658(u);repairGenericGoogleMobileFramesV668(u)}';
+assert.equal(executable.split(mobileFrames + '\n').length, 2, 'Mobile framing module must be included once');
+assert.equal(executable.split(paintHook).length, 2, 'Mobile framing hook must be included once');
+executable = executable.replace(mobileFrames + '\n', '').replace(paintHook, 'if(r)repairGenericGoogleResultBoundariesV658(u)');
+const frozen667 = await readFile(new URL('../Android_Generic_AutoPager_v6.67.js', import.meta.url), 'utf8');
+const frozen667Body = frozen667.slice(frozen667.indexOf(END) + END.length);
+const candidateLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
+const layoutMarker = '// Google loads result-specific CSS in each fetched document.';
+const stagingMarker = '// Prepare only a detached Google result page.';
+const start667 = frozen667Body.indexOf(layoutMarker), end667 = frozen667Body.indexOf(stagingMarker);
+assert(start667 >= 0 && end667 > start667);
+const currentLayout = frozen667Body.slice(start667, end667).trimEnd();
+// Revert only the new ancestor-paint helper and its four integration points.
+// Snapshot capture, import, and the prior boundary painter remain pinned.
+let restoredLayout = candidateLayout;
+const helperStart = restoredLayout.indexOf('// The mobile results container often has no paint of its own.');
+const helperEnd = restoredLayout.indexOf('function captureGenericGoogleLayoutV647(root) {');
+assert(helperStart >= 0 && helperEnd > helperStart);
+restoredLayout = restoredLayout.slice(0, helperStart) + restoredLayout.slice(helperEnd);
+for (const [change, previous] of [
+  ['const genericGoogleSourceSurfacesV668 = new WeakSet();\n', ''],
+  ['    const backdrop = getGenericGoogleSourceBackdropV668(root, view, rectangle(root));\n    genericGoogleLayoutSourcesV647.set(root, { nodes, styles, backdrop });',
+   '    genericGoogleLayoutSourcesV647.set(root, { nodes, styles });'],
+  ["  if (snapshot.backdrop) {\n    clone.style.setProperty('background-color', snapshot.backdrop.color, 'important');\n    if (snapshot.backdrop.local) genericGoogleSourceSurfacesV668.add(clone);\n  }\n", ''],
+  ['  const sourceSurface = genericGoogleSourceSurfacesV668.has(backgroundNode);\n  if (background?.alpha === 1 && contrast.length === 2 &&\n      contrast.every(value => sourceSurface ? value > 1 : value >= 1.12)) {',
+   '  if (background?.alpha === 1 && contrast.length === 2 && contrast.every(value => value >= 1.12)) {'],
+]) {
+  assert.equal(restoredLayout.split(change).length, 2, 'Ancestor backdrop integration must be unique');
+  restoredLayout = restoredLayout.replace(change, () => previous);
+}
+assert(restoredLayout === currentLayout, 'Unrelated Google import-layout changes detected');
+assert.equal(executable.split(candidateLayout).length, 2);
+executable = executable.replace(candidateLayout, () => restoredLayout);
+assert(executable === frozen667Body, 'Only the Google mobile frames and source backdrop may differ from v6.67');
 const currentReadAhead = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
 const frozen666 = await readFile(new URL('../Android_Generic_AutoPager_v6.66.js', import.meta.url), 'utf8');
 const frozen666Body = frozen666.slice(frozen666.indexOf(END) + END.length);
-const layoutMarker = '// Google loads result-specific CSS in each fetched document.';
-const stagingMarker = '// Prepare only a detached Google result page.';
 const layoutStart666 = frozen666Body.indexOf(layoutMarker);
 const layoutEnd666 = frozen666Body.indexOf(stagingMarker);
 assert(layoutStart666 >= 0 && layoutEnd666 > layoutStart666);

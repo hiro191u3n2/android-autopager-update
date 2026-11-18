@@ -1,0 +1,93 @@
+name: Google mobile result frames
+on:
+  push:
+    branches: [fix/google-mobile-frames-6.68]
+permissions:
+  contents: read
+concurrency:
+  group: google-mobile-frames-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build isolated WebView test APK
+        run: |
+          python -m pip install --disable-pip-version-check Pillow==11.3.0
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          bash tests/android-webview/build.sh "$PWD" "$RUNNER_TEMP/frame-build" tests/android-webview/make-frame-assets.mjs
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Compare Android 17 WebView compositor pixels
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          system-image-api-level: '37.0'
+          target: google_apis_ps16k
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          script: python tests/android-webview/run-mobile-frames.py "$RUNNER_TEMP/frame-build" "$RUNNER_TEMP/android-frame-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-webview-frame-pixels
+          path: |
+            ${{ runner.temp }}/android-frame-evidence/
+            ${{ runner.temp }}/frame-build/assets/frame-build.json
+          retention-days: 7
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Prepare validation checkout and Chromium
+        run: |
+          sudo mkdir -p /workspace/sites
+          sudo chown "$USER" /workspace/sites
+          git clone --quiet --no-hardlinks "$GITHUB_WORKSPACE" /workspace/sites/android-autopager-update
+          cd /workspace/sites/android-autopager-update
+          git checkout -B main "$GITHUB_SHA"
+          git remote set-url origin https://github.com/hiro191u3n2/android-autopager-update.git
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Compare archived mobile Google page rendering
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          curl --fail --location --retry 3 'https://raw.githubusercontent.com/zlurad/serp-parser/70dafd826e785827fe015c7f1f29674ad2c6ebb2/test/google/mobile/hotels-london.html' -o "$RUNNER_TEMP/mobile-google-hotels-london.html"
+          GOOGLE_MOBILE_ARCHIVE_FILE="$RUNNER_TEMP/mobile-google-hotels-london.html" node tests/test_google_archived_gutters.mjs
+      - name: Validate and package release
+        working-directory: /workspace/sites/android-autopager-update
+        run: |
+          set -o pipefail
+          bash scripts/validate-project.sh 6.68.0 2>&1 | tee "$RUNNER_TEMP/validation.log"
+          node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/release" 6.68.0
+          node scripts/verify-release.mjs "$RUNNER_TEMP/release" 6.68.0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-frame-chromium-validation
+          path: |
+            ${{ runner.temp }}/validation.log
+            ${{ runner.temp }}/release/
+          retention-days: 7

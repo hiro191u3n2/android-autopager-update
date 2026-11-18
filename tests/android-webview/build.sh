@@ -3,6 +3,7 @@ set -euo pipefail
 harness_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_dir="$(cd -- "${1:-.}" && pwd)"
 build_dir="${2:-$harness_dir/build}"
+asset_builder="${3:-$harness_dir/make-assets.mjs}"
 sdk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 test -n "$sdk_dir"
 android_jar="$sdk_dir/platforms/android-35/android.jar"
@@ -10,7 +11,7 @@ build_tools="$sdk_dir/build-tools/35.0.0"
 test -f "$android_jar"
 test -x "$build_tools/aapt"
 mkdir -p "$build_dir/assets" "$build_dir/classes" "$build_dir/dex"
-node "$harness_dir/make-assets.mjs" "$project_dir" "$build_dir/assets"
+node "$asset_builder" "$project_dir" "$build_dir/assets"
 javac -encoding UTF-8 -source 8 -target 8 -bootclasspath "$android_jar" \
   -d "$build_dir/classes" "$harness_dir/MainActivity.java"
 jar cf "$build_dir/classes.jar" -C "$build_dir/classes" .

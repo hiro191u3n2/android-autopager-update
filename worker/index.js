@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.67.0';
+export const VERSION = '6.68.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -102,12 +102,16 @@ export async function buildUserscript() {
     assert.equal(body.split(from).length, 2, 'Google frame preparation boundary changed');
     body = body.replace(from, to);
   }
+  const oldPaint = 'if(r)repairGenericGoogleResultBoundariesV658(u)';
+  assert.equal(body.split(oldPaint).length, 2, 'Google result boundary hook changed');
+  body = body.replace(oldPaint, 'if(r){repairGenericGoogleResultBoundariesV658(u);repairGenericGoogleMobileFramesV668(u)}');
+  const googleMobileFrames = (await readFile(new URL('src/google-mobile-result-frames.js', root), 'utf8')).trim();
   const googleLayout = (await readFile(new URL('src/google-import-layout.js', root), 'utf8')).trim();
   const googleStaging = (await readFile(new URL('src/google-import-staging.js', root), 'utf8')).trim();
   const googleReadAhead = (await readFile(new URL('src/google-read-ahead.js', root), 'utf8')).trim();
   const googleFramePreparation = (await readFile(new URL('src/google-frame-preparation.js', root), 'utf8')).trim();
   assert.equal(body.split('function e(){').length, 2, 'Google layout helper boundary changed');
-  body = body.replace('function e(){', `${googleLayout}\n${googleStaging}\n${googleReadAhead}\n${googleFramePreparation}\nfunction e(){`);
+  body = body.replace('function e(){', () => `${googleLayout}\n${googleStaging}\n${googleReadAhead}\n${googleFramePreparation}\n${googleMobileFrames}\nfunction e(){`);
   let header = baseline.slice(0, end).replace(/^(\/\/ @version\s+)6\.44\.0$/m, `$1${VERSION}`);
   header = header.replace('// @description  ', '// @description  Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。');
   header = header.replace('// @description  ', '// @description  服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。');
@@ -127,6 +131,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。');
   header = header.replace('// @description  ', '// @description  Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。');
   header = header.replace('// @description  ', '// @description  Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。');
+  header = header.replace('// @description  ', '// @description  Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;

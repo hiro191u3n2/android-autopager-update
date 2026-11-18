@@ -48,9 +48,13 @@ public final class MainActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         variant = "control".equals(getIntent().getStringExtra("variant")) ? "control" : "current";
         theme = "dark".equals(getIntent().getStringExtra("theme")) ? "dark" : "light";
-        fixture = "root".equals(getIntent().getStringExtra("fixture")) ? "root" : "organic";
+        String requestedFixture = getIntent().getStringExtra("fixture");
+        fixture = "frames".equals(requestedFixture) ? "frames"
+                : ("root".equals(requestedFixture) ? "root" : "organic");
         String requestedShape = getIntent().getStringExtra("shape");
-        if ("root".equals(fixture)) {
+        if ("frames".equals(fixture)) {
+            shape = "grid".equals(requestedShape) ? "grid" : "captured";
+        } else if ("root".equals(fixture)) {
             shape = "v661-nearwhite".equals(requestedShape) || "v661-alpha".equals(requestedShape)
                     || "v661-native".equals(requestedShape) ? requestedShape
                     : ("native".equals(requestedShape) ? "native" : "missing");
@@ -90,7 +94,8 @@ public final class MainActivity extends Activity {
             }
         });
         setContentView(webView);
-        webView.loadUrl("https://www.google.com/search?q=organic-fixture");
+        webView.loadUrl("https://www.google.com/search?q=" +
+                ("frames".equals(fixture) ? "mobile-result-frames" : "organic-fixture"));
     }
 
     @Override public void onNewIntent(Intent intent) {

@@ -5,6 +5,7 @@
 // recurring timers, or document observers.
 const genericGoogleLayoutSourcesV647 = new WeakMap();
 const genericGoogleLayoutClonesV647 = new WeakSet();
+const genericGoogleSourceSurfacesV668 = new WeakSet();
 const genericGoogleLayoutMarkerV647 = 'data-generic-google-layout-v647';
 const genericGoogleLayoutPseudoMarkV662 = 'data-generic-google-pseudo-v662';
 let genericGoogleLayoutScopeV662 = 0;
@@ -104,6 +105,41 @@ function isGenericGoogleLayoutSourceV647(root) {
   }
 }
 
+// The mobile results container often has no paint of its own. Its 8px card
+// margins expose a solid surface several ancestors outside #rso. Those
+// ancestors do not travel with the imported subtree.
+function getGenericGoogleSourceBackdropV668(root, view, rootBox) {
+  const doc = root.ownerDocument;
+  for (let node = root; node; node = node.parentElement) {
+    const css = view.getComputedStyle(node);
+    if (css.backgroundImage !== 'none' || css.opacity !== '1' ||
+        css.mixBlendMode !== 'normal' || css.filter !== 'none' ||
+        css.backdropFilter !== 'none' || css.maskImage !== 'none' || css.clipPath !== 'none') return null;
+    if (node !== root) {
+      for (const pseudo of ['::before', '::after']) {
+        const paint = view.getComputedStyle(node, pseudo);
+        if (!['none', 'normal'].includes(paint.content) && paint.display !== 'none' &&
+            paint.visibility === 'visible' && (paint.backgroundImage !== 'none' ||
+              !['transparent', 'rgba(0, 0, 0, 0)'].includes(paint.backgroundColor))) return null;
+      }
+    }
+    const color = css.backgroundColor;
+    if (color === 'transparent' || /^rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(color)) continue;
+    // Leave partial alpha, gradients and composited effects to the browser.
+    // An already colored root keeps the CSS from its own snapshot.
+    if (node === root || !/^rgb\([\d.,\s]+\)$/.test(color) || css.backgroundClip !== 'border-box') return null;
+    const local = node !== doc.body && node !== doc.documentElement;
+    if (local) {
+      const box = node.getBoundingClientRect();
+      if (box.top > rootBox.top + 1 || box.bottom < rootBox.bottom - 1 ||
+          box.left > rootBox.left + 1 || box.right < rootBox.right - 1 ||
+          css.borderRadius !== '0px') return null;
+    }
+    return { color, local };
+  }
+  return null;
+}
+
 function captureGenericGoogleLayoutV647(root) {
   if (!root?.querySelectorAll || !isGenericGoogleLayoutSourceV647(root)) return false;
   if (genericGoogleLayoutSourcesV647.has(root)) return true;
@@ -192,7 +228,8 @@ function captureGenericGoogleLayoutV647(root) {
     }
     const currentNodes = [root, ...root.querySelectorAll('*')];
     if (!root.isConnected || currentNodes.length !== nodes.length || currentNodes.some((node, index) => node !== nodes[index])) return false;
-    genericGoogleLayoutSourcesV647.set(root, { nodes, styles });
+    const backdrop = getGenericGoogleSourceBackdropV668(root, view, rectangle(root));
+    genericGoogleLayoutSourcesV647.set(root, { nodes, styles, backdrop });
     return true;
   } catch {
     return false;
@@ -235,6 +272,10 @@ function applyGenericGoogleLayoutV647(source, clone) {
   stylesheet.textContent = rules.join('\n');
   clone.setAttribute('data-generic-google-scope-v662', scope);
   clone.appendChild(stylesheet);
+  if (snapshot.backdrop) {
+    clone.style.setProperty('background-color', snapshot.backdrop.color, 'important');
+    if (snapshot.backdrop.local) genericGoogleSourceSurfacesV668.add(clone);
+  }
   clone.setAttribute(genericGoogleLayoutMarkerV647, '1');
   genericGoogleLayoutClonesV647.add(clone);
   genericGoogleLayoutSourcesV647.delete(source);
@@ -600,7 +641,9 @@ function getGenericGoogleRootGapPaintV661(root, previous, current, rootGap, surf
   // or an eligibility test. A failed comparison must never cancel root paint.
   // Preserve this gap's contrasting backdrop before borrowing a band color
   // from another result group in the same imported root.
-  if (background?.alpha === 1 && contrast.length === 2 && contrast.every(value => value >= 1.12)) {
+  const sourceSurface = genericGoogleSourceSurfacesV668.has(backgroundNode);
+  if (background?.alpha === 1 && contrast.length === 2 &&
+      contrast.every(value => sourceSurface ? value > 1 : value >= 1.12)) {
     color = backgroundColor; basis = 'ancestor-background';
   }
   else if (nativeColor) { color = nativeColor; basis = 'native-band'; }
