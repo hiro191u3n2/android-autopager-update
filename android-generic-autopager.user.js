@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.66.0
-// @description  Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.67.0
+// @description  Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -4375,6 +4375,14 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
     // row rather than letting that fragment inflate the result's source count.
     if (other.inlineURL && !source.inlineURL && other.node.contains(source.node)) return true;
     const sameHost = other.host === source.host;
+    // A displayed site name may itself be a different domain ("amazon.jp"
+    // over "https://www.amazon.co.jp"). Two adjacent labels in a compact,
+    // unlinked attribution row with only one explicit URL are one source.
+    const label = source.node.parentElement;
+    if (!source.explicitURL && other.explicitURL && !source.node.matches('cite,[data-dtld]') &&
+        source.node.textContent.trim().toLowerCase() === source.host &&
+        source.node.nextElementSibling?.contains(other.node) && label.childElementCount === 2 &&
+        !label.querySelector('a[href],button,' + heading)) return true;
     // A source row can name the site by its base domain while displaying a
     // subdomain URL. Only the plain site-name label can yield to that URL; two
     // explicit URLs or separate source rows must keep their own identities.
@@ -4438,6 +4446,52 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
     if (!source || used.has(source.node)) continue;
     used.add(source.node);
     records.push({ source: source.node, title, anchor, identity: unit });
+  }
+  if (rendered) {
+    // A title can wrap its link, or the link can be a separate overlay in the
+    // header. Flex ordering can also put the source after the title in the DOM.
+    // In these cases verify a unique heading + destination in the source's own
+    // header. Never search across the next result to borrow its link.
+    const bySource = new Map(records.map(record => [record.source, record]));
+    for (const source of identities) {
+      const existing = bySource.get(source.node);
+      if (existing && (existing.title.matches(heading) || existing.title.closest(heading))) continue;
+      for (let unit = source.node.parentElement; unit && unit !== root; unit = unit.parentElement) {
+        // A subsequent sitelink may already have borrowed this source by
+        // walking up to the shared group. Only replace it with a heading/link
+        // inside a *closer* source header, never a heading elsewhere in a card.
+        if (existing && (existing.identity === unit || !existing.identity.contains(unit))) break;
+        if (identities.some(other => other !== source && unit.contains(other.node))) break;
+        const titles = [...unit.querySelectorAll(heading)].filter(title =>
+          !title.closest(excluded) && title.textContent.trim().length >= 2 && title.getClientRects().length);
+        if (!titles.length) continue;
+        if (titles.length !== 1) break;
+        const title = titles[0];
+        const links = [...unit.querySelectorAll('a[href]')];
+        if (unit.matches('a[href]')) links.unshift(unit);
+        const matching = links.filter(anchor => {
+          if (anchor.closest(excluded)) return false;
+          try {
+            let url = new URL(anchor.getAttribute('href'), location.href);
+            if (/^(?:www\.)?google\.[a-z.]+$/i.test(url.hostname) && url.pathname === '/url') {
+              url = new URL(url.searchParams.get('q') || url.searchParams.get('url'));
+            }
+            const host = url.hostname.toLowerCase().replace(/^www\./, '');
+            return /^https?:$/.test(url.protocol) && (host === source.host || host.endsWith('.' + source.host));
+          } catch { return false; }
+        });
+        const anchor = matching.find(link => title.contains(link) || link.contains(title)) ||
+          (matching.length === 1 && !matching[0].textContent.trim() ? matching[0] : null);
+        if (anchor) {
+          const record = { source: source.node, title, anchor, identity: unit, separateHeading: true };
+          if (existing) Object.assign(existing, record);
+          else records.push(record);
+          used.add(source.node);
+        }
+        if (anchor || unit.querySelector('p,article')) break;
+      }
+    }
+    records.sort((a, b) => a.source === b.source ? 0 : a.source.compareDocumentPosition(b.source) & 4 ? -1 : 1);
   }
   const counts = new WeakMap();
   // Count ALL source identities, including an unrecognized result. Promoting a
@@ -4661,6 +4715,72 @@ function getGenericGoogleTouchingPaintV664(root, previous, current, records, rec
   return null;
 }
 
+// Some mobile groups alternate heading links and description blocks directly
+// on a single surface. There is no per-result card: a heading-to-heading
+// measurement includes the previous description and is not a boundary gap.
+// Identify the start of the next independent result without moving any links,
+// snippets, thumbnails, ratings or controls out of their original parents.
+const genericGoogleGroupEdgeV667 = 'data-generic-google-group-edge-v667';
+function getGenericGoogleGroupEdgeV667(root, previous, current, sources, rect, style, visible) {
+  const protectedGroup = 'g-scrolling-carousel,g-inner-card,g-related-question,details,nav,aside,[role="grid"],[role="listbox"],[role="tablist"],[role="dialog"],[data-attrid],[itemtype*="Product"]';
+  if (previous.source.closest(protectedGroup) || current.source.closest(protectedGroup)) return null;
+  let group = current.source.parentElement;
+  while (group && !group.contains(previous.source)) group = group.parentElement;
+  if (!group || group === previous.source || group === current.source || !root.contains(group)) return null;
+  const layout = style(group);
+  const column = layout.display === 'flex' && layout.flexDirection === 'column' &&
+    !(Number.parseFloat(layout.rowGap) > 0);
+  if (!column && !['block', 'flow-root'].includes(layout.display)) return null;
+  const branch = source => {
+    let node = source;
+    while (node.parentElement !== group) node = node.parentElement;
+    return node;
+  };
+  const first = branch(previous.source), next = branch(current.source);
+  if (first === next || current.source.closest('[' + genericGoogleBoundaryMarkV658 + ']') ||
+      !first.contains(previous.title) || !next.contains(current.title) ||
+      !first.contains(previous.anchor) || !next.contains(current.anchor) ||
+      sources.some(({ node }) => node !== current.source && next.contains(node) ||
+        node !== previous.source && first.contains(node))) return null;
+  const g = rect(group), a = rect(first), b = rect(next), width = rect(root).width;
+  if (g.width < width * .80 || a.width < width * .75 || b.width < width * .75 ||
+      Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12 || a.bottom > b.top + 1 ||
+      b.top <= rect(previous.title).bottom || !/^(?:block|flow-root|flex|grid)$/.test(style(next).display) ||
+      !/^(?:static|relative)$/.test(style(next).position)) return null;
+
+  let tail = first, separateBody = false;
+  for (let node = first.nextElementSibling; node && node !== next; node = node.nextElementSibling) {
+    if (!visible(node) || node.matches('style,script,template')) continue;
+    if (node.matches(protectedGroup) || node.querySelector(protectedGroup) ||
+        node.matches('h1,h2,h3,h4,[role="heading"]') || node.querySelector('h1,h2,h3,h4,[role="heading"]') ||
+        sources.some(source => node.contains(source.node))) return null;
+    const box = rect(node);
+    if (box.top < a.bottom - 1 || box.bottom > b.top + 1) return null;
+    if (node.textContent.trim() || node.querySelector('img,video')) {
+      separateBody = true;
+      tail = node;
+    }
+  }
+  // Independently framed results can also be missed when their native edge
+  // is just a hairline. Require both real mobile attribution menus in that
+  // case. Ordinary rounded cards, lists of sitelinks and rich modules keep
+  // their own treatment.
+  const menu = 'button[aria-haspopup],[role="button"][aria-haspopup],[aria-label*="この検索結果"],[aria-label*="この結果"],[aria-label*="このサイト"],[aria-label*="About this result" i],[aria-label*="More options" i]';
+  if (separateBody && (a.bottom - Math.max(rect(previous.title).bottom, rect(previous.source).bottom) >
+    24 + (Number.parseFloat(style(first).paddingBottom) || 0) || first.querySelector('p,blockquote,figure,ul,ol'))) return null;
+  if (!separateBody && (b.top - a.bottom > 1 ||
+      !current.separateHeading && !previous.separateHeading && !(next.querySelector(menu) && first.querySelector(menu)))) return null;
+  if (b.top - rect(tail).bottom > 24 || !visible(current.source) || !visible(current.title) ||
+      !visible(previous.source) || !visible(previous.title)) return null;
+  // Use only actual top padding for overlap. Account for media or controls
+  // positioned outside that padding (e.g. a thumbnail in the right column).
+  let clear = Math.min(Number.parseFloat(style(next).paddingTop) || 0, rect(current.source).top - b.top, rect(current.title).top - b.top);
+  if (clear > 0) for (const child of next.querySelectorAll('img,svg,video,canvas,button,[role="button"]')) {
+    if (visible(child)) clear = Math.min(clear, rect(child).top - b.top);
+  }
+  return { next, group, tail, top: b.top, bottom: rect(tail).bottom, left: b.left, right: b.right, padding: clear };
+}
+
 function repairGenericGoogleResultBoundariesV658(page) {
   if (!page?.isConnected || !/^(?:www\.)?google\.[a-z.]+$/i.test(location.hostname) || location.pathname !== '/search') return;
   const root = page.querySelector('.generic-autopager-google-source-root');
@@ -4684,13 +4804,14 @@ function repairGenericGoogleResultBoundariesV658(page) {
     for (let n = node; n; n = n.parentElement) if (colored(style(n).backgroundColor)) return style(n).backgroundColor;
     return 'rgb(255, 255, 255)';
   };
-  const records = getGenericGoogleResultRecordsV658(root, true).records.filter(record =>
+  const { records: recognized, sources } = getGenericGoogleResultRecordsV658(root, true);
+  const records = recognized.filter(record =>
     record.card && record.card !== record.anchor && visible(record.card) && visible(record.title) && visible(record.source) &&
     rect(record.card).width >= rootRect.width * 0.75);
   const cards = records.map(record => record.card), surfaces = new WeakMap();
   for (const record of records) surfaces.set(record.card, getGenericGoogleResultSurfaceV660(record, root, rect, style));
-  if (cards.length < 2) return;
-  const surface = surfaces.get(cards[0]).color;
+  if (recognized.length < 2) return;
+  const surface = cards.length ? surfaces.get(cards[0]).color : background(root);
   const bands = [];
   const inspected = new Set();
   const addBand = (top, bottom, left, right, color) => {
@@ -4743,14 +4864,62 @@ function repairGenericGoogleResultBoundariesV658(page) {
       for (let depth = 0; node && depth < 6; depth++, node = node[edge]) inspect(node);
     }
   }
-  const native = bands.find(band => band.height >= 4 && band.height <= 12) || bands[0];
+  const groupEdges = [];
+  for (let index = 1; index < recognized.length; index++) {
+    const current = recognized[index];
+    if (current.source.closest('[' + genericGoogleGroupEdgeV667 + ']')) continue;
+    const edge = getGenericGoogleGroupEdgeV667(root, recognized[index - 1], current, sources, rect, style, visible);
+    if (edge) {
+      groupEdges.push({ current, edge });
+      for (const node of [edge.next, edge.next.parentElement, edge.next.previousElementSibling]) inspect(node);
+    }
+  }
+  const thickBand = bands.find(band => band.height >= 4 && band.height <= 12);
+  const native = thickBand || bands[0];
   const rgb = surface.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [255, 255, 255];
   const color = native?.color || (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722 < 128 ? 'rgb(60, 64, 67)' : 'rgb(232, 234, 237)');
   const height = native?.height || 6;
   const missing = [];
+  const groupStarts = new Set();
+  for (const { current, edge } of groupEdges) {
+    // Look at the tail of the preceding description, not its heading. A
+    // 1px video or source outline is not the full mobile result divider.
+    const atEdge = bands.filter(band => band.left <= edge.left + 8 && band.right >= edge.right - 8 &&
+      band.top >= edge.bottom - 12 && band.bottom <= edge.top + Math.max(12, Math.min(edge.padding, 24)));
+    if (atEdge.some(band => band.height >= 4)) continue;
+    groupStarts.add(current.source);
+    const size = thickBand?.height || 6;
+    const gap = edge.top - edge.bottom;
+    if (gap >= 2) {
+      // With separate heading/body siblings the tail can have a margin too.
+      // A matching shadow occupies only that existing space; a contrasting
+      // native gutter remains its original color and thickness.
+      const faces = new WeakMap();
+      for (const node of [edge.tail, edge.next]) faces.set(node, { node, color: background(node) });
+      const paint = getGenericGoogleRootGapPaintV661(edge.group, edge.tail, edge.next,
+        { height: Math.min(size, gap) }, faces, style, color, thickBand?.color);
+      if (paint.basis !== 'ancestor-background' && (!style(edge.next).boxShadow || style(edge.next).boxShadow === 'none')) {
+        missing.push({ current: edge.next, paint });
+      }
+      continue;
+    }
+    const stripe = root.ownerDocument.createElement('div');
+    stripe.setAttribute('aria-hidden', 'true');
+    // Existing clear space above the attribution can host the band with
+    // zero change to the following content's position. If there is no room,
+    // reserve its height once, synchronously before the first visible paint.
+    const precedingLine = atEdge.find(band => band.height < 4 && Math.abs(band.bottom - edge.top) < .5);
+    const leadingLine = atEdge.find(band => band.height < 4 && Math.abs(band.top - edge.top) < .5);
+    const previousWidth = precedingLine?.height || 0;
+    const overlap = Math.min(size, Math.max(0, edge.padding, previousWidth + (leadingLine?.height || 0)));
+    stripe.style.cssText = 'all:initial!important;display:block!important;position:relative!important;flex:none!important;align-self:stretch!important;z-index:1!important;pointer-events:none!important;' +
+      'height:' + size + 'px!important;top:-' + previousWidth + 'px!important;margin-bottom:-' + overlap + 'px!important;background-color:' + color + '!important';
+    missing.push({ edge, stripe });
+  }
   for (let i = 1; i < cards.length; i++) {
     const previous = cards[i - 1], current = cards[i];
-    if (current.hasAttribute(genericGoogleBoundaryMarkV658)) continue;
+    if (current.hasAttribute(genericGoogleBoundaryMarkV658) || groupStarts.has(records[i].source) ||
+        records[i].source.closest('[' + genericGoogleGroupEdgeV667 + ']')) continue;
     const a = rect(previous), b = rect(current);
     if (a.bottom > b.top + 1 || b.top - a.bottom > 120 || Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12) continue;
     let common = previous.parentElement;
@@ -4782,7 +4951,12 @@ function repairGenericGoogleResultBoundariesV658(page) {
     const paint = touchingPaint || (rootGap ? getGenericGoogleRootGapPaintV661(common, previous, current, rootGap, surfaces, style, color, native?.color) : null);
     missing.push({ current, paint });
   }
-  for (const { current, paint } of missing) {
+  for (const { current, paint, edge, stripe } of missing) {
+    if (edge) {
+      edge.next.before(stripe);
+      edge.next.setAttribute(genericGoogleGroupEdgeV667, '1');
+      continue;
+    }
     // An outer, zero-blur shadow is clipped inside the border box. Its only
     // visible portion fills this existing gap; margins and heights stay intact.
     if (paint?.insetHeight) paint.node.style.setProperty('box-shadow', `inset 0px ${paint.insetHeight}px 0px 0px ${paint.color}${paint.originalShadow ? ', ' + paint.originalShadow : ''}`, 'important');
@@ -5155,6 +5329,8 @@ function createGenericGoogleReadAheadV665(state, load) {
   const route = genericGoogleTailRouteV663();
   if (!route || !state?.target?.isConnected) return null;
   let latest = null, frame = 0, generation = 0, disposed = false, suspended = false, composing = false;
+  const seenResults = new Map();
+  let indexedOriginal = false;
   let lastScrollY = window.scrollY || 0, lastMotionAt = -Infinity;
   const listeners = [];
   const listen = (target, name, handler) => {
@@ -5197,7 +5373,21 @@ function createGenericGoogleReadAheadV665(state, load) {
     if (!frame && valid() && !document.hidden) frame = window.requestAnimationFrame(check);
   };
   const appended = section => {
-    if (section?.parentNode === state.target) latest = section;
+    if (section?.parentNode === state.target) {
+      latest = section;
+      const imported = section.querySelector('.generic-autopager-google-source-root');
+      if (imported && valid()) {
+        if (!indexedOriginal) {
+          for (const child of state.target.children) {
+            if (!child.matches('.generic-autopager-page,#generic-autopager-sentinel')) {
+              indexGenericGoogleResultsV667(child, state.target, seenResults, false);
+            }
+          }
+          indexedOriginal = true;
+        }
+        indexGenericGoogleResultsV667(imported, state.target, seenResults, true);
+      }
+    }
     schedule();
   };
   // Optional remote title enrichment must not hold the whole next page when
@@ -5223,6 +5413,72 @@ function createGenericGoogleReadAheadV665(state, load) {
   listen(document, 'compositionend', () => { composing = false; schedule(); });
   schedule();
   return { schedule, appended, valid, urgent, ticket: () => generation, dispose };
+}
+
+// Two Google pages can return the very same organic listing. A destination
+// alone does not identify it: keep different excerpts, headlines or sitelinks.
+// Scan each new section once; read the rendered card only when its key collides.
+function indexGenericGoogleResultsV667(scope, target, index, removeCopies) {
+  const heading = 'h3,[role="heading"]';
+  const rich = 'g-scrolling-carousel,g-inner-card,g-related-question,g-section-with-header,details,nav,aside,video,iframe,table,[role="grid"],[role="tablist"],[role="listbox"],[data-attrid],[data-text-ad],[data-shopping],[itemtype*="Product"]';
+  const wrapper = '.MjjYud,.Ww4FFb,.g,[data-snhf],article';
+  const clean = value => (value || '').replace(/\s+/g, ' ').trim();
+  const visible = node => node.getClientRects().length && (node.checkVisibility
+    ? node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+    : node.ownerDocument.defaultView.getComputedStyle(node).visibility === 'visible');
+  const address = link => {
+    try {
+      let url = new URL(link.getAttribute('href'), location.href);
+      if (url.origin === location.origin && url.pathname === '/url') {
+        url = new URL(url.searchParams.get('q') || url.searchParams.get('url'));
+      }
+      return /^https?:$/.test(url.protocol) && !/^(?:www\.)?google\.[a-z.]+$/i.test(url.hostname) ? url.href : '';
+    } catch (_) { return ''; }
+  };
+  const removals = [];
+  for (const title of scope.querySelectorAll(heading)) {
+    const link = title.closest('a[href]') || title.querySelector('a[href]');
+    if (!link || title.closest(rich + ',[hidden],[inert],[aria-hidden="true"]')) continue;
+    const url = address(link), label = clean(title.textContent);
+    if (!url || !label) continue;
+    let card = title.closest(wrapper);
+    if (!card || !scope.contains(card) || card.matches('.generic-autopager-google-source-root') ||
+        card.querySelectorAll(heading).length !== 1 || card.querySelector(rich)) continue;
+    // A complete ordinary listing owns its description as well as its title.
+    // Sibling header/body groups cannot be removed safely as a single node.
+    let header = title;
+    while (header.parentElement && header !== card && !header.nextElementSibling) header = header.parentElement;
+    if (header === card) continue;
+    let description = '';
+    for (let node = header.nextElementSibling; node; node = node.nextElementSibling) {
+      if (!node.matches('script,style,template,button,[role="button"],[aria-hidden="true"]')) description += node.textContent.trim();
+    }
+    const menu = 'button[aria-haspopup],[role="button"][aria-haspopup],[aria-label*="この検索結果"],[aria-label*="この結果"],[aria-label*="About this result" i]';
+    if (description.length < 12 || [...card.querySelectorAll('a[href]')].some(other =>
+      !other.closest(menu) && address(other) !== url)) continue;
+    // Removing the inner face alone can leave the outer tile's painted margin
+    // behind. Ascend only through single-child shells, never across other text
+    // or controls and never remove the page's imported content root.
+    while (card !== scope && card.parentElement && card.parentElement !== target &&
+        !card.parentElement.matches('.generic-autopager-google-source-root,.generic-autopager-page,#rso,#search') &&
+        card.parentElement.childElementCount === 1 && ![...card.parentElement.childNodes].some(node =>
+          node.nodeType === 3 && node.textContent.trim())) {
+      card = card.parentElement;
+    }
+    const key = JSON.stringify([url, label]);
+    const previous = index.get(key) || [];
+    const duplicates = removeCopies && previous.filter(item => !scope.contains(item) && item.isConnected && target.contains(item));
+    if (duplicates?.length && visible(title) && visible(card)) {
+      const text = clean(card.innerText);
+      if (text && duplicates.some(item => visible(item) && clean(item.innerText) === text)) {
+        removals.push(card);
+        continue;
+      }
+    }
+    previous.push(card);
+    index.set(key, previous);
+  }
+  for (const card of removals) card.remove();
 }
 // Prepare a rendered Google frame according to its actual layout readiness.
 // Only the source frame scrolls; no outer scroll position or gesture is changed.
