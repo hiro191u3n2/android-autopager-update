@@ -1,5 +1,23 @@
 # Recovered development source
 
+## v6.68 mobile Google gutters
+
+The owner still saw joined results in Berry after v6.67. We replayed a
+publicly archived Google mobile search response with its original stylesheet,
+with network requests and page scripts disabled. Eight grey gutters in the
+original became white when v6.67 imported that same page. The results container
+was transparent and its grey backdrop belonged to a higher ancestor that was
+left behind. A positioned white decoration also retained its measured height
+when its card shrank, covering part of one gutter. The importer now retains
+the solid backdrop and the decoration's size relationship to its card.
+
+The pinned response is fingerprinted in `tests/test_google_archived_gutters.mjs`.
+The test compares source, frozen v6.67 and candidate screenshot pixels at five
+points across each of the eight gaps. A separate fixture exercises independent
+results that share a single white surface, including mobile breadcrumbs, a
+separate menu and a heading with a presentation-role link. Neither fixture
+contains the owner's browsing data.
+
 ## v6.67 mobile Google results
 
 In the November 18 Berry recording, two dividers disappear between three

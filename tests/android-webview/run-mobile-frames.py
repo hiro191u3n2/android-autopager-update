@@ -13,8 +13,42 @@ component = package + '/.MainActivity'
 
 
 def adb(*args, check=True, binary=False):
-    result = subprocess.run(['adb', *args], capture_output=True, check=check, timeout=60)
+    result = subprocess.run(['adb', *args], capture_output=True, timeout=90)
+    if check and result.returncode:
+        raise RuntimeError(f'adb {args!r} exited {result.returncode}: ' +
+                           (result.stdout + result.stderr).decode(errors='replace'))
     return result.stdout if binary else result.stdout.decode(errors='replace').strip()
+
+
+def install_fixture():
+    apk = str(build / 'webview-fixture-test.apk')
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        unlocked = adb('shell', 'cmd', 'user', 'is-user-unlocked', '0', check=False)
+        available = adb('shell', 'pm', 'path', 'android', check=False)
+        if unlocked == 'true' and available.startswith('package:'):
+            break
+        time.sleep(1)
+    else:
+        raise RuntimeError(f'Package manager or emulator user is not ready: {unlocked!r}, {available!r}')
+    print(adb('shell', 'df', '-h', '/data'), flush=True)
+    try:
+        print(adb('install', '--no-streaming', '-r', apk), flush=True)
+    except RuntimeError as error:
+        print(error, flush=True)
+        # Run the package manager directly to preserve its own error message
+        # even if the host transport rejects the normal install transaction.
+        remote = '/data/local/tmp/autopager-frame-fixture.apk'
+        adb('push', apk, remote)
+        try:
+            message = adb('shell', 'pm', 'install', '--user', '0', '-r', remote)
+            print(message, flush=True)
+            if message != 'Success':
+                raise RuntimeError('Package manager rejected fixture: ' + message)
+        finally:
+            adb('shell', 'rm', '-f', remote, check=False)
+    if not adb('shell', 'pm', 'path', package).startswith('package:'):
+        raise RuntimeError('Fixture install returned without the expected package')
 
 
 def geometry(number):
@@ -81,9 +115,9 @@ adb('shell', 'wm', 'size', '1080x2600')
 adb('shell', 'wm', 'density', '432')
 adb('shell', 'settings', 'put', 'system', 'font_scale', '1.0')
 adb('shell', 'input', 'keyevent', '82')
-adb('install', '-r', str(build / 'webview-fixture-test.apk'))
 measurements = []
 try:
+    install_fixture()
     for variant in ['control', 'current']:
         for shape, theme in [('captured', 'light'), ('grid', 'dark'), ('backdrop', 'light')]:
             adb('shell', 'pm', 'clear', package)

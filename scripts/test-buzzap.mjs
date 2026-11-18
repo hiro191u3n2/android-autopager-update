@@ -26,13 +26,18 @@ const stagingMarker = '// Prepare only a detached Google result page.';
 const start667 = frozen667Body.indexOf(layoutMarker), end667 = frozen667Body.indexOf(stagingMarker);
 assert(start667 >= 0 && end667 > start667);
 const currentLayout = frozen667Body.slice(start667, end667).trimEnd();
-// Revert only the new ancestor-paint helper and its four integration points.
-// Snapshot capture, import, and the prior boundary painter remain pinned.
+// Remove only the new helper and the decoration sizing block, then reverse
+// their integration points. The rest of the snapshot and painter is pinned.
 let restoredLayout = candidateLayout;
-const helperStart = restoredLayout.indexOf('// The mobile results container often has no paint of its own.');
-const helperEnd = restoredLayout.indexOf('function captureGenericGoogleLayoutV647(root) {');
-assert(helperStart >= 0 && helperEnd > helperStart);
-restoredLayout = restoredLayout.slice(0, helperStart) + restoredLayout.slice(helperEnd);
+for (const [start, end] of [
+  ['// The mobile results container often has no paint of its own.', 'function captureGenericGoogleLayoutV647(root) {'],
+  ['      // An empty absolute background may use height:100%', '      if (!positioned && !media && !decoration) {'],
+]) {
+  assert.equal(restoredLayout.split(start).length, 2, 'New helper start must be unique');
+  const begin = restoredLayout.indexOf(start), finish = restoredLayout.indexOf(end, begin);
+  assert(finish > begin, 'New helper end must follow its start');
+  restoredLayout = restoredLayout.slice(0, begin) + restoredLayout.slice(finish);
+}
 for (const [change, previous] of [
   ['const genericGoogleSourceSurfacesV668 = new WeakSet();\n', ''],
   ['    const backdrop = getGenericGoogleSourceBackdropV668(root, view, rectangle(root));\n    genericGoogleLayoutSourcesV647.set(root, { nodes, styles, backdrop });',

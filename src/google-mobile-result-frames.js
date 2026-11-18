@@ -8,7 +8,8 @@ function repairGenericGoogleMobileFramesV668(page) {
   const view = root.ownerDocument.defaultView, doc = root.ownerDocument;
   const bounds = root.getBoundingClientRect();
   if (bounds.width < 180 || bounds.width > 900) return;
-  const excluded = 'nav,aside,footer,form,details,table,g-scrolling-carousel,g-inner-card,g-related-question,[role="grid"],[role="tablist"],[role="listbox"],[role="dialog"],[data-text-ad],[data-shopping],[itemtype*="Product"],[inert],[hidden]';
+  genericGoogleFramedV668.add(root);
+  const excluded = 'nav,aside,footer,form,details,table,g-scrolling-carousel,g-inner-card,g-related-question,g-section-with-header,[role="grid"],[role="tablist"],[role="listbox"],[role="dialog"],[data-text-ad],[data-shopping],[itemtype*="Product"],[inert],[hidden]';
   const headingSelector = 'h3,[role="heading"][aria-level="3"],[role="heading"]:not([aria-level])';
   const rectangles = new WeakMap(), styles = new WeakMap();
   const rect = node => {
@@ -109,14 +110,20 @@ function repairGenericGoogleMobileFramesV668(page) {
         t.top >= cy - 12 && t.top <= cy + 90 && (!address || t.top >= rect(address).top - 3);
     }).sort((a, b) => rect(a).top - rect(b).top)[0];
     if (!title) continue;
-    const anchor = icon || address, a = rect(anchor);
+    let anchor = icon || address;
+    if (icon && address) for (let p = icon.parentElement; p && p !== root; p = p.parentElement) {
+      if (!p.contains(address)) continue;
+      const box = rect(p);
+      if (!p.contains(title) && visible(p) && box.height <= 65 && box.top >= rect(icon).top - 15) anchor = p;
+      break;
+    }
+    const a = rect(anchor);
     const start = Math.min(a.top, m.top, address ? rect(address).top : a.top);
     if (rows.length && start <= rect(rows.at(-1).title).bottom + 3) continue;
     used.add(title);
     rows.push({ anchor, menu, title, address, start });
   }
   if (rows.length < 2) return;
-  genericGoogleFramedV668.add(root);
 
   // Inspect only these result edges, their adjacent boxes and their shared
   // backgrounds. A thick border, a real painted spacer or an exposed gutter
@@ -190,6 +197,66 @@ function repairGenericGoogleMobileFramesV668(page) {
     !bands.some(b => b.height >= 3 && nearest(row, rows[i], b)));
   if (!wanted.length) return;
 
+  // A wide band must not cover the preceding excerpt or thumbnail. Measure
+  // actual text fragments only in the narrow strips that need new paint.
+  const crowded = new Set();
+  const intersects = (box, row) => box.width > 0 && box.height > 0 && box.right > bounds.left &&
+    box.left < bounds.right && box.top < row.start - 2 && box.bottom > row.start - height - 2;
+  const walker = doc.createTreeWalker(root, 4);
+  const range = doc.createRange();
+  while (walker.nextNode()) {
+    const text = walker.currentNode, parent = text.parentElement;
+    if (!text.data.trim() || !parent || parent.matches('script,style,template')) continue;
+    const near = wanted.filter(row => !crowded.has(row) && intersects(rect(parent), row));
+    if (!near.length || !visible(parent)) continue;
+    range.selectNodeContents(text);
+    for (const box of range.getClientRects()) for (const row of near) if (intersects(box, row)) crowded.add(row);
+  }
+  for (const media of root.querySelectorAll('img,svg,video,canvas,iframe,button,[role="button"]')) {
+    for (const row of wanted) if (!crowded.has(row) && intersects(rect(media), row) && visible(media)) crowded.add(row);
+  }
+
+  const room = new Map();
+  for (const row of crowded) {
+    // Reserve space above a complete in-flow header when its previous result
+    // leaves no empty strip. The attribution, title and hit target move
+    // together. Unrelated branches are never reparented.
+    let block = null;
+    for (let n = row.anchor; n && n !== root; n = n.parentElement) {
+      if (!n.contains(row.title) || !n.contains(row.menu)) continue;
+      if (rows.some(other => other !== row && (n.contains(other.title) || n.contains(other.menu)))) break;
+      if (rect(n).width >= bounds.width * .7 && rect(n).top >= row.start - 40 &&
+          /^(?:block|flow-root)$/.test(style(n.parentElement).display) &&
+          /^(?:static|relative)$/.test(style(n).position)) block = n;
+    }
+    if (block) {
+      room.set(row, () => {
+        const spacer = doc.createElement('div');
+        spacer.setAttribute('aria-hidden', 'true');
+        spacer.style.cssText = 'all:initial!important;display:block!important;pointer-events:none!important;height:' + (height + 2) + 'px!important;';
+        block.before(spacer);
+      });
+      continue;
+    }
+    // A display:contents entry need not own a box. When its attribution
+    // and menu occupy the same grid row, grow that row at both cells.
+    const gridCell = part => {
+      for (let n = part; n && n !== root; n = n.parentElement) {
+        let parent = n.parentElement;
+        while (parent && parent !== root && style(parent).display === 'contents') parent = parent.parentElement;
+        if (parent && style(parent).display === 'grid' && style(n).display !== 'contents') return { node: n, parent };
+      }
+      return null;
+    };
+    const a = gridCell(row.anchor), b = gridCell(row.menu);
+    if (a && b && a.parent === b.parent && Math.abs(rect(a.node).top - rect(b.node).top) <= 24) {
+      const cells = [...new Set([a.node, b.node])].map(n => [n, parseFloat(style(n).marginTop) || 0]);
+      room.set(row, () => {
+        for (const [n, old] of cells) n.style.setProperty('margin-top', old + height + 2 + 'px', 'important');
+      });
+    }
+  }
+
   // Use the actual attribution coordinates. CSS anchor positioning cannot
   // reliably resolve anchors in a sibling containing block. Keep the layer
   // outside Google's clipped link wrappers, aligned to this page's width.
@@ -199,12 +266,15 @@ function repairGenericGoogleMobileFramesV668(page) {
   layer.style.cssText = 'all:initial!important;display:block!important;position:relative!important;height:0!important;pointer-events:none!important;z-index:2!important;';
   const placements = [];
   for (const row of wanted) {
+    if (crowded.has(row) && !room.has(row)) continue;
     const offset = Math.round(rect(row.anchor).top - row.start) + height + 2;
     const line = doc.createElement('div');
     line.style.cssText = 'all:initial!important;position:absolute!important;display:block!important;left:0!important;right:0!important;pointer-events:none!important;height:' + height + 'px!important;background-color:' + color + '!important;';
     placements.push({ node: row.anchor, menu: row.menu, line, height, offset });
     layer.appendChild(line);
   }
+  if (!placements.length) return;
+  for (const reserve of room.values()) reserve();
   page.appendChild(layer);
   const update = () => {
     const origin = layer.getBoundingClientRect().top;
