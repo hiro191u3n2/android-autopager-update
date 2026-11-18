@@ -434,9 +434,15 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
     // header. Flex ordering can also put the source after the title in the DOM.
     // In these cases verify a unique heading + destination in the source's own
     // header. Never search across the next result to borrow its link.
+    const bySource = new Map(records.map(record => [record.source, record]));
     for (const source of identities) {
-      if (used.has(source.node)) continue;
+      const existing = bySource.get(source.node);
+      if (existing && (existing.title.matches(heading) || existing.title.closest(heading))) continue;
       for (let unit = source.node.parentElement; unit && unit !== root; unit = unit.parentElement) {
+        // A subsequent sitelink may already have borrowed this source by
+        // walking up to the shared group. Only replace it with a heading/link
+        // inside a *closer* source header, never a heading elsewhere in a card.
+        if (existing && (existing.identity === unit || !existing.identity.contains(unit))) break;
         if (identities.some(other => other !== source && unit.contains(other.node))) break;
         const titles = [...unit.querySelectorAll(heading)].filter(title =>
           !title.closest(excluded) && title.textContent.trim().length >= 2 && title.getClientRects().length);
@@ -459,7 +465,9 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
         const anchor = matching.find(link => title.contains(link) || link.contains(title)) ||
           (matching.length === 1 && !matching[0].textContent.trim() ? matching[0] : null);
         if (anchor) {
-          records.push({ source: source.node, title, anchor, identity: unit, separateHeading: true });
+          const record = { source: source.node, title, anchor, identity: unit, separateHeading: true };
+          if (existing) Object.assign(existing, record);
+          else records.push(record);
           used.add(source.node);
         }
         if (anchor || unit.querySelector('p,article')) break;
@@ -740,6 +748,8 @@ function getGenericGoogleGroupEdgeV667(root, previous, current, sources, rect, s
   // case. Ordinary rounded cards, lists of sitelinks and rich modules keep
   // their own treatment.
   const menu = 'button[aria-haspopup],[role="button"][aria-haspopup],[aria-label*="この検索結果"],[aria-label*="この結果"],[aria-label*="このサイト"],[aria-label*="About this result" i],[aria-label*="More options" i]';
+  if (separateBody && (a.bottom - Math.max(rect(previous.title).bottom, rect(previous.source).bottom) >
+    24 + (Number.parseFloat(style(first).paddingBottom) || 0) || first.querySelector('p,blockquote,figure,ul,ol'))) return null;
   if (!separateBody && (b.top - a.bottom > 1 ||
       !current.separateHeading && !previous.separateHeading && !(next.querySelector(menu) && first.querySelector(menu)))) return null;
   if (b.top - rect(tail).bottom > 24 || !visible(current.source) || !visible(current.title) ||
@@ -861,14 +871,31 @@ function repairGenericGoogleResultBoundariesV658(page) {
     if (atEdge.some(band => band.height >= 4)) continue;
     groupStarts.add(current.source);
     const size = thickBand?.height || 6;
+    const gap = edge.top - edge.bottom;
+    if (gap >= 2) {
+      // With separate heading/body siblings the tail can have a margin too.
+      // A matching shadow occupies only that existing space; a contrasting
+      // native gutter remains its original color and thickness.
+      const faces = new WeakMap();
+      for (const node of [edge.tail, edge.next]) faces.set(node, { node, color: background(node) });
+      const paint = getGenericGoogleRootGapPaintV661(edge.group, edge.tail, edge.next,
+        { height: Math.min(size, gap) }, faces, style, color, thickBand?.color);
+      if (paint.basis !== 'ancestor-background' && (!style(edge.next).boxShadow || style(edge.next).boxShadow === 'none')) {
+        missing.push({ current: edge.next, paint });
+      }
+      continue;
+    }
     const stripe = root.ownerDocument.createElement('div');
     stripe.setAttribute('aria-hidden', 'true');
     // Existing clear space above the attribution can host the band with
     // zero change to the following content's position. If there is no room,
     // reserve its height once, synchronously before the first visible paint.
-    const overlap = Math.min(size, Math.max(0, edge.padding));
+    const precedingLine = atEdge.find(band => band.height < 4 && Math.abs(band.bottom - edge.top) < .5);
+    const leadingLine = atEdge.find(band => band.height < 4 && Math.abs(band.top - edge.top) < .5);
+    const previousWidth = precedingLine?.height || 0;
+    const overlap = Math.min(size, Math.max(0, edge.padding, previousWidth + (leadingLine?.height || 0)));
     stripe.style.cssText = 'all:initial!important;display:block!important;position:relative!important;flex:none!important;align-self:stretch!important;z-index:1!important;pointer-events:none!important;' +
-      'height:' + size + 'px!important;margin-bottom:-' + overlap + 'px!important;background-color:' + color + '!important';
+      'height:' + size + 'px!important;top:-' + previousWidth + 'px!important;margin-bottom:-' + overlap + 'px!important;background-color:' + color + '!important';
     missing.push({ edge, stripe });
   }
   for (let i = 1; i < cards.length; i++) {

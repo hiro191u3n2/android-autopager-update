@@ -126,7 +126,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。');
   header = header.replace('// @description  ', '// @description  Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。');
   header = header.replace('// @description  ', '// @description  Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。');
-  header = header.replace('// @description  ', '// @description  Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りが表示されない問題を修正。');
+  header = header.replace('// @description  ', '// @description  Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;

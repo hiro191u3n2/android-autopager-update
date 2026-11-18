@@ -41,7 +41,7 @@ function fixture(start, { dark, variant }) {
     const sublink = index === 3 ? `<a href="${href(start, index)}/access" data-sitelink>店舗へのアクセス</a>` : '';
     const brief = '営業時間、所在地、お問い合わせ先についてご案内しています。';
     const body = `${header}<div class="result-copy" data-copy="${index}"><p>${brief.repeat(4)}</p>${sublink}</div>`;
-    return variant === 'hairline' ? `<div class="encased">${body}<button class="menu" aria-label="この検索結果について" aria-haspopup="menu">⋮</button></div>` : body;
+    return ['hairline', 'gutter'].includes(variant) ? `<div class="encased">${body}<button class="menu" aria-label="この検索結果について" aria-haspopup="menu">⋮</button></div>` : body;
   };
   const group = indices => `<div class="MjjYud tile">${indices.map(result).join('')}</div>`;
   const carousel = `<g-scrolling-carousel class="rich"><div class="strip">${[1, 2].map(i =>
@@ -51,7 +51,8 @@ function fixture(start, { dark, variant }) {
     #native{padding:16px;border-bottom:8px solid ${c.line}}.tile{margin:0;background:${c.page};border-bottom:8px solid ${c.line}}
     .result-header{display:block;padding:14px 16px 0}.source{font-size:13px;line-height:18px}.source span{display:block}
     .reverse{display:flex;flex-direction:column}.reverse .source{order:-1}
-    .encased{position:relative}.encased+.encased{border-top:1px solid ${c.line}}.menu{position:absolute;top:12px;right:12px}
+    .encased{position:relative;background:${c.page}}.menu{position:absolute;top:12px;right:12px}
+    ${variant === 'gutter' ? `.tile{background:${c.line}}.encased+.encased{margin-top:8px}` : `.encased+.encased{border-top:1px solid ${c.line}}`}
     h3{margin:6px 0 0;font-size:18px;line-height:25px;font-weight:400}a{text-decoration:none;color:${c.link}}
     .source{color:${c.ink}}.result-copy{padding:5px 16px 14px}.result-copy p{margin:0}.result-copy a{display:block}
     .rich,g-inner-card{display:block}.strip{display:flex}.strip>g-inner-card{flex:1;min-width:0;padding:12px}`;
@@ -118,11 +119,13 @@ const browser = await chromium.launch(launch);
 try {
   for (const [label, code, variant, dark] of [
     ['v6.66 control', old, 'combined', false],
+    ['v6.66 hairline control', old, 'hairline', false],
     ['linked header', current, 'combined', false],
     ['separate title link', current, 'split', true],
     ['different domain as site name', current, 'branded', false],
     ['title precedes attribution in markup', current, 'reversed', false],
     ['thin native line between marked result cards', current, 'hairline', false],
+    ['native gutter exposed between marked result cards', current, 'gutter', true],
   ]) {
     const context = await browser.newContext({ viewport: { width: 390, height: 770 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, colorScheme: dark ? 'dark' : 'light' });
     try {
@@ -147,7 +150,8 @@ try {
         assert.deepEqual(result.content.map(item => item.title), ids.map(i => `検索結果 ${start} 店舗 ${i}`), label + ': all five results in source order');
         assert.deepEqual(result.content.map(item => item.href), ids.map(i => href(start, i)), label + ': link destinations');
         assert.equal(result.sublink, href(start, 3) + '/access');
-        assert.deepEqual(result.boundaries, code === old ? [8, 0, 0, 8] : [8, 8, 8, 8], label + ': outer dividers intact and both joined boundaries measured in screenshot');
+        const expectedInternal = code !== old ? 8 : variant === 'hairline' ? 1 : 0;
+        assert.deepEqual(result.boundaries, [8, expectedInternal, expectedInternal, 8], label + ': outer dividers intact and both joined boundaries measured in screenshot');
         assert.deepEqual(result.inside, [0, 0, 0, 0, 0], label + ': no separator within ordinary results or sitelinks');
         assert.equal(result.carousel, 0, label + ': no band across related media');
         if (number === 2 && variant === 'combined' && code !== old) {
@@ -165,7 +169,9 @@ try {
           const link = event.target.closest('a');
           if (link) { event.preventDefault(); document.documentElement.dataset.testTapped = link.href; }
         }, true));
-        for (const selector of ['[data-title="3"]', '[data-sitelink]']) {
+        // When the heading wraps an inline link, only its text is clickable.
+        const titleTarget = variant === 'reversed' ? '[data-title="3"] a' : '[data-title="3"]';
+        for (const selector of [titleTarget, '[data-sitelink]']) {
           const target = last.locator(selector);
           await target.tap();
           assert.equal(await page.locator('html').getAttribute('data-test-tapped'), href(20, 3) + (selector.includes('sitelink') ? '/access' : ''), label + ': touch hits intended link');

@@ -1,5 +1,18 @@
 # Recovered development source
 
+## v6.67 mobile Google results
+
+In the November 18 Berry recording, two dividers disappear between three
+independent listings on each of appended pages 2 through 5. The recording
+also shows two first-page results again on later pages. The individual link
+paths and the device DOM are unavailable from the recording.
+
+The mobile regression uses a synthetic five-result response. The frozen
+v6.66 userscript paints four successive boundaries at 8, 0, 0 and 8 CSS
+pixels. The new test samples the actual rendered pixels after import and
+checks the main and secondary links. A separate test covers repeated ordinary
+results across pages while retaining distinct URLs, titles and descriptions.
+
 ## Capture helper v1.1: export without assuming a download exists
 
 On 2026-11-13 the owner reported that the JSON file was absent from Downloads.
