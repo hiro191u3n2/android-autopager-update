@@ -39,8 +39,9 @@ jobs:
           target: google_apis_ps16k
           arch: x86_64
           profile: pixel_2
+          disk-size: 6G
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none -partition-size 6144
           script: python tests/android-webview/run-mobile-frames.py "$RUNNER_TEMP/frame-build" "$RUNNER_TEMP/android-frame-evidence"
       - uses: actions/upload-artifact@v4
         if: always()
