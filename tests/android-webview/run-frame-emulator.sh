@@ -13,13 +13,19 @@ mkdir -p "$ANDROID_AVD_HOME"
 sdk_bin="$ANDROID_HOME/cmdline-tools/latest/bin"
 adb_bin="$ANDROID_HOME/platform-tools/adb"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
-export PATH="$ANDROID_HOME/platform-tools:$PATH"
 image_package="system-images;android-$image_api;$image_target;x86_64"
-"$sdk_bin/sdkmanager" --install emulator platform-tools "$image_package"
-echo no | "$sdk_bin/avdmanager" create avd --force --name frames --package "$image_package" --device pixel_2
+"$sdk_bin/sdkmanager" --install 'cmdline-tools;22.0' emulator platform-tools "$image_package"
+# Older avdmanager releases write target=android-0 for decimal API levels.
+echo no | "$ANDROID_HOME/cmdline-tools/22.0/bin/avdmanager" create avd --force --name frames --package "$image_package" --device pixel_2
+cat "$ANDROID_AVD_HOME/frames.ini"
 config="$ANDROID_AVD_HOME/frames.avd/config.ini"
-sed -i '/^disk\.dataPartition\.size=/d' "$config"
-echo 'disk.dataPartition.size=6G' >> "$config"
+sed -i -E '/^(disk\.dataPartition\.size|hw\.lcd\.(width|height|density))=/d' "$config"
+cat >> "$config" <<'AVD'
+disk.dataPartition.size=6G
+hw.lcd.width=1080
+hw.lcd.height=2600
+hw.lcd.density=432
+AVD
 "$ANDROID_HOME/emulator/emulator" -avd frames -port 5554 -no-window -no-boot-anim \
   -no-audio -no-snapshot -gpu swiftshader_indirect -camera-back none -camera-front none \
   -partition-size 6144 -memory 3072 -cores 2 >"$evidence/emulator.log" 2>&1 &
@@ -44,5 +50,11 @@ while ((SECONDS < deadline)); do
 done
 [[ "$booted" == 1 && "$framework" == package:* ]]
 echo "Android API $expected_api is ready. $framework"
+"$adb_bin" shell settings put global hide_error_dialogs 1
+if [[ "$expected_api" == 37 ]]; then
+  # Gesture navigation continually asks SurfaceFlinger to sample the screen.
+  # Use standard three-button navigation on this headless test image.
+  "$adb_bin" shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton
+fi
 timeout 8 "$adb_bin" shell wm dismiss-keyguard || true
 python tests/android-webview/run-mobile-frames.py "$build" "$evidence" "$expected_api"
