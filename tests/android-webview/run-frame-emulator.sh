@@ -12,6 +12,8 @@ export ANDROID_SERIAL=emulator-5554
 mkdir -p "$ANDROID_AVD_HOME"
 sdk_bin="$ANDROID_HOME/cmdline-tools/latest/bin"
 adb_bin="$ANDROID_HOME/platform-tools/adb"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
 image_package="system-images;android-$image_api;$image_target;x86_64"
 "$sdk_bin/sdkmanager" --install emulator platform-tools "$image_package"
 echo no | "$sdk_bin/avdmanager" create avd --force --name frames --package "$image_package" --device pixel_2
