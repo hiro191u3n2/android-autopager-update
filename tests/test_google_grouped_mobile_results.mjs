@@ -25,15 +25,23 @@ function fixture(start, { dark, variant }) {
   const c = ORGANIC_COLORS[dark ? 'dark' : 'light'];
   const next = start < 20 ? `<nav><a id="pnnext" href="/search?q=${query}&amp;start=${start + 10}">次へ</a></nav>` : '';
   const result = index => {
-    const site = `<div class="source" data-source="${index}"><span>店舗 ${index}</span><span>https://shop${index}.example</span></div>`;
-    const title = `<h3 data-title="${index}">検索結果 ${start} 店舗 ${index}</h3>`;
+    // Sites sometimes use another domain as their display name. The URL on
+    // the second line and the main link still agree on the real destination.
+    const name = variant === 'branded' && index === 3 ? 'brand-name.jp' : '店舗 ' + index;
+    const site = `<div class="source" data-source="${index}"><span>${name}</span><span>https://shop${index}.example</span></div>`;
+    const text = `検索結果 ${start} 店舗 ${index}`;
+    const title = `<h3 data-title="${index}">${text}</h3>`;
     const destination = `href="${href(start, index)}" data-main="${index}"`;
-    const header = variant === 'split'
+    let header = variant === 'split'
       ? `<div class="result-header">${site}<a ${destination}>${title}</a></div>`
       : `<a ${destination} class="result-header">${site}${title}</a>`;
+    if (variant === 'reversed') {
+      header = `<div class="result-header reverse"><h3 data-title="${index}"><a ${destination}>${text}</a></h3>${site}</div>`;
+    }
     const sublink = index === 3 ? `<a href="${href(start, index)}/access" data-sitelink>店舗へのアクセス</a>` : '';
     const brief = '営業時間、所在地、お問い合わせ先についてご案内しています。';
-    return `${header}<div class="result-copy" data-copy="${index}"><p>${brief.repeat(4)}</p>${sublink}</div>`;
+    const body = `${header}<div class="result-copy" data-copy="${index}"><p>${brief.repeat(4)}</p>${sublink}</div>`;
+    return variant === 'hairline' ? `<div class="encased">${body}<button class="menu" aria-label="この検索結果について" aria-haspopup="menu">⋮</button></div>` : body;
   };
   const group = indices => `<div class="MjjYud tile">${indices.map(result).join('')}</div>`;
   const carousel = `<g-scrolling-carousel class="rich"><div class="strip">${[1, 2].map(i =>
@@ -42,6 +50,8 @@ function fixture(start, { dark, variant }) {
   const style = `*{box-sizing:border-box}html,body{margin:0;background:${c.page};color:${c.ink};font:14px/20px Arial,sans-serif}
     #native{padding:16px;border-bottom:8px solid ${c.line}}.tile{margin:0;background:${c.page};border-bottom:8px solid ${c.line}}
     .result-header{display:block;padding:14px 16px 0}.source{font-size:13px;line-height:18px}.source span{display:block}
+    .reverse{display:flex;flex-direction:column}.reverse .source{order:-1}
+    .encased{position:relative}.encased+.encased{border-top:1px solid ${c.line}}.menu{position:absolute;top:12px;right:12px}
     h3{margin:6px 0 0;font-size:18px;line-height:25px;font-weight:400}a{text-decoration:none;color:${c.link}}
     .source{color:${c.ink}}.result-copy{padding:5px 16px 14px}.result-copy p{margin:0}.result-copy a{display:block}
     .rich,g-inner-card{display:block}.strip{display:flex}.strip>g-inner-card{flex:1;min-width:0;padding:12px}`;
@@ -110,6 +120,9 @@ try {
     ['v6.66 control', old, 'combined', false],
     ['linked header', current, 'combined', false],
     ['separate title link', current, 'split', true],
+    ['different domain as site name', current, 'branded', false],
+    ['title precedes attribution in markup', current, 'reversed', false],
+    ['thin native line between marked result cards', current, 'hairline', false],
   ]) {
     const context = await browser.newContext({ viewport: { width: 390, height: 770 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, colorScheme: dark ? 'dark' : 'light' });
     try {
@@ -137,6 +150,13 @@ try {
         assert.deepEqual(result.boundaries, code === old ? [8, 0, 0, 8] : [8, 8, 8, 8], label + ': outer dividers intact and both joined boundaries measured in screenshot');
         assert.deepEqual(result.inside, [0, 0, 0, 0, 0], label + ': no separator within ordinary results or sitelinks');
         assert.equal(result.carousel, 0, label + ': no band across related media');
+        if (number === 2 && variant === 'combined' && code !== old) {
+          // Include the delayed boundary pass and the delayed cleanup pass.
+          await page.waitForTimeout(1250);
+          const settled = await observe(page, number, color);
+          assert.deepEqual(settled.boundaries, result.boundaries, label + ': settled dividers remain single');
+          assert.deepEqual(settled.content, result.content, label + ': no delayed content movement');
+        }
       }
       assert.equal(await page.locator('#native').evaluate(node => node.outerHTML), native, label + ': first page intact');
       if (code !== old) {

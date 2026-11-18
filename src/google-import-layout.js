@@ -357,6 +357,14 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
     // row rather than letting that fragment inflate the result's source count.
     if (other.inlineURL && !source.inlineURL && other.node.contains(source.node)) return true;
     const sameHost = other.host === source.host;
+    // A displayed site name may itself be a different domain ("amazon.jp"
+    // over "https://www.amazon.co.jp"). Two adjacent labels in a compact,
+    // unlinked attribution row with only one explicit URL are one source.
+    const label = source.node.parentElement;
+    if (!source.explicitURL && other.explicitURL && !source.node.matches('cite,[data-dtld]') &&
+        source.node.textContent.trim().toLowerCase() === source.host &&
+        source.node.nextElementSibling?.contains(other.node) && label.childElementCount === 2 &&
+        !label.querySelector('a[href],button,' + heading)) return true;
     // A source row can name the site by its base domain while displaying a
     // subdomain URL. Only the plain site-name label can yield to that URL; two
     // explicit URLs or separate source rows must keep their own identities.
@@ -420,6 +428,44 @@ function getGenericGoogleResultRecordsV658(root, rendered = false) {
     if (!source || used.has(source.node)) continue;
     used.add(source.node);
     records.push({ source: source.node, title, anchor, identity: unit });
+  }
+  if (rendered) {
+    // A title can wrap its link, or the link can be a separate overlay in the
+    // header. Flex ordering can also put the source after the title in the DOM.
+    // In these cases verify a unique heading + destination in the source's own
+    // header. Never search across the next result to borrow its link.
+    for (const source of identities) {
+      if (used.has(source.node)) continue;
+      for (let unit = source.node.parentElement; unit && unit !== root; unit = unit.parentElement) {
+        if (identities.some(other => other !== source && unit.contains(other.node))) break;
+        const titles = [...unit.querySelectorAll(heading)].filter(title =>
+          !title.closest(excluded) && title.textContent.trim().length >= 2 && title.getClientRects().length);
+        if (!titles.length) continue;
+        if (titles.length !== 1) break;
+        const title = titles[0];
+        const links = [...unit.querySelectorAll('a[href]')];
+        if (unit.matches('a[href]')) links.unshift(unit);
+        const matching = links.filter(anchor => {
+          if (anchor.closest(excluded)) return false;
+          try {
+            let url = new URL(anchor.getAttribute('href'), location.href);
+            if (/^(?:www\.)?google\.[a-z.]+$/i.test(url.hostname) && url.pathname === '/url') {
+              url = new URL(url.searchParams.get('q') || url.searchParams.get('url'));
+            }
+            const host = url.hostname.toLowerCase().replace(/^www\./, '');
+            return /^https?:$/.test(url.protocol) && (host === source.host || host.endsWith('.' + source.host));
+          } catch { return false; }
+        });
+        const anchor = matching.find(link => title.contains(link) || link.contains(title)) ||
+          (matching.length === 1 && !matching[0].textContent.trim() ? matching[0] : null);
+        if (anchor) {
+          records.push({ source: source.node, title, anchor, identity: unit, separateHeading: true });
+          used.add(source.node);
+        }
+        if (anchor || unit.querySelector('p,article')) break;
+      }
+    }
+    records.sort((a, b) => a.source === b.source ? 0 : a.source.compareDocumentPosition(b.source) & 4 ? -1 : 1);
   }
   const counts = new WeakMap();
   // Count ALL source identities, including an unrecognized result. Promoting a
@@ -643,6 +689,70 @@ function getGenericGoogleTouchingPaintV664(root, previous, current, records, rec
   return null;
 }
 
+// Some mobile groups alternate heading links and description blocks directly
+// on a single surface. There is no per-result card: a heading-to-heading
+// measurement includes the previous description and is not a boundary gap.
+// Identify the start of the next independent result without moving any links,
+// snippets, thumbnails, ratings or controls out of their original parents.
+const genericGoogleGroupEdgeV667 = 'data-generic-google-group-edge-v667';
+function getGenericGoogleGroupEdgeV667(root, previous, current, sources, rect, style, visible) {
+  const protectedGroup = 'g-scrolling-carousel,g-inner-card,g-related-question,details,nav,aside,[role="grid"],[role="listbox"],[role="tablist"],[role="dialog"],[data-attrid],[itemtype*="Product"]';
+  if (previous.source.closest(protectedGroup) || current.source.closest(protectedGroup)) return null;
+  let group = current.source.parentElement;
+  while (group && !group.contains(previous.source)) group = group.parentElement;
+  if (!group || group === previous.source || group === current.source || !root.contains(group)) return null;
+  const layout = style(group);
+  const column = layout.display === 'flex' && layout.flexDirection === 'column' &&
+    !(Number.parseFloat(layout.rowGap) > 0);
+  if (!column && !['block', 'flow-root'].includes(layout.display)) return null;
+  const branch = source => {
+    let node = source;
+    while (node.parentElement !== group) node = node.parentElement;
+    return node;
+  };
+  const first = branch(previous.source), next = branch(current.source);
+  if (first === next || current.source.closest('[' + genericGoogleBoundaryMarkV658 + ']') ||
+      !first.contains(previous.title) || !next.contains(current.title) ||
+      !first.contains(previous.anchor) || !next.contains(current.anchor) ||
+      sources.some(({ node }) => node !== current.source && next.contains(node) ||
+        node !== previous.source && first.contains(node))) return null;
+  const g = rect(group), a = rect(first), b = rect(next), width = rect(root).width;
+  if (g.width < width * .80 || a.width < width * .75 || b.width < width * .75 ||
+      Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12 || a.bottom > b.top + 1 ||
+      b.top <= rect(previous.title).bottom || !/^(?:block|flow-root|flex|grid)$/.test(style(next).display) ||
+      !/^(?:static|relative)$/.test(style(next).position)) return null;
+
+  let tail = first, separateBody = false;
+  for (let node = first.nextElementSibling; node && node !== next; node = node.nextElementSibling) {
+    if (!visible(node) || node.matches('style,script,template')) continue;
+    if (node.matches(protectedGroup) || node.querySelector(protectedGroup) ||
+        node.matches('h1,h2,h3,h4,[role="heading"]') || node.querySelector('h1,h2,h3,h4,[role="heading"]') ||
+        sources.some(source => node.contains(source.node))) return null;
+    const box = rect(node);
+    if (box.top < a.bottom - 1 || box.bottom > b.top + 1) return null;
+    if (node.textContent.trim() || node.querySelector('img,video')) {
+      separateBody = true;
+      tail = node;
+    }
+  }
+  // Independently framed results can also be missed when their native edge
+  // is just a hairline. Require both real mobile attribution menus in that
+  // case. Ordinary rounded cards, lists of sitelinks and rich modules keep
+  // their own treatment.
+  const menu = 'button[aria-haspopup],[role="button"][aria-haspopup],[aria-label*="この検索結果"],[aria-label*="この結果"],[aria-label*="このサイト"],[aria-label*="About this result" i],[aria-label*="More options" i]';
+  if (!separateBody && (b.top - a.bottom > 1 ||
+      !current.separateHeading && !previous.separateHeading && !(next.querySelector(menu) && first.querySelector(menu)))) return null;
+  if (b.top - rect(tail).bottom > 24 || !visible(current.source) || !visible(current.title) ||
+      !visible(previous.source) || !visible(previous.title)) return null;
+  // Use only actual top padding for overlap. Account for media or controls
+  // positioned outside that padding (e.g. a thumbnail in the right column).
+  let clear = Math.min(Number.parseFloat(style(next).paddingTop) || 0, rect(current.source).top - b.top, rect(current.title).top - b.top);
+  if (clear > 0) for (const child of next.querySelectorAll('img,svg,video,canvas,button,[role="button"]')) {
+    if (visible(child)) clear = Math.min(clear, rect(child).top - b.top);
+  }
+  return { next, group, tail, top: b.top, bottom: rect(tail).bottom, left: b.left, right: b.right, padding: clear };
+}
+
 function repairGenericGoogleResultBoundariesV658(page) {
   if (!page?.isConnected || !/^(?:www\.)?google\.[a-z.]+$/i.test(location.hostname) || location.pathname !== '/search') return;
   const root = page.querySelector('.generic-autopager-google-source-root');
@@ -666,13 +776,14 @@ function repairGenericGoogleResultBoundariesV658(page) {
     for (let n = node; n; n = n.parentElement) if (colored(style(n).backgroundColor)) return style(n).backgroundColor;
     return 'rgb(255, 255, 255)';
   };
-  const records = getGenericGoogleResultRecordsV658(root, true).records.filter(record =>
+  const { records: recognized, sources } = getGenericGoogleResultRecordsV658(root, true);
+  const records = recognized.filter(record =>
     record.card && record.card !== record.anchor && visible(record.card) && visible(record.title) && visible(record.source) &&
     rect(record.card).width >= rootRect.width * 0.75);
   const cards = records.map(record => record.card), surfaces = new WeakMap();
   for (const record of records) surfaces.set(record.card, getGenericGoogleResultSurfaceV660(record, root, rect, style));
-  if (cards.length < 2) return;
-  const surface = surfaces.get(cards[0]).color;
+  if (recognized.length < 2) return;
+  const surface = cards.length ? surfaces.get(cards[0]).color : background(root);
   const bands = [];
   const inspected = new Set();
   const addBand = (top, bottom, left, right, color) => {
@@ -725,14 +836,45 @@ function repairGenericGoogleResultBoundariesV658(page) {
       for (let depth = 0; node && depth < 6; depth++, node = node[edge]) inspect(node);
     }
   }
-  const native = bands.find(band => band.height >= 4 && band.height <= 12) || bands[0];
+  const groupEdges = [];
+  for (let index = 1; index < recognized.length; index++) {
+    const current = recognized[index];
+    if (current.source.closest('[' + genericGoogleGroupEdgeV667 + ']')) continue;
+    const edge = getGenericGoogleGroupEdgeV667(root, recognized[index - 1], current, sources, rect, style, visible);
+    if (edge) {
+      groupEdges.push({ current, edge });
+      for (const node of [edge.next, edge.next.parentElement, edge.next.previousElementSibling]) inspect(node);
+    }
+  }
+  const thickBand = bands.find(band => band.height >= 4 && band.height <= 12);
+  const native = thickBand || bands[0];
   const rgb = surface.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [255, 255, 255];
   const color = native?.color || (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722 < 128 ? 'rgb(60, 64, 67)' : 'rgb(232, 234, 237)');
   const height = native?.height || 6;
   const missing = [];
+  const groupStarts = new Set();
+  for (const { current, edge } of groupEdges) {
+    // Look at the tail of the preceding description, not its heading. A
+    // 1px video or source outline is not the full mobile result divider.
+    const atEdge = bands.filter(band => band.left <= edge.left + 8 && band.right >= edge.right - 8 &&
+      band.top >= edge.bottom - 12 && band.bottom <= edge.top + Math.max(12, Math.min(edge.padding, 24)));
+    if (atEdge.some(band => band.height >= 4)) continue;
+    groupStarts.add(current.source);
+    const size = thickBand?.height || 6;
+    const stripe = root.ownerDocument.createElement('div');
+    stripe.setAttribute('aria-hidden', 'true');
+    // Existing clear space above the attribution can host the band with
+    // zero change to the following content's position. If there is no room,
+    // reserve its height once, synchronously before the first visible paint.
+    const overlap = Math.min(size, Math.max(0, edge.padding));
+    stripe.style.cssText = 'all:initial!important;display:block!important;position:relative!important;flex:none!important;align-self:stretch!important;z-index:1!important;pointer-events:none!important;' +
+      'height:' + size + 'px!important;margin-bottom:-' + overlap + 'px!important;background-color:' + color + '!important';
+    missing.push({ edge, stripe });
+  }
   for (let i = 1; i < cards.length; i++) {
     const previous = cards[i - 1], current = cards[i];
-    if (current.hasAttribute(genericGoogleBoundaryMarkV658)) continue;
+    if (current.hasAttribute(genericGoogleBoundaryMarkV658) || groupStarts.has(records[i].source) ||
+        records[i].source.closest('[' + genericGoogleGroupEdgeV667 + ']')) continue;
     const a = rect(previous), b = rect(current);
     if (a.bottom > b.top + 1 || b.top - a.bottom > 120 || Math.abs(a.left - b.left) > 12 || Math.abs(a.right - b.right) > 12) continue;
     let common = previous.parentElement;
@@ -764,7 +906,12 @@ function repairGenericGoogleResultBoundariesV658(page) {
     const paint = touchingPaint || (rootGap ? getGenericGoogleRootGapPaintV661(common, previous, current, rootGap, surfaces, style, color, native?.color) : null);
     missing.push({ current, paint });
   }
-  for (const { current, paint } of missing) {
+  for (const { current, paint, edge, stripe } of missing) {
+    if (edge) {
+      edge.next.before(stripe);
+      edge.next.setAttribute(genericGoogleGroupEdgeV667, '1');
+      continue;
+    }
     // An outer, zero-blur shadow is clipped inside the border box. Its only
     // visible portion fills this existing gap; margins and heights stay intact.
     if (paint?.insetHeight) paint.node.style.setProperty('box-shadow', `inset 0px ${paint.insetHeight}px 0px 0px ${paint.color}${paint.originalShadow ? ', ' + paint.originalShadow : ''}`, 'important');
