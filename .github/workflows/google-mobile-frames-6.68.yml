@@ -24,7 +24,7 @@ jobs:
       - name: Build isolated WebView test APK
         run: |
           python -m pip install --disable-pip-version-check Pillow==11.3.0
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
           bash tests/android-webview/build.sh "$PWD" "$RUNNER_TEMP/frame-build" tests/android-webview/make-frame-assets.mjs
       - name: Enable emulator acceleration
         run: |

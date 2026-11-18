@@ -46,7 +46,9 @@ async function measure(page, number, color) {
     const rows = [...root.querySelectorAll('[data-observed-source]')].map(source => {
       const id = source.dataset.observedSource;
       const pick = attr => root.querySelector(`[data-observed-${attr}="${id}"]`);
-      return { id, header: rect(source), title: rect(pick('title')), menu: rect(pick('menu')), body: rect(pick('body')), href: pick('link').href };
+      const image = pick('body').querySelector('.thumb');
+      return { id, header: rect(source), favicon: rect(source.querySelector('img')), title: rect(pick('title')),
+        menu: rect(pick('menu')), body: rect(pick('body')), thumbnail: image ? rect(image) : null, href: pick('link').href };
     });
     return { pageBox: rect(root), rows, rich: rect(root.querySelector('[data-observed-rich]')) };
   });
@@ -70,6 +72,9 @@ try {
       page.on('pageerror', error => errors.push(String(error)));
       await page.route('**/*', route => {
         const url = new URL(route.request().url());
+        if (url.href === mobileFrameHref(10, 3)) {
+          return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Result destination</title><main>店舗案内</main>' });
+        }
         if (url.hostname !== 'www.google.com' || url.pathname !== '/search') return route.abort();
         return route.fulfill({ contentType: 'text/html', body: renderGoogleMobileFrameFixture(Number(url.searchParams.get('start')), { dark, variant }) });
       });
@@ -87,7 +92,8 @@ try {
         if (control) baseline.set(variant + number, m.rows);
         else for (const [index, row] of m.rows.entries()) {
           const before = baseline.get(variant + number)[index];
-          for (const key of ['header', 'title', 'body', 'menu']) {
+          for (const key of ['header', 'title', 'body', 'menu', 'favicon', 'thumbnail']) {
+            if (!before[key]) { assert.equal(row[key], null); continue; }
             assert(Math.abs((row[key].right - row[key].left) - (before[key].right - before[key].left)) <= 1, label + ' stable content width');
             assert(Math.abs((row[key].bottom - row[key].top) - (before[key].bottom - before[key].top)) <= 1, label + ' stable content height');
             assert(Math.abs((row[key].top - row.header.top) - (before[key].top - before.header.top)) <= 1, label + ' within-result spacing preserved');
@@ -101,18 +107,26 @@ try {
         await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
         const reflow = await measure(page, 2, color);
         assert.deepEqual(reflow.boundaries, [[8], [8], [8], [8]], variant + ' boundaries follow rewrapped content');
-        await page.evaluate(() => document.addEventListener('click', event => {
-          const target = event.target.closest('[data-observed-link],[data-observed-sitelink],[data-observed-menu]');
-          if (!target) return;
-          event.preventDefault();
-          document.documentElement.dataset.tapped = target.href || target.dataset.observedMenu;
-        }, true));
+        await page.evaluate(() => {
+          window.frameTestHits = new AbortController();
+          document.addEventListener('click', event => {
+            const target = event.target.closest('[data-observed-link],[data-observed-sitelink],[data-observed-menu]');
+            if (!target) return;
+            event.preventDefault();
+            document.documentElement.dataset.tapped = target.href || target.dataset.observedMenu;
+          }, { capture: true, signal: window.frameTestHits.signal });
+        });
         for (const [selector, value] of [
           ['[data-observed-title="3"]', mobileFrameHref(10, 3)], ['[data-observed-sitelink]', mobileFrameHref(10, 3) + '/access'], ['[data-observed-menu="3"]', '3'],
         ]) {
           await sec.locator(selector).tap();
           assert.equal(await page.locator('html').getAttribute('data-tapped'), value, variant + ' touch hit ' + selector);
         }
+        await page.evaluate(() => window.frameTestHits.abort());
+        await Promise.all([page.waitForURL(mobileFrameHref(10, 3)), sec.locator('[data-observed-title="3"]').tap()]);
+        await page.goBack();
+        assert.equal(new URL(page.url()).searchParams.get('q'), MOBILE_FRAME_QUERY, 'Back returns to the search results');
+        assert.deepEqual((await measure(page, 2, color)).boundaries, [[8], [8], [8], [8]], variant + ' single dividers after history return');
       }
       assert.equal(await page.locator('#first').evaluate(node => node.outerHTML), native, 'native page is untouched');
       assert.deepEqual(errors, []);

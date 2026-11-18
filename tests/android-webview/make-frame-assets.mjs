@@ -19,11 +19,16 @@ for (const [variant, code] of Object.entries(variants)) {
   await writeFile(path.join(output, 'script-' + variant + '.js'), code);
 }
 await writeFile(path.join(output, 'frame-build.json'), JSON.stringify(versions, null, 2));
+await writeFile(path.join(output, 'fixture-end.html'), '<!doctype html><title>End of fixture results</title>');
 await copyFile(new URL('./frame-probe.js', import.meta.url), path.join(output, 'probe.js'));
-for (const shape of ['captured', 'grid']) for (const dark of [false, true]) {
+for (const [shape, dark] of [['captured', false], ['grid', true], ['backdrop', false]]) {
   for (const start of [0, 10, 20]) {
-    let html = renderGoogleMobileFrameFixture(start, { dark, variant: shape });
+    let html = renderGoogleMobileFrameFixture(start, { dark, variant: shape === 'backdrop' ? 'captured' : shape });
     assert(html.includes('<head>') && html.includes('</head>') && html.includes('</body>'));
+    if (start && shape === 'backdrop') {
+      // The native 8px gutters expose an ancestor outside the imported #rso.
+      html = html.replace('</head>', '<style>#search{background:#e8eaed}.Ww4FFb{border-bottom:0;margin-bottom:8px}</style></head>');
+    }
     html = html.replace('</head>', '<style>#generic-autopager-status-v2{visibility:hidden!important}</style></head>');
     if (!start) {
       html = html.replace('<head>', '<head><script src="/fixture-userscript.js"></script>');

@@ -1,7 +1,6 @@
 // Mobile Google can place its attribution, destination and overflow menu in
 // different DOM branches. Use their displayed positions in the imported page.
 const genericGoogleFramedV668 = new WeakSet();
-let genericGoogleFrameIdV668 = 0;
 
 function repairGenericGoogleMobileFramesV668(page) {
   const root = page?.querySelector('.generic-autopager-google-source-root');
@@ -143,6 +142,7 @@ function repairGenericGoogleMobileFramesV668(page) {
     }
     return 'rgb(255,255,255)';
   };
+  const resultFace = rgb(background(rows[0].anchor));
   const bands = [], faces = [];
   const add = (top, height, color) => {
     if (height >= 1 && height <= 18 && rgb(color)) bands.push({ top, bottom: top + height, height, color });
@@ -155,7 +155,10 @@ function repairGenericGoogleMobileFramesV668(page) {
     if (b.height <= 18 && !n.textContent.trim() && contrast(rgb(css.backgroundColor), rgb(background(n.parentElement)))) add(b.top, b.height, css.backgroundColor);
     for (const side of ['top', 'bottom']) {
       const h = parseFloat(css.getPropertyValue('border-' + side + '-width')), color = css.getPropertyValue('border-' + side + '-color');
-      if (css.getPropertyValue('border-' + side + '-style') !== 'none' && contrast(rgb(color), rgb(face))) add(side === 'top' ? b.top : b.bottom - h, h, color);
+      // A wrapper can use the same grey for its border and its exposed
+      // backdrop, while its children are white opaque result surfaces.
+      if (css.getPropertyValue('border-' + side + '-style') !== 'none' &&
+          (contrast(rgb(color), rgb(face)) || contrast(rgb(color), resultFace))) add(side === 'top' ? b.top : b.bottom - h, h, color);
     }
     for (const shadow of (css.boxShadow || '').matchAll(/(rgba?\([^)]+\))\s+0px\s+(-?[\d.]+)px\s+0px\s+0px( inset)?/g)) {
       const y = Number(shadow[2]);
@@ -187,35 +190,32 @@ function repairGenericGoogleMobileFramesV668(page) {
     !bands.some(b => b.height >= 3 && nearest(row, rows[i], b)));
   if (!wanted.length) return;
 
-  // Anchor every full-width stripe to its own attribution. It follows font,
-  // image and viewport reflow without intercepting scrolling or result taps.
-  // Keeping the layer outside Google's imported subtree also escapes clipped
-  // link wrappers. Existing cards and text never need to be reparented.
+  // Use the actual attribution coordinates. CSS anchor positioning cannot
+  // reliably resolve anchors in a sibling containing block. Keep the layer
+  // outside Google's clipped link wrappers, aligned to this page's width.
   const layer = doc.createElement('div');
   layer.setAttribute('aria-hidden', 'true');
   layer.setAttribute('data-generic-google-frames-v668', '');
   layer.style.cssText = 'all:initial!important;display:block!important;position:relative!important;height:0!important;pointer-events:none!important;z-index:2!important;';
-  const anchored = view.CSS?.supports('top', 'anchor(--generic-google-example top)');
   const placements = [];
   for (const row of wanted) {
-    const name = '--generic-google-result-' + (++genericGoogleFrameIdV668);
     const offset = Math.round(rect(row.anchor).top - row.start) + height + 2;
     const line = doc.createElement('div');
     line.style.cssText = 'all:initial!important;position:absolute!important;display:block!important;left:0!important;right:0!important;pointer-events:none!important;height:' + height + 'px!important;background-color:' + color + '!important;';
-    if (anchored) {
-      const existing = style(row.anchor).getPropertyValue('anchor-name');
-      row.anchor.style.setProperty('anchor-name', (existing && existing !== 'none' ? existing + ', ' : '') + name, 'important');
-      line.style.setProperty('top', 'calc(anchor(' + name + ' top) - ' + offset + 'px)', 'important');
-    } else placements.push({ node: row.anchor, line, offset });
+    placements.push({ node: row.anchor, menu: row.menu, line, height, offset });
     layer.appendChild(line);
   }
   page.appendChild(layer);
-  if (placements.length) {
-    const update = () => {
-      const origin = layer.getBoundingClientRect().top;
-      for (const p of placements) p.line.style.setProperty('top', (p.node.getBoundingClientRect().top - origin - p.offset) + 'px', 'important');
-    };
-    update();
-    if (view.ResizeObserver) new view.ResizeObserver(update).observe(root);
+  const update = () => {
+    const origin = layer.getBoundingClientRect().top;
+    const positions = placements.map(p => Math.min(p.node.getBoundingClientRect().top - p.offset,
+      p.menu.getBoundingClientRect().top - p.height - 2) - origin);
+    for (let i = 0; i < placements.length; i++) placements[i].line.style.setProperty('top', positions[i] + 'px', 'important');
+  };
+  update();
+  if (view.ResizeObserver) {
+    const observer = new view.ResizeObserver(update);
+    observer.observe(root);
+    for (const row of rows) observer.observe(row.title);
   }
 }

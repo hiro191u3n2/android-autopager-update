@@ -53,7 +53,8 @@ public final class MainActivity extends Activity {
                 : ("root".equals(requestedFixture) ? "root" : "organic");
         String requestedShape = getIntent().getStringExtra("shape");
         if ("frames".equals(fixture)) {
-            shape = "grid".equals(requestedShape) ? "grid" : "captured";
+            shape = "grid".equals(requestedShape) || "backdrop".equals(requestedShape)
+                    ? requestedShape : "captured";
         } else if ("root".equals(fixture)) {
             shape = "v661-nearwhite".equals(requestedShape) || "v661-alpha".equals(requestedShape)
                     || "v661-native".equals(requestedShape) ? requestedShape
@@ -124,6 +125,8 @@ public final class MainActivity extends Activity {
                 if ("0".equals(start) || "10".equals(start) || "20".equals(start)) {
                     asset = "fixture-" + ("root".equals(fixture) ? "root-" : "")
                             + shape + "-" + theme + "-" + start + ".html";
+                } else if ("frames".equals(fixture)) {
+                    asset = "fixture-end.html";
                 }
             } else if ("/fixture-userscript.js".equals(url.getPath())) {
                 asset = "script-" + variant

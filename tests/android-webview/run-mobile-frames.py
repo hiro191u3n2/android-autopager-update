@@ -66,7 +66,7 @@ def verify(png, report, variant, theme):
     bands = [bands_in_region(image, report, a['bodyBottom'], b['sourceTop'], color)
              for a, b in zip(rows, rows[1:])]
     for index, values in enumerate(bands):
-        if variant == 'current' or index in (0, 3):
+        if variant == 'current' or (index in (0, 3) and report['shape'] != 'backdrop'):
             assert len(values) == 1 and abs(values[0] - 8) <= .8, ('expected one 8px stripe', index, bands)
         else:
             assert sum(values) < 2, ('frozen v6.67 should reproduce missing band', index, bands)
@@ -85,7 +85,7 @@ adb('install', '-r', str(build / 'webview-fixture-test.apk'))
 measurements = []
 try:
     for variant in ['control', 'current']:
-        for shape, theme in [('captured', 'light'), ('grid', 'dark')]:
+        for shape, theme in [('captured', 'light'), ('grid', 'dark'), ('backdrop', 'light')]:
             adb('shell', 'pm', 'clear', package)
             adb('shell', 'am', 'start', '-W', '-n', component, '--es', 'fixture', 'frames',
                 '--es', 'variant', variant, '--es', 'shape', shape, '--es', 'theme', theme)

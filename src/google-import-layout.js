@@ -204,6 +204,21 @@ function captureGenericGoogleLayoutV647(root) {
       // Empty CSS icons/spacers, unlike text boxes, need their original height.
       values.push(['width', getGenericGoogleLayoutWidthV662(node, computed)]);
       values.push(['height', positioned || media || decoration ? computed.height : 'auto']);
+      // An empty absolute background may use height:100%, with an outline
+      // sized to calc(100% + 2px) inside it. Keep these sizes tied to the
+      // cloned card when its text reflows. A frozen pixel height paints over
+      // the following gutter. Likewise, bottom-anchored edges need top:auto.
+      if (!media && (positioned || decoration) && !node.textContent.trim()) {
+        const authored = node.computedStyleMap?.();
+        if (authored) {
+          const height = String(authored.get('height'));
+          const top = String(authored.get('top')), bottom = String(authored.get('bottom'));
+          if (height.includes('%') || positioned && height === 'auto' && top !== 'auto' && bottom !== 'auto') {
+            values.push(['height', height]);
+          }
+          if (positioned) values.push(['top', top], ['bottom', bottom]);
+        }
+      }
       if (!positioned && !media && !decoration) {
         values.push(['min-height', '0']);
         const clamped = Number.parseInt(computed.getPropertyValue('-webkit-line-clamp'), 10) > 0;
