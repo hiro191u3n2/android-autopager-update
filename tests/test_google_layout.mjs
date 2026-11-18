@@ -33,7 +33,9 @@ let passed = 0;
 function fixture(start, dark = false) {
   if (!start) return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
     body{margin:0;font:14px Arial;background:${dark ? '#202124' : '#fff'};color:${dark ? '#e8eaed' : '#202124'}}
-    #native{padding:16px;min-height:200px}.source-header{display:block}.video-media{position:static}
+    /* Keep title enrichment eligible while the reader is idle. The sustained
+       scroll suite separately checks the urgent, short-page fallback. */
+    #native{padding:16px;min-height:1200px}.source-header{display:block}.video-media{position:static}
     .play-control{position:absolute;left:0;bottom:-22px}.source-description{position:absolute;top:0}
   </style><main id="search"><div id="rso"><article id="native"><h3><a href="https://native.example/one">初回の通常検索結果</a></h3><p>初回ページは変更しません。</p></article></div></main>
   <nav><a id="pnnext" href="/search?q=layout&start=10">次へ</a></nav>`;
@@ -137,7 +139,6 @@ try {
     const label = `${width}px ${dark ? 'dark' : 'light'}`;
     try {
       verify(await geometry(current.page), label, dark);
-      await current.page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
       await current.page.waitForSelector('.generic-autopager-page[data-page="3"]', { timeout:20000 });
       await current.page.waitForTimeout(450);
       verify(await geometry(current.page, 20), label + ' page 3', dark, 20);
