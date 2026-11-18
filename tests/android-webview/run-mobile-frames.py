@@ -24,13 +24,12 @@ def install_fixture():
     apk = str(build / 'webview-fixture-test.apk')
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
-        unlocked = adb('shell', 'cmd', 'user', 'is-user-unlocked', '0', check=False)
         available = adb('shell', 'pm', 'path', 'android', check=False)
-        if unlocked == 'true' and available.startswith('package:'):
+        if available.startswith('package:'):
             break
         time.sleep(1)
     else:
-        raise RuntimeError(f'Package manager or emulator user is not ready: {unlocked!r}, {available!r}')
+        raise RuntimeError(f'Package manager is not ready: {available!r}')
     print(adb('shell', 'df', '-h', '/data'), flush=True)
     try:
         print(adb('install', '--no-streaming', '-r', apk), flush=True)
