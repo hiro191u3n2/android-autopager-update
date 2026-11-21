@@ -1,6 +1,7 @@
 // Hide Google's search notices without changing the query or the results.
 // The public AI selectors are hints; ordinary result cards and question panels
 // are always outside the text-matching path. No network requests are made.
+var pruneGenericGoogleFeaturedProductsV672;
 (function installGoogleSearchCleanupV648() {
   'use strict';
   const googleSuffixes = new Set(('com cat ad ae com.af com.ag com.ai am co.ao com.ar as at com.au az ba com.bd be bf bg com.bh bi bj com.bn com.bo com.br bs bt co.bw by com.bz ca cd cf cg ch ci co.ck cl cm cn com.co co.cr com.cu cv com.cy cz de dj dk dm com.do dz com.ec ee com.eg es com.et fi com.fj fm fr ga ge gg com.gh com.gi gl gm gp gr com.gt gy com.hk hn hr ht hu co.id ie co.il im co.in iq is it je com.jm jo co.jp co.ke com.kh ki kg co.kr com.kw kz la com.lb li lk co.ls lt lu lv com.ly co.ma md me mg mk ml com.mm mn ms com.mt mu mv mw com.mx com.my co.mz com.na com.ng com.ni ne nl no com.np nr nu co.nz com.om com.pa com.pe com.pg com.ph com.pk pl pn com.pr ps pt com.py com.qa ro ru rw com.sa com.sb sc se com.sg sh si sk com.sl sn so sm sr st com.sv td tg co.th com.tj tl tm tn to com.tr tt com.tw co.tz com.ua co.ug co.uk com.uy co.uz com.vc co.ve vg co.vi com.vn vu ws rs co.za co.zm co.zw').split(' '));
@@ -497,7 +498,16 @@
   const productImage = 'img,g-img,[role="img"],picture,[style*="background-image"]';
   const moduleHeading = 'h1,h2,h3,h4,[role="heading"]';
   const productSearchScope = '#rso,#search,#main,#center_col,main,[role="main"],.generic-autopager-page,.generic-autopager-google-source-root';
-  const productExclusions = 'nav,header,footer,form,aside,blockquote,[role="navigation"],[role="dialog"],[role="listbox"],g-related-question,.related-question-pair,[data-attrid*="people_also_ask"]';
+  const productExclusions = 'nav,body>header,[role="banner"],footer,form,aside,blockquote,[role="navigation"],[role="dialog"],[role="listbox"],g-related-question,.related-question-pair,[data-attrid*="people_also_ask"]';
+
+  function isFeaturedHeading(el) {
+    if (!el) return false;
+    if (featuredLabel.test(shortText(el, 48) || '')) return true;
+    if (!el.matches(moduleHeading)) return false;
+    if (featuredLabel.test(normalize(el.getAttribute('aria-label')))) return true;
+    return [...el.childNodes].some(n => n.nodeType === 3 && featuredLabel.test(normalize(n.data))) &&
+      [...el.children].every(child => child.matches('svg,button,[role="button"],[aria-hidden="true"]') || child.querySelector('button,[aria-haspopup]'));
+  }
 
   function bandLabel(value) {
     return /^(?:[¥$€£][\d.,]+|[\d.,]+円)(?:以下|未満|以上|超|から|まで|[~〜–—−-](?:[¥$€£]?[\d.,]+円?))$/.test(
@@ -550,7 +560,10 @@
       while (row.parentElement && row.parentElement !== scope && bandLabel(shortText(row.parentElement, 60))) row = row.parentElement;
       last = row;
     }
-    if (!last) return [];
+    return last ? sectionPartsBetween(seed, last, scope) : [];
+  }
+
+  function sectionPartsBetween(seed, last, scope) {
     const adjacent = (node, direction) => {
       for (let s = node[direction]; s; s = s[direction]) {
         if (s.nodeType === 3 && s.data.trim() || s.nodeType === 1 && !s.matches('script,style,template,[hidden]')) return true;
@@ -558,8 +571,8 @@
       return false;
     };
     let first = seed;
-    while (!first.parentElement.matches(featureBoundary) && !adjacent(first, 'previousSibling')) first = first.parentElement;
-    while (!last.parentElement.matches(featureBoundary) && !adjacent(last, 'nextSibling')) last = last.parentElement;
+    while (first.parentElement && first.parentElement !== scope && !first.parentElement.matches(featureBoundary) && !adjacent(first, 'previousSibling')) first = first.parentElement;
+    while (last.parentElement && last.parentElement !== scope && !last.parentElement.matches(featureBoundary) && !adjacent(last, 'nextSibling')) last = last.parentElement;
     if (first === last) return [first];
     const span = document.createRange();
     span.setStartBefore(first);
@@ -575,6 +588,83 @@
     }
     collect(span.commonAncestorContainer);
     return owned;
+  }
+
+  const moreProducts = /^(?:その他の商品|さらに商品を表示|商品をもっと見る|more products|show more products)$/i;
+  function isolatedFeaturedModule(seed, scope) {
+    const unit = seed.closest('section,.MjjYud,.Ww4FFb,block-component,g-section-with-header,[data-attrid*="product"]');
+    if (!unit || unit === scope || unit.matches(featureBoundary) || !scope.contains(unit)) return null;
+    const before = document.createRange();
+    before.selectNodeContents(unit);
+    before.setEndBefore(seed);
+    if (normalize(before.toString())) return null;
+    if (unit.querySelector('article,.tF2Cxc,nav,form,.related-question-pair') ||
+        [...unit.querySelectorAll('cite')].some(c => /^https?:\/\//i.test(c.textContent.trim()))) return null;
+    // Related sections and independent web results sometimes share a Google
+    // wrapper. They must go through the bounded interval classifier instead.
+    for (const h of unit.querySelectorAll(moduleHeading)) {
+      if (h.contains(seed) || seed.contains(h)) continue;
+      if (!h.closest('[role="listitem"],[itemtype*="Product"],[data-docid]')) return null;
+    }
+    for (const link of unit.querySelectorAll('a[href]')) {
+      if (!isExternalLink(link) || moreProducts.test(shortText(link, 40) || '')) continue;
+      let tile = link;
+      while (tile !== unit && !(tile.querySelector(productImage) && price.test(tile.textContent))) tile = tile.parentElement;
+      if (tile === unit || tile.contains(seed) || !shortText(tile, 650)) return null;
+    }
+    const amounts = unit.textContent.match(/[¥￥$€£]\s*\d[\d,.]*|\d[\d,.]*\s*円/g);
+    return amounts?.length >= 2 && unit.querySelectorAll(productImage).length >= 2 ? unit : null;
+  }
+  function gridSectionParts(seed, scope) {
+    const normalResult = el => el.matches('.tF2Cxc') ||
+      (el.matches('article,.g,.Ww4FFb,.MjjYud') && [...el.querySelectorAll('cite')].some(c => /^https?:\/\//i.test(c.textContent.trim())) && hasResultHeading(el));
+    function offerFor(node) {
+      for (let el = node; el && el !== scope && !el.contains(seed); el = el.parentElement) {
+        if (normalResult(el) || el.matches(featureBoundary) || el.querySelector('nav,article')) break;
+        // A seller's name may itself be a cite. Product tiles can also be
+        // unlinked. Look for an individual priced offer with its own image.
+        if (!el.querySelector(productImage) || !price.test(el.textContent)) continue;
+        if (el.querySelector('a[href],cite,[role="link"]') || /[\p{L}]{2}/u.test(el.textContent.replace(/送料無料|税込/g,''))) return el;
+      }
+      return null;
+    }
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode(n) { return n.nodeType === 1 && n.matches('script,style,template,noscript,svg') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; }
+    });
+    walker.currentNode = seed;
+    let lastCard = null, lastControl = null, count = 0, prices = 0, hasImage = false;
+    for (let n; (n = walker.nextNode());) {
+      if (seed.contains(n) || lastCard?.contains(n)) continue;
+      if (n.nodeType === 1) {
+        if (n.matches(productExclusions + ',.generic-autopager-page') || normalResult(n)) break;
+        if (n.matches(productImage)) hasImage = true;
+        if (moreProducts.test(normalize(n.getAttribute('aria-label')))) { lastControl = n; break; }
+        if (n.matches(moduleHeading)) {
+          if (moreProducts.test(shortText(n, 36) || '')) { lastControl = n; break; }
+          if ((n.matches('h1,h2,[aria-level="2"]') && !n.closest('a[href],[role="listitem"],[itemtype*="Product"]')) || !offerFor(n)) break;
+        }
+        continue;
+      }
+      const value = normalize(n.data);
+      if (!value) continue;
+      const parent = n.parentElement;
+      if (moreProducts.test(value) || /その他|more/i.test(value) && moreProducts.test(shortText(parent, 36) || '')) {
+        lastControl = parent.closest('button,[role="button"],a[href],summary') || parent;
+        break;
+      }
+      if (!/\d/.test(value) || !(price.test(value) || price.test(shortText(parent, 40) || ''))) continue;
+      if (bandLabel(value) || bandLabel(shortText(parent, 50))) break;
+      prices++;
+      const card = offerFor(parent);
+      if (!card || lastCard && card.contains(lastCard)) continue;
+      count++;
+      lastCard = card;
+    }
+    // A named expander also establishes the end of a lazy product module,
+    // even if its individual image/price/merchant nodes have no common tile.
+    const owner = seed.closest('section,.MjjYud,.Ww4FFb,block-component,g-section-with-header,[data-attrid*="product"]');
+    if (count < 2 && !(lastControl && (owner?.contains(lastControl) || hasImage && prices >= 2))) return [];
+    return sectionPartsBetween(seed, lastControl || lastCard, scope);
   }
   function isProductRail(branch) {
     const collection = 'g-scrolling-carousel,[data-attrid*="popular_products"],[data-attrid*="popular-products"]';
@@ -600,13 +690,17 @@
       /^(?=.*\d)[¥￥$€£\d.,円万千以下以上未満超からまで〜～~–－−-]+$/.test(text);
   }
 
-  function featuredParts(seed) {
-    const scope = seed.closest(productSearchScope) || (seed.matches(moduleHeading) ? document.body : null);
+  function featuredParts(seed, importedRoot) {
+    const scope = importedRoot || seed.closest(productSearchScope) || (seed.matches(moduleHeading) ? document.body : null);
     const link = seed.closest('a[href]') || seed.querySelector('a[href]');
-    if (!scope || seed.closest(productExclusions) || link && isExternalLink(link) ||
-        !featuredLabel.test(shortText(seed, 45) || '')) return [];
+    if (!scope || seed.closest(productExclusions + ',article p') || link && isExternalLink(link) ||
+        !isFeaturedHeading(seed)) return [];
+    const isolated = isolatedFeaturedModule(seed, scope);
+    if (isolated) return [isolated];
     const priced = pricedSectionParts(seed, scope);
     if (priced.length) return priced;
+    const grid = gridSectionParts(seed, scope);
+    if (grid.length) return grid;
     for (let head = seed, depth = 0; head.parentElement && depth < 8; head = head.parentElement, depth++) {
       const parent = head.parentElement;
       if (head.matches(featureBoundary) || head.closest(productExclusions)) break;
@@ -638,7 +732,7 @@
 
   function updateFeatured(seed) {
     const old = featuredGroups.get(seed);
-    const valid = seed.isConnected && featuredEnabled && featuredLabel.test(shortText(seed, 45) || '');
+    const valid = seed.isConnected && featuredEnabled && isFeaturedHeading(seed);
     const parts = valid ? featuredParts(seed) : [];
     for (const part of old?.parts || []) if (!parts.includes(part)) unmark(part, true);
     if (!valid) { featuredGroups.delete(seed); return; }
@@ -648,6 +742,38 @@
     for (const part of parts) while (!watch.contains(part)) watch = watch.parentElement;
     featuredGroups.set(seed, {parts, watch});
   }
+
+  function featuredLabels(root) {
+    const seeds = new Set(), walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n; (n = walker.nextNode());) {
+      if (!/注目|popular|featured/i.test(n.data)) continue;
+      for (let el = n.parentElement; el && root.contains(el); el = el.parentElement) {
+        const label = shortText(el, 48);
+        if (el.closest('script,style,template,noscript,' + productExclusions)) break;
+        if (isFeaturedHeading(el)) {
+          const heading = el.closest(moduleHeading);
+          seeds.add(isFeaturedHeading(heading) ? heading : el);
+          break;
+        }
+        if (!label) break;
+      }
+    }
+    for (const h of root.querySelectorAll('[role="heading"][aria-label],h2[aria-label],h3[aria-label]')) {
+      if (featuredLabel.test(normalize(h.getAttribute('aria-label')))) seeds.add(h);
+    }
+    return seeds;
+  }
+
+  // Filter both import paths after layout mapping but before the legacy
+  // image/product formatter can discard the source section boundaries.
+  pruneGenericGoogleFeaturedProductsV672 = function (root) {
+    if (!featuredEnabled || !root || root.isConnected) return;
+    for (const part of root.querySelectorAll('[' + MARK + '="featured-products"]')) part.remove();
+    for (const seed of featuredLabels(root)) {
+      if (!root.contains(seed)) continue;
+      for (const part of featuredParts(seed, root)) if (part !== root && root.contains(part)) part.remove();
+    }
+  };
 
   function inspect(element) {
     if (!enabled || inputScope(element) || element.closest('[' + MARK + ']')) return;
@@ -662,10 +788,9 @@
     // notice. Inspect the child notice without hiding the shared controls.
     if (element.querySelector('input,textarea,select,nav,[role="navigation"]')) return;
     const text = shortText(element, 700);
-    if (!text) return;
-    if (featuredEnabled && featuredLabel.test(text) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
+    if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading) && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
       const headingParent = element.closest(moduleHeading);
-      const seed = headingParent && featuredLabel.test(shortText(headingParent, 45) || '') ? headingParent : element;
+      const seed = isFeaturedHeading(headingParent) ? headingParent : element;
       const link = seed.closest('a[href]') || seed.querySelector('a[href]');
       // Plain mobile labels can be wrapped in several identical text spans.
       const heading = seed.matches('h2,h3,h4,[role="heading"]') ||
@@ -673,6 +798,7 @@
       if (heading && !(link && isExternalLink(link)) && !seed.closest(productExclusions) &&
           !featuredGroups.has(seed) && ![...featuredGroups.keys()].some(other => other.contains(seed))) updateFeatured(seed);
     }
+    if (!text) return;
     if (element.matches('h1,h2,[role="heading"]') && aiHeading(text)) {
       const identified = element.closest(AI_CONTAINER);
       if (identified && eligible(identified, true)) {
@@ -748,9 +874,7 @@
             // data-q also appears on ordinary mobile result wrappers. The
             // general notice walker skips them to protect question panels.
             if (featuredEnabled && node.hasAttribute('data-q') && !node.closest(productExclusions + ',[data-initq],[jscontroller="Da4hkd"]')) {
-              for (const h of node.querySelectorAll('h2,[role="heading"]')) {
-                if (featuredLabel.test(shortText(h, 45) || '')) inspect(h);
-              }
+              for (const h of featuredLabels(node)) inspect(h);
             }
             return node.matches('script,style,noscript,template,svg,[' + MARK + ']') || node.matches(INPUT_SCOPE) || node.matches(HARD_PROTECTED) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
           }
@@ -839,4 +963,10 @@
   addEventListener('pageshow', () => syncRoute(true));
   document.addEventListener('DOMContentLoaded', () => syncRoute(true), { once: true });
   syncRoute(true);
+  function scanInitialProductHeadings() {
+    if (!featuredEnabled || inputPaused() || !document.body) return;
+    for (const seed of featuredLabels(document.body)) inspect(seed);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scanInitialProductHeadings, { once: true });
+  else scanInitialProductHeadings();
 })();

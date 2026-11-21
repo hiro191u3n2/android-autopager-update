@@ -4,6 +4,7 @@ import { chromium } from 'playwright';
 import { buildUserscript } from '../worker/index.js';
 import { featuredProductsPage } from './fixtures/google-featured-products.mjs';
 import { featuredMobilePage } from './fixtures/google-featured-mobile.mjs';
+import { featuredGridPage } from './fixtures/google-featured-grid.mjs';
 
 const launch = { headless: true };
 if (process.env.GOOGLE_TEST_CHROMIUM_EXECUTABLE) launch.executablePath = process.env.GOOGLE_TEST_CHROMIUM_EXECUTABLE;
@@ -118,6 +119,55 @@ try {
       }
       assert.deepEqual(faults, []);
       console.log('PASS ' + label + ' screenshot layout: menu, unlinked tiles, thumbnail ranges, mixed organic wrapper and linked module title, three pages');
+    } finally { await mobile.close(); }
+  }
+  const frozenGrid = await readFile(new URL('../Android_Generic_AutoPager_v6.71.js', import.meta.url), 'utf8');
+  const fixedGrid = await buildUserscript();
+  for (const [label, script, fixed] of [['v6.71', frozenGrid, false], ['rendered', fixedGrid, true],
+    ['fetch', fixedGrid.replace('googleUseRenderedFrame:!0','googleUseRenderedFrame:!1'), true]]) {
+    const mobile = await browser.newPage({viewport:{width:390,height:780}, isMobile:true, hasTouch:true});
+    try {
+      const errors = [];
+      mobile.on('pageerror', error => errors.push(String(error)));
+      await mobile.route('**/*', route => {
+        const url = new URL(route.request().url());
+        if (url.hostname !== 'www.google.co.jp') return route.abort();
+        if (url.pathname === '/search') {
+          const start = Number(url.searchParams.get('start'));
+          return route.fulfill({contentType:'text/html; charset=utf-8', body: start <= 50 || start === 290 ? featuredGridPage(start) : '<title>終端</title>'});
+        }
+        if (url.pathname === '/salmon.svg') return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="48" height="44"/>'});
+        return route.abort();
+      });
+      await mobile.addInitScript({content: 'if (window === top) {\n' + script + '\n}'});
+      await mobile.addInitScript(() => {
+        window.appendedOffers = [];
+        new MutationObserver(records => {
+          for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1 && n.matches('.generic-autopager-page')) {
+            window.appendedOffers.push(n.querySelectorAll('[data-offer]').length);
+          }
+        }).observe(document, {childList:true,subtree:true});
+      });
+      await mobile.goto('https://www.google.co.jp/search?q=サーモンキャンディ');
+      for (let n = 2; n <= 6; n++) {
+        await mobile.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+        await mobile.locator('.generic-autopager-page[data-page="' + n + '"]').waitFor({timeout:20000});
+      }
+      for (const kind of ['before','after']) assert.equal(await mobile.locator('[data-keep="' + kind + '"]:visible').count(), 6);
+      assert.equal(await mobile.locator('[data-offer]:visible').count(), fixed ? 0 : 36);
+      const labels = await mobile.locator('[data-grid-label]:visible').evaluateAll(nodes => nodes.map(node => ({
+        page:node.closest('.generic-autopager-page')?.dataset.page || '1', html:node.outerHTML.slice(0,850)
+      })));
+      assert.equal(labels.length, fixed ? 0 : 6, label + ' visible headings ' + JSON.stringify(labels));
+      assert.equal(await mobile.locator('[data-grid-footer]:visible').count(), fixed ? 0 : 4);
+      assert.deepEqual((await mobile.evaluate(() => window.appendedOffers)).slice(0,5), Array(5).fill(fixed ? 0 : 6));
+      if (fixed) {
+        await mobile.goto('https://www.google.co.jp/search?q=サーモンキャンディ&start=290');
+        await mobile.locator('[data-offer]').first().waitFor({state:'hidden'});
+        assert.equal(await mobile.locator('[data-keep]:visible').count(),2);
+      }
+      assert.deepEqual(errors,[]);
+      console.log('PASS ' + label + ' two-column results, with and without expander, shared wrappers, before insertion and direct late-page entry');
     } finally { await mobile.close(); }
   }
 } finally { await browser.close(); }

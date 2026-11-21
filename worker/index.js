@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.71.0';
+export const VERSION = '6.72.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -103,6 +103,9 @@ export async function buildUserscript() {
     body = body.replace(from, to);
   }
   const oldPaint = 'if(r)repairGenericGoogleResultBoundariesV658(u)';
+  const cleanClone = 'for(const t of u.querySelectorAll(s))t.remove();';
+  assert.equal(body.split(cleanClone).length, 2, 'Google clone cleanup boundary changed');
+  body = body.replace(cleanClone, 'if(r)pruneGenericGoogleFeaturedProductsV672?.(u);' + cleanClone);
   assert.equal(body.split(oldPaint).length, 2, 'Google result boundary hook changed');
   body = body.replace(oldPaint, 'if(r){repairGenericGoogleResultBoundariesV658(u);repairGenericGoogleMobileFramesV668(u)}');
   const googleMobileFrames = (await readFile(new URL('src/google-mobile-result-frames.js', root), 'utf8')).trim();
@@ -134,6 +137,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。');
   header = header.replace('// @description  ', '// @description  Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。');
   header = header.replace('// @description  ', '// @description  Google検索の「注目されている商品」で、横並びのカードと画像付きの価格帯が残る表示を修正。');
+  header = header.replace('// @description  ', '// @description  「注目されている商品」の2列の商品一覧と「その他の商品」を除去。自動追加する各ページも表示前に処理。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
