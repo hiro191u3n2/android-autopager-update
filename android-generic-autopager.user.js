@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.70.0
-// @description  Google検索の「注目されている商品」欄を価格帯ボタンごと非表示。Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.71.0
+// @description  Google検索の「注目されている商品」で、横並びのカードと画像付きの価格帯が残る表示を修正。Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -510,20 +510,101 @@
     }
   }
 
-  const featuredLabel = /^(?:注目されている商品|注目されてる商品|注目の商品|popular products|featured products)$/i;
+  const featuredLabel = /^(?:注目\s*されて\s*い?る\s*商品|注目\s*の\s*商品|popular products|featured products)$/i;
   const price = /[¥￥$€£]\s*\d|\d[\d,.]*\s*円/;
   const featureBoundary = BOUNDARY + ',.generic-autopager-page,.generic-autopager-google-source-root';
   const featureControls = 'button,[role="button"],a[href],summary';
+  const productImage = 'img,g-img,[role="img"],picture,[style*="background-image"]';
+  const moduleHeading = 'h1,h2,h3,h4,[role="heading"]';
+  const productSearchScope = '#rso,#search,#main,#center_col,main,[role="main"],.generic-autopager-page,.generic-autopager-google-source-root';
+  const productExclusions = 'nav,header,footer,form,aside,blockquote,[role="navigation"],[role="dialog"],[role="listbox"],g-related-question,.related-question-pair,[data-attrid*="people_also_ask"]';
+
+  function bandLabel(value) {
+    return /^(?:[¥$€£][\d.,]+|[\d.,]+円)(?:以下|未満|以上|超|から|まで|[~〜–—−-](?:[¥$€£]?[\d.,]+円?))$/.test(
+      normalize(value).normalize('NFKC').replace(/\s+/g, ''));
+  }
+
+  // The mobile page can put the heading, carousel and price accordions in
+  // different wrappers, including a wrapper shared with the next web result.
+  // Use the range between the heading and the last price row. Return only
+  // complete elements so an adjacent result never shares a hidden ancestor.
+  function pricedSectionParts(seed, scope) {
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        return node.nodeType === 1 && node.matches('script,style,noscript,template,svg') ?
+          NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    walker.currentNode = seed;
+    let media = false, priced = false, last = null;
+    for (let n, count = 0; count < 1800 && (n = walker.nextNode()); count++) {
+      if (last?.contains(n) || seed.contains(n)) continue;
+      if (n.nodeType === 1) {
+        if (n.matches(productExclusions + ',.generic-autopager-page,.tF2Cxc') ||
+            (n.matches('article') && n.querySelector('cite') && hasResultHeading(n))) break;
+        if (n.matches('h3,[role="heading"][aria-level="3"]')) {
+          const link = n.closest('a[href]') || n.querySelector('a[href]');
+          if (link && isExternalLink(link) && !n.closest('g-scrolling-carousel,[role="listitem"],[data-docid]')) {
+            let tile = n.parentElement;
+            while (tile && tile !== scope && !tile.contains(seed) && !isProductRail(tile)) tile = tile.parentElement;
+            if (!tile || tile === scope || tile.contains(seed)) break;
+          }
+        }
+        if (n.matches('h1,h2,[role="heading"][aria-level="2"]') && !bandLabel(shortText(n, 55))) break;
+        if (n.matches(productImage)) media = true;
+        continue;
+      }
+      if (!/\d/.test(n.data)) continue;
+      let row = n.parentElement;
+      let label = shortText(row, 60);
+      if (!bandLabel(label) && row.parentElement && bandLabel(shortText(row.parentElement, 60))) {
+        row = row.parentElement;
+        label = shortText(row, 60);
+      }
+      if (!bandLabel(label)) {
+        if (last) break;
+        if (price.test(n.data) || price.test(label || '')) priced = true;
+        continue;
+      }
+      if (!media || !priced) break;
+      while (row.parentElement && row.parentElement !== scope && bandLabel(shortText(row.parentElement, 60))) row = row.parentElement;
+      last = row;
+    }
+    if (!last) return [];
+    const adjacent = (node, direction) => {
+      for (let s = node[direction]; s; s = s[direction]) {
+        if (s.nodeType === 3 && s.data.trim() || s.nodeType === 1 && !s.matches('script,style,template,[hidden]')) return true;
+      }
+      return false;
+    };
+    let first = seed;
+    while (!first.parentElement.matches(featureBoundary) && !adjacent(first, 'previousSibling')) first = first.parentElement;
+    while (!last.parentElement.matches(featureBoundary) && !adjacent(last, 'nextSibling')) last = last.parentElement;
+    if (first === last) return [first];
+    const span = document.createRange();
+    span.setStartBefore(first);
+    span.setEndAfter(last);
+    const probe = document.createRange(), owned = [];
+    function collect(parent) {
+      for (const el of parent.children) {
+        if (!span.intersectsNode(el)) continue;
+        probe.selectNode(el);
+        if (span.compareBoundaryPoints(Range.START_TO_START, probe) <= 0 && span.compareBoundaryPoints(Range.END_TO_END, probe) >= 0) owned.push(el);
+        else collect(el);
+      }
+    }
+    collect(span.commonAncestorContainer);
+    return owned;
+  }
   function isProductRail(branch) {
     const collection = 'g-scrolling-carousel,[data-attrid*="popular_products"],[data-attrid*="popular-products"]';
     for (let list = branch, depth = 0; list && depth < 6; depth++) {
       if (list.matches('cite,nav,footer')) return false;
-      if (list.matches(collection) && price.test(list.textContent) && list.querySelector('img,g-img,[role="img"]')) return true;
+      if (list.matches(collection) && price.test(list.textContent) && list.querySelector(productImage)) return true;
       const children = [...list.children].filter(child => !child.matches('script,style,template,[hidden],[aria-hidden="true"]'));
       if (children.length === 1) { list = children[0]; continue; }
       const tiles = children.filter(child => !child.matches('cite,.tF2Cxc') && !child.querySelector('cite,[data-dtld],.tF2Cxc') &&
-        child.querySelector('img,g-img,[role="img"]') &&
-        (child.matches('a,button,[role="button"],[data-docid]') || child.querySelector('a,button,[role="button"],[data-docid]')) && price.test(child.textContent));
+        child.querySelector(productImage) && price.test(child.textContent));
       if (tiles.length >= 2 && children.every(child => tiles.includes(child) || child.matches('button,[role="button"],g-left-button,g-right-button'))) return true;
       const rail = children.find(child => child.matches(collection));
       return !!rail && children.every(child => child === rail || child.matches('button,[role="button"],g-left-button,g-right-button') || priceFilters(child)) && isProductRail(rail);
@@ -533,18 +614,22 @@
 
   function priceFilters(node) {
     const controls = node.matches(featureControls) ? [node] : [...node.querySelectorAll(featureControls)];
-    if (node.matches('article,nav') || node.querySelector('cite,h2,h3,[role="heading"],img')) return false;
+    if (node.matches('article,nav') || node.querySelector('cite,h2,h3,[role="heading"]')) return false;
     const text = normalize(node.textContent).replace(/\s/g, '');
     return (controls.length ? controls.every(control => price.test(control.textContent)) : price.test(text) && /以下|以上|未満|から|まで|[〜～~–－−-]/.test(text)) &&
       /^(?=.*\d)[¥￥$€£\d.,円万千以下以上未満超からまで〜～~–－−-]+$/.test(text);
   }
 
   function featuredParts(seed) {
-    const stop = 'a[href],p,blockquote,nav,footer,form,aside,[role="listbox"],[role="dialog"],g-related-question,.related-question-pair';
-    if (seed.closest(stop) || !featuredLabel.test(shortText(seed, 45) || '') || !seed.closest('#rso,#search,.generic-autopager-google-source-root,main,[role="main"]')) return [];
+    const scope = seed.closest(productSearchScope) || (seed.matches(moduleHeading) ? document.body : null);
+    const link = seed.closest('a[href]') || seed.querySelector('a[href]');
+    if (!scope || seed.closest(productExclusions) || link && isExternalLink(link) ||
+        !featuredLabel.test(shortText(seed, 45) || '')) return [];
+    const priced = pricedSectionParts(seed, scope);
+    if (priced.length) return priced;
     for (let head = seed, depth = 0; head.parentElement && depth < 8; head = head.parentElement, depth++) {
       const parent = head.parentElement;
-      if (head.matches(featureBoundary) || head.closest(stop)) break;
+      if (head.matches(featureBoundary) || head.closest(productExclusions)) break;
       const children = [...parent.children].filter(child => !child.matches('script,style,template,[hidden]') &&
         (savedDisplay.has(child) || child === head || getComputedStyle(child).display !== 'none'));
       const next = children.indexOf(head) + 1;
@@ -564,7 +649,8 @@
       // Walk through title wrappers (including an overflow button), never
       // use an article or a preceding unrelated listing as the heading.
       if (parent.matches(featureBoundary) || children.some(child => child !== head &&
-          !child.matches('button,[role="button"],g-menu-button,[aria-hidden="true"]')) ||
+          !child.matches('button,[role="button"],g-menu-button,[aria-hidden="true"]') &&
+          !(child.querySelector('button,[role="button"],[aria-haspopup]') && !shortText(child, 40))) ||
           [...parent.childNodes].some(node => node.nodeType === 3 && node.data.trim())) break;
     }
     return [];
@@ -578,8 +664,9 @@
     if (!valid) { featuredGroups.delete(seed); return; }
     for (const part of parts) if (!savedDisplay.has(part)) hide(part, 'featured-products');
     const owner = seed.closest('section,g-section-with-header,.Ww4FFb,.MjjYud,article');
-    featuredGroups.set(seed, { parts, watch: parts.length > 1 ? parts[0].parentElement :
-      parts[0] || owner?.parentElement || seed.parentElement?.parentElement || seed });
+    let watch = parts[0] || owner?.parentElement || seed.parentElement?.parentElement || seed;
+    for (const part of parts) while (!watch.contains(part)) watch = watch.parentElement;
+    featuredGroups.set(seed, {parts, watch});
   }
 
   function inspect(element) {
@@ -596,12 +683,15 @@
     if (element.querySelector('input,textarea,select,nav,[role="navigation"]')) return;
     const text = shortText(element, 700);
     if (!text) return;
-    if (featuredEnabled && featuredLabel.test(text) && !element.closest('a[href],p,blockquote')) {
-      const seed = element.closest('h2,h3,h4,[role="heading"]') || element;
+    if (featuredEnabled && featuredLabel.test(text) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
+      const headingParent = element.closest(moduleHeading);
+      const seed = headingParent && featuredLabel.test(shortText(headingParent, 45) || '') ? headingParent : element;
+      const link = seed.closest('a[href]') || seed.querySelector('a[href]');
       // Plain mobile labels can be wrapped in several identical text spans.
       const heading = seed.matches('h2,h3,h4,[role="heading"]') ||
         ![...seed.children].some(child => featuredLabel.test(shortText(child, 45) || ''));
-      if (heading && !featuredGroups.has(seed) && ![...featuredGroups.keys()].some(other => other.contains(seed))) updateFeatured(seed);
+      if (heading && !(link && isExternalLink(link)) && !seed.closest(productExclusions) &&
+          !featuredGroups.has(seed) && ![...featuredGroups.keys()].some(other => other.contains(seed))) updateFeatured(seed);
     }
     if (element.matches('h1,h2,[role="heading"]') && aiHeading(text)) {
       const identified = element.closest(AI_CONTAINER);
@@ -675,6 +765,13 @@
         inspect(job.root);
         job.walker = document.createTreeWalker(job.root, NodeFilter.SHOW_ELEMENT, {
           acceptNode(node) {
+            // data-q also appears on ordinary mobile result wrappers. The
+            // general notice walker skips them to protect question panels.
+            if (featuredEnabled && node.hasAttribute('data-q') && !node.closest(productExclusions + ',[data-initq],[jscontroller="Da4hkd"]')) {
+              for (const h of node.querySelectorAll('h2,[role="heading"]')) {
+                if (featuredLabel.test(shortText(h, 45) || '')) inspect(h);
+              }
+            }
             return node.matches('script,style,noscript,template,svg,[' + MARK + ']') || node.matches(INPUT_SCOPE) || node.matches(HARD_PROTECTED) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
           }
         });
@@ -720,7 +817,8 @@
       }
       const marked = target.closest('[' + MARK + ']');
       for (const [seed, group] of featuredGroups) {
-        if (!seed.isConnected || group.watch.contains(target) || group.parts.some(part => part.contains(target))) changedGroups.add(seed);
+        if (!seed.isConnected || group.watch.contains(target) ||
+            record.type === 'childList' && group.watch.parentElement === target) changedGroups.add(seed);
       }
       if (marked && marked.getAttribute(MARK) !== 'featured-products') {
         // Google may recycle a notice node for ordinary content on navigation.
