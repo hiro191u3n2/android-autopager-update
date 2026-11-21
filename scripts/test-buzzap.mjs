@@ -12,8 +12,16 @@ const realtime = (await readFile(new URL('../src/yahoo-realtime-autopager.js', i
 const gallery = (await readFile(new URL('../src/cityhill-gallery-compat.js', import.meta.url), 'utf8')).trim();
 const helper = (await readFile(new URL('../src/fashion-product-guard.js', import.meta.url), 'utf8')).trim();
 const googleCleanup = (await readFile(new URL('../src/google-search-cleanup.js', import.meta.url), 'utf8')).trim();
-const prefix = `\n\n${googleCleanup}\n${realtime}\n${gallery}\n`;
+const frozen669 = await readFile(new URL('../Android_Generic_AutoPager_v6.69.js', import.meta.url), 'utf8');
+const frozen669Body = frozen669.slice(frozen669.indexOf(END) + END.length);
+const oldCleanupEnd = frozen669Body.indexOf('\n' + realtime);
+assert(oldCleanupEnd > 2);
+const oldCleanup = frozen669Body.slice(2, oldCleanupEnd);
+const prefix = `\n\n${oldCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+assert.equal(executable.split(googleCleanup).length, 2);
+executable = executable.replace(googleCleanup, () => oldCleanup);
+assert(executable === frozen669Body, 'All executable code outside Google search cleanup must match published v6.69');
 const readAhead669 = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
 const extra = readAhead669.indexOf('\n\n// A standalone TikTok tile');
 const videoHook = '  indexGenericGoogleVideoTilesV669(scope, target, index, removeCopies);\n';
