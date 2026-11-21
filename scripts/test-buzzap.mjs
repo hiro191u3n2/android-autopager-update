@@ -1,6 +1,7 @@
 // Recovery invariant tests. Original browser regression sources were pruned.
 // Do not describe byte-preservation checks as live-site playback/browser tests.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, GOOGLE_STAGING_REPLACEMENTS, GOOGLE_READ_AHEAD_REPLACEMENTS, GOOGLE_FRAME_PREPARATION_REPLACEMENTS, END, VERSION } from '../worker/index.js';
 
@@ -13,6 +14,16 @@ const helper = (await readFile(new URL('../src/fashion-product-guard.js', import
 const googleCleanup = (await readFile(new URL('../src/google-search-cleanup.js', import.meta.url), 'utf8')).trim();
 const prefix = `\n\n${googleCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const readAhead669 = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
+const extra = readAhead669.indexOf('\n\n// A standalone TikTok tile');
+const videoHook = '  indexGenericGoogleVideoTilesV669(scope, target, index, removeCopies);\n';
+assert(extra > 0 && readAhead669.split(videoHook).length === 2);
+const currentReadAhead = readAhead669.slice(0, extra).replace(videoHook, '');
+assert.equal(executable.split(readAhead669).length, 2);
+executable = executable.replace(readAhead669, () => currentReadAhead);
+assert.equal(createHash('sha256').update(executable).digest('hex'),
+  '2c6a91179a3f8a14347dc047bf9b5d17be51412a8ff1d49b38cc044cbe376be9',
+  'Executable outside the standalone video deduplicator must match the published v6.68');
 const mobileFrames = (await readFile(new URL('../src/google-mobile-result-frames.js', import.meta.url), 'utf8')).trim();
 const paintHook = 'if(r){repairGenericGoogleResultBoundariesV658(u);repairGenericGoogleMobileFramesV668(u)}';
 assert.equal(executable.split(mobileFrames + '\n').length, 2, 'Mobile framing module must be included once');
@@ -53,7 +64,6 @@ assert(restoredLayout === currentLayout, 'Unrelated Google import-layout changes
 assert.equal(executable.split(candidateLayout).length, 2);
 executable = executable.replace(candidateLayout, () => restoredLayout);
 assert(executable === frozen667Body, 'Only the Google mobile frames and source backdrop may differ from v6.67');
-const currentReadAhead = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
 const frozen666 = await readFile(new URL('../Android_Generic_AutoPager_v6.66.js', import.meta.url), 'utf8');
 const frozen666Body = frozen666.slice(frozen666.indexOf(END) + END.length);
 const layoutStart666 = frozen666Body.indexOf(layoutMarker);

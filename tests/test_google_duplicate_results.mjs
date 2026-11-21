@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { buildUserscript } from '../worker/index.js';
+import { videoSearchPage } from './fixtures/google-video-duplicates.mjs';
 
 const launch = { headless: true };
 if (process.env.GOOGLE_TEST_CHROMIUM_EXECUTABLE) launch.executablePath = process.env.GOOGLE_TEST_CHROMIUM_EXECUTABLE;
@@ -62,4 +63,29 @@ try {
       console.log('PASS exact duplicate results across pages 1–3: ' + label);
     } finally { await context.close(); }
   }
+  const context = await browser.newContext({ viewport: { width: 390, height: 780 }, isMobile: true, hasTouch: true });
+  try {
+    const page = await context.newPage(), errors = [];
+    page.on('pageerror', err => errors.push(String(err)));
+    await page.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.hostname !== 'www.google.com') return route.abort();
+      if (url.pathname === '/search') return route.fulfill({ contentType: 'text/html; charset=utf-8', body: videoSearchPage(Number(url.searchParams.get('start'))) });
+      if (/^\/thumb[12]\.svg$/.test(url.pathname)) return route.fulfill({ contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="52"><rect width="80" height="52" fill="' + (url.pathname.includes('1') ? 'red' : 'blue') + '"/></svg>' });
+      return route.abort();
+    });
+    await page.addInitScript({ content: await buildUserscript() });
+    await page.goto('https://www.google.com/search?q=サーモンキャンディ');
+    const pages = page.locator('.generic-autopager-page');
+    await pages.first().waitFor();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await pages.nth(1).waitFor();
+    const ids = locator => locator.locator('[data-result]').evaluateAll(nodes => nodes.map(n => n.dataset.result));
+    assert.equal(await page.locator('#rso > [data-result=original]').count(), 1);
+    assert.deepEqual(await ids(pages.first()), ['etsy', 'other-video', 'carousel', 'different-poster']);
+    assert.deepEqual(await ids(pages.nth(1)), ['last']);
+    assert.deepEqual(errors, []);
+    console.log('PASS standalone video overlap, player-only cards, distinct posts/posters and carousel preservation');
+  } finally { await context.close(); }
 } finally { await browser.close(); }

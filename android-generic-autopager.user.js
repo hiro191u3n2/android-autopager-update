@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.68.0
-// @description  Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.69.0
+// @description  Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -5477,6 +5477,7 @@ function createGenericGoogleReadAheadV665(state, load) {
 // alone does not identify it: keep different excerpts, headlines or sitelinks.
 // Scan each new section once; read the rendered card only when its key collides.
 function indexGenericGoogleResultsV667(scope, target, index, removeCopies) {
+  indexGenericGoogleVideoTilesV669(scope, target, index, removeCopies);
   const heading = 'h3,[role="heading"]';
   const rich = 'g-scrolling-carousel,g-inner-card,g-related-question,g-section-with-header,details,nav,aside,video,iframe,table,[role="grid"],[role="tablist"],[role="listbox"],[data-attrid],[data-text-ad],[data-shopping],[itemtype*="Product"]';
   const wrapper = '.MjjYud,.Ww4FFb,.g,[data-snhf],article';
@@ -5537,6 +5538,119 @@ function indexGenericGoogleResultsV667(scope, target, index, removeCopies) {
     index.set(key, previous);
   }
   for (const card of removals) card.remove();
+}
+
+// A standalone TikTok tile can have separate title, thumbnail and Google player
+// links. Match the post identity across pages without treating a video carousel
+// or a neighboring result as part of the tile.
+function indexGenericGoogleVideoTilesV669(scope, target, index, removeCopies) {
+  const markers = 'a[href*="tiktok" i],[data-surl*="tiktok" i],[data-lpage*="tiktok" i],[data-video-url*="tiktok" i],a[href*="vid:"],a[href*="vid%3A" i],[data-vid]';
+  const groups = 'g-scrolling-carousel,g-inner-card,g-section-with-header,g-related-question,nav,aside,details,table,[role="grid"],[role="listbox"],[role="tablist"],[data-shopping],[data-text-ad]';
+  const excluded = groups + ',[hidden],[inert],[aria-hidden="true"]';
+  const headings = 'h1,h2,h3,h4,[role="heading"],[aria-level],.DKV0Md,.n0jPhd,.vvjwJb';
+  const menu = '[aria-haspopup],[aria-label*="この検索結果"],[aria-label*="この結果"],[aria-label*="About this result" i]';
+  const media = 'img,video,g-img,[role="img"],[data-vid],[style*="background-image"]';
+  const duration = /(?:^|[^\d:])(?:\d{1,2}:)?\d{1,3}:[0-5]\d(?![\d:])/;
+  const clean = value => (value || '').replace(/\s+/g, ' ').trim();
+  const visible = node => !!node.getClientRects().length && (node.checkVisibility
+    ? node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+    : node.ownerDocument.defaultView.getComputedStyle(node).visibility === 'visible');
+  const parse = value => {
+    try {
+      let url = new URL(value, location.href);
+      const google = /^(?:www\.)?google\.[a-z.]+$/i;
+      if (google.test(url.hostname) && url.pathname === '/url') {
+        url = new URL(url.searchParams.get('url') || url.searchParams.get('q'));
+      }
+      if (!/^https?:$/.test(url.protocol)) return {};
+      if (/^(?:[^.]+\.)*tiktok\.com$/i.test(url.hostname)) {
+        const id = url.pathname.match(/^\/(?:@[^/]+\/video\/|v\/|player\/v1\/|embed\/v2\/)(\d{8,22})(?:\.html)?\/?$/i)?.[1];
+        if (id) return { post: id };
+      }
+      if (google.test(url.hostname) && url.pathname === '/search') {
+        const hash = new URLSearchParams(url.hash.slice(1));
+        const vld = hash.get('vld') || url.searchParams.get('vld') || '';
+        const viewer = vld.match(/(?:^|,)vid:([^,]+)/)?.[1];
+        if (viewer || hash.get('fpstate') === 'ive') return { preview: true, viewer };
+      }
+    } catch (_) { }
+    return {};
+  };
+  const markerId = node => {
+    for (const attr of ['data-surl', 'data-lpage', 'data-video-url', 'href']) {
+      if (!node.hasAttribute(attr)) continue;
+      const id = parse(node.getAttribute(attr));
+      if (id.post || id.viewer) return id;
+    }
+    const viewer = node.getAttribute('data-vid');
+    return viewer && /^[\w-]{5,100}$/.test(viewer) ? { viewer } : {};
+  };
+  const processed = new Set();
+  for (const seed of scope.querySelectorAll(markers + ',a[href*="fpstate=ive"]')) {
+    if (seed.closest(excluded)) continue;
+    const id = markerId(seed);
+    if (!id.post && !id.viewer && !parse(seed.getAttribute('href')).preview) continue;
+    const wrapper = seed.closest('.Ww4FFb,.MjjYud,.g,[data-snhf],article');
+    const start = wrapper && scope.contains(wrapper) && !wrapper.matches('.generic-autopager-google-source-root') ? wrapper : seed;
+    for (let card = start; scope.contains(card) && card !== target && !card.matches('.generic-autopager-google-source-root,#rso,#search'); card = card.parentElement) {
+      if (processed.has(card) || card.querySelector(groups)) break;
+      if (!card.querySelector(media)) continue;
+      const text = card.textContent;
+      if (!/\btiktok\b/i.test(text) || !duration.test(text)) continue;
+      const titles = [...card.querySelectorAll(headings)].filter(node => !node.querySelector(headings) && visible(node));
+      if (titles.length > 1) break;
+      const links = [...card.querySelectorAll('a[href]')];
+      if (card.matches('a[href]')) links.unshift(card);
+      const posts = new Set(), viewers = new Set();
+      for (const marker of [seed, ...card.querySelectorAll(markers)]) {
+        const value = markerId(marker);
+        if (value.post) posts.add(value.post);
+        if (value.viewer) viewers.add(value.viewer);
+      }
+      // Preserve a block with another destination, control or distinct video.
+      if (posts.size > 1 || viewers.size > 1 || links.some(link => {
+        if (link.closest(menu)) return false;
+        const value = parse(link.getAttribute('href'));
+        return !value.post && !value.preview;
+      })) break;
+      const title = titles[0] || links.find(link => {
+        const label = clean(link.textContent);
+        const id = markerId(link);
+        return (id.post || id.viewer) && label.length >= 4 && !duration.test(label) && visible(link);
+      });
+      if (!title || !visible(card)) continue;
+      const label = clean(title.textContent);
+      if (!label) continue;
+      // Remove empty packaging around the complete card, preserving grouped
+      // results and the imported root, even when its only child is a duplicate.
+      while (card !== scope && card.parentElement !== target &&
+          !card.parentElement.matches('.generic-autopager-google-source-root,#rso,#search,.generic-autopager-page') &&
+          card.parentElement.childElementCount === 1 &&
+          ![...card.parentElement.childNodes].some(node => node.nodeType === 3 && node.data.trim())) card = card.parentElement;
+      processed.add(card);
+      const post = [...posts][0], viewer = [...viewers][0];
+      let identity = post ? ['post', post] : ['viewer', viewer];
+      if (!post && !viewer) {
+        // Some player links expose no ID. Require the complete rendered text
+        // AND the actual video thumbnail; a duration, favicon or title alone
+        // must never identify a recording.
+        const thumbnail = [...card.querySelectorAll('img,video[poster]')].find(node => {
+          const rect = node.getBoundingClientRect();
+          const src = node.poster || node.currentSrc || node.src;
+          return rect.width >= 60 && rect.height >= 32 && visible(node) &&
+            /^https?:/i.test(src) && !genericGoogleImagePlaceholderV666(src);
+        });
+        const text = clean(card.innerText);
+        if (!thumbnail || text.length < label.length + 45) break;
+        identity = ['tile', thumbnail.poster || thumbnail.currentSrc || thumbnail.src, text];
+      }
+      const key = JSON.stringify(['standalone-tiktok', ...identity, label]);
+      const previous = index.get(key) || [];
+      if (removeCopies && previous.some(other => target.contains(other) && !scope.contains(other) && visible(other))) card.remove();
+      else if (!previous.includes(card)) { previous.push(card); index.set(key, previous); }
+      break;
+    }
+  }
 }
 // Prepare a rendered Google frame according to its actual layout readiness.
 // Only the source frame scrolls; no outer scroll position or gesture is changed.
