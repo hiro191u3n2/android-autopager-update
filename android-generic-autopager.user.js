@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.73.0
-// @description  Google検索のレシピ欄を初回・追加ページで非表示にします。「注目されている商品」の2列の商品一覧と「その他の商品」を除去。自動追加する各ページも表示前に処理。Google検索の「注目されている商品」で、横並びのカードと画像付きの価格帯が残る表示を修正。Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.74.0
+// @description  Google検索の商品欄から取り残された価格帯と空の開閉行を非表示にします。Google検索のレシピ欄を初回・追加ページで非表示にします。「注目されている商品」の2列の商品一覧と「その他の商品」を除去。自動追加する各ページも表示前に処理。Google検索の「注目されている商品」で、横並びのカードと画像付きの価格帯が残る表示を修正。Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -535,6 +535,55 @@ var pruneGenericGoogleFeaturedProductsV672;
       normalize(value).normalize('NFKC').replace(/\s+/g, ''));
   }
 
+  // A collapsed shopping accordion can be rendered independently of its
+  // heading and offers. A price inside an ordinary result is not an accordion.
+  const bandControl = 'button,summary,[role="button"],[aria-expanded],[jsaction*="click"]';
+  const bandProtected = productExclusions + ',article,p,cite,form,input,select,textarea,.tF2Cxc,[data-initq],[jscontroller="Da4hkd"]';
+  function accordionControl(el) {
+    return el.matches(bandControl) ? el : el.querySelector(bandControl);
+  }
+  function bandRowFor(el, scope) {
+    if (!scope || el.closest(bandProtected + ',a[href]')) return null;
+    for (let row = el; row && row !== scope && !row.matches(featureBoundary); row = row.parentElement) {
+      const value = shortText(row, 70);
+      if (value === null) break;
+      if (!bandLabel(value || row.getAttribute('aria-label'))) {
+        if (/^[\s¥￥$€£\d.,円~〜～–—−-]*$/.test(value)) continue;
+        break;
+      }
+      if (row.querySelector(bandProtected + ',a[href],' + moduleHeading)) break;
+      if (accordionControl(row) && row.querySelector(productImage)) return row;
+    }
+    return null;
+  }
+  function bandRowParts(row, scope) {
+    if (bandRowFor(row, scope) !== row) return [];
+    function matchingRow(el) {
+      if (!el || el.matches(featureBoundary + ',' + bandProtected + ',a[href]') ||
+          el.querySelector(bandProtected + ',a[href],' + moduleHeading)) return false;
+      const control = accordionControl(el);
+      if (!control) return false;
+      const value = shortText(el, 70);
+      if (value === null) return false;
+      const label = value || control.getAttribute('aria-label');
+      if (bandLabel(label)) return true;
+      return !value && (!label || /^(?:開く|閉じる|展開|折りたたむ|expand|collapse)$/i.test(label)) &&
+        (control.hasAttribute('aria-expanded') || !!el.querySelector('svg'));
+    }
+    let unit = row;
+    while (unit.parentElement) {
+      const parent = unit.parentElement;
+      const parts = [unit];
+      for (let el = unit.previousElementSibling; matchingRow(el); el = el.previousElementSibling) parts.unshift(el);
+      for (let el = unit.nextElementSibling; matchingRow(el); el = el.nextElementSibling) parts.push(el);
+      if (parent === scope || parent.matches(featureBoundary + ',' + bandProtected) ||
+          [...parent.childNodes].some(n => n.nodeType === 3 && n.data.trim() ||
+            n.nodeType === 1 && !parts.includes(n) && !n.matches('script,style,template,hr'))) return parts;
+      unit = parent;
+    }
+    return [unit];
+  }
+
   // The mobile page can put the heading, carousel and price accordions in
   // different wrappers, including a wrapper shared with the next web result.
   // Use the range between the heading and the last price row. Return only
@@ -797,22 +846,28 @@ var pruneGenericGoogleFeaturedProductsV672;
     return [];
   }
 
-  function updateFeatured(seed) {
+  function updateFeatured(seed, band = featuredGroups.get(seed)?.band || false) {
     const old = featuredGroups.get(seed);
-    const valid = seed.isConnected && featuredEnabled && isFeaturedHeading(seed);
-    const parts = valid ? featuredParts(seed) : [];
-    for (const part of old?.parts || []) if (!parts.includes(part)) unmark(part, true);
+    const scope = band && seed.closest(productSearchScope);
+    const valid = seed.isConnected && featuredEnabled && (band ? scope && bandRowFor(seed, scope) === seed : isFeaturedHeading(seed));
+    const parts = valid ? (band ? bandRowParts(seed, scope) : featuredParts(seed)) : [];
+    for (const part of old?.parts || []) if (!parts.includes(part) &&
+        ![...featuredGroups.values()].some(group => group !== old && group.parts.includes(part))) unmark(part, true);
     if (!valid) { featuredGroups.delete(seed); return; }
     for (const part of parts) if (!savedDisplay.has(part)) hide(part, 'featured-products');
     const owner = seed.closest('section,g-section-with-header,.Ww4FFb,.MjjYud,article');
     let watch = parts[0] || owner?.parentElement || seed.parentElement?.parentElement || seed;
     for (const part of parts) while (!watch.contains(part)) watch = watch.parentElement;
-    featuredGroups.set(seed, {parts, watch});
+    featuredGroups.set(seed, {parts, watch, band});
   }
 
   function featuredLabels(root) {
     const seeds = new Set(), walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let n; (n = walker.nextNode());) {
+      if (/[¥￥$€£円]/.test(n.data)) {
+        const row = bandRowFor(n.parentElement, root);
+        if (row) seeds.add(row);
+      }
       if (!/注目|popular|featured|レシピ|recipes/i.test(n.data)) continue;
       for (let el = n.parentElement; el && root.contains(el); el = el.parentElement) {
         const label = shortText(el, 48);
@@ -828,6 +883,12 @@ var pruneGenericGoogleFeaturedProductsV672;
     for (const h of root.querySelectorAll('[role="heading"][aria-label],h2[aria-label],h3[aria-label]')) {
       if (featuredLabel.test(normalize(h.getAttribute('aria-label')))) seeds.add(h);
     }
+    for (const el of root.querySelectorAll('[aria-expanded][aria-label],[role="button"][aria-label],button[aria-label]')) {
+      if (bandLabel(el.getAttribute('aria-label'))) {
+        const row = bandRowFor(el, root);
+        if (row) seeds.add(row);
+      }
+    }
     return seeds;
   }
 
@@ -838,7 +899,8 @@ var pruneGenericGoogleFeaturedProductsV672;
     for (const part of root.querySelectorAll('[' + MARK + '="featured-products"]')) part.remove();
     for (const seed of featuredLabels(root)) {
       if (!root.contains(seed)) continue;
-      for (const part of featuredParts(seed, root)) if (part !== root && root.contains(part)) part.remove();
+      const parts = isFeaturedHeading(seed) ? featuredParts(seed, root) : bandRowParts(seed, root);
+      for (const part of parts) if (part !== root && root.contains(part)) part.remove();
     }
   };
 
@@ -855,6 +917,11 @@ var pruneGenericGoogleFeaturedProductsV672;
     // notice. Inspect the child notice without hiding the shared controls.
     if (element.querySelector('input,textarea,select,nav,[role="navigation"]')) return;
     const text = shortText(element, 700);
+    const possibleBand = text || element.getAttribute('aria-label') || '';
+    if (featuredEnabled && possibleBand.length <= 70 && price.test(possibleBand) && bandLabel(possibleBand)) {
+      const row = bandRowFor(element, element.closest(productSearchScope));
+      if (row && !featuredGroups.has(row)) updateFeatured(row, true);
+    }
     if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading) && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
       const headingParent = element.closest(moduleHeading);
       const seed = isFeaturedHeading(headingParent) ? headingParent : element;

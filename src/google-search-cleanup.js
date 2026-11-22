@@ -515,6 +515,55 @@ var pruneGenericGoogleFeaturedProductsV672;
       normalize(value).normalize('NFKC').replace(/\s+/g, ''));
   }
 
+  // A collapsed shopping accordion can be rendered independently of its
+  // heading and offers. A price inside an ordinary result is not an accordion.
+  const bandControl = 'button,summary,[role="button"],[aria-expanded],[jsaction*="click"]';
+  const bandProtected = productExclusions + ',article,p,cite,form,input,select,textarea,.tF2Cxc,[data-initq],[jscontroller="Da4hkd"]';
+  function accordionControl(el) {
+    return el.matches(bandControl) ? el : el.querySelector(bandControl);
+  }
+  function bandRowFor(el, scope) {
+    if (!scope || el.closest(bandProtected + ',a[href]')) return null;
+    for (let row = el; row && row !== scope && !row.matches(featureBoundary); row = row.parentElement) {
+      const value = shortText(row, 70);
+      if (value === null) break;
+      if (!bandLabel(value || row.getAttribute('aria-label'))) {
+        if (/^[\s¥￥$€£\d.,円~〜～–—−-]*$/.test(value)) continue;
+        break;
+      }
+      if (row.querySelector(bandProtected + ',a[href],' + moduleHeading)) break;
+      if (accordionControl(row) && row.querySelector(productImage)) return row;
+    }
+    return null;
+  }
+  function bandRowParts(row, scope) {
+    if (bandRowFor(row, scope) !== row) return [];
+    function matchingRow(el) {
+      if (!el || el.matches(featureBoundary + ',' + bandProtected + ',a[href]') ||
+          el.querySelector(bandProtected + ',a[href],' + moduleHeading)) return false;
+      const control = accordionControl(el);
+      if (!control) return false;
+      const value = shortText(el, 70);
+      if (value === null) return false;
+      const label = value || control.getAttribute('aria-label');
+      if (bandLabel(label)) return true;
+      return !value && (!label || /^(?:開く|閉じる|展開|折りたたむ|expand|collapse)$/i.test(label)) &&
+        (control.hasAttribute('aria-expanded') || !!el.querySelector('svg'));
+    }
+    let unit = row;
+    while (unit.parentElement) {
+      const parent = unit.parentElement;
+      const parts = [unit];
+      for (let el = unit.previousElementSibling; matchingRow(el); el = el.previousElementSibling) parts.unshift(el);
+      for (let el = unit.nextElementSibling; matchingRow(el); el = el.nextElementSibling) parts.push(el);
+      if (parent === scope || parent.matches(featureBoundary + ',' + bandProtected) ||
+          [...parent.childNodes].some(n => n.nodeType === 3 && n.data.trim() ||
+            n.nodeType === 1 && !parts.includes(n) && !n.matches('script,style,template,hr'))) return parts;
+      unit = parent;
+    }
+    return [unit];
+  }
+
   // The mobile page can put the heading, carousel and price accordions in
   // different wrappers, including a wrapper shared with the next web result.
   // Use the range between the heading and the last price row. Return only
@@ -777,22 +826,28 @@ var pruneGenericGoogleFeaturedProductsV672;
     return [];
   }
 
-  function updateFeatured(seed) {
+  function updateFeatured(seed, band = featuredGroups.get(seed)?.band || false) {
     const old = featuredGroups.get(seed);
-    const valid = seed.isConnected && featuredEnabled && isFeaturedHeading(seed);
-    const parts = valid ? featuredParts(seed) : [];
-    for (const part of old?.parts || []) if (!parts.includes(part)) unmark(part, true);
+    const scope = band && seed.closest(productSearchScope);
+    const valid = seed.isConnected && featuredEnabled && (band ? scope && bandRowFor(seed, scope) === seed : isFeaturedHeading(seed));
+    const parts = valid ? (band ? bandRowParts(seed, scope) : featuredParts(seed)) : [];
+    for (const part of old?.parts || []) if (!parts.includes(part) &&
+        ![...featuredGroups.values()].some(group => group !== old && group.parts.includes(part))) unmark(part, true);
     if (!valid) { featuredGroups.delete(seed); return; }
     for (const part of parts) if (!savedDisplay.has(part)) hide(part, 'featured-products');
     const owner = seed.closest('section,g-section-with-header,.Ww4FFb,.MjjYud,article');
     let watch = parts[0] || owner?.parentElement || seed.parentElement?.parentElement || seed;
     for (const part of parts) while (!watch.contains(part)) watch = watch.parentElement;
-    featuredGroups.set(seed, {parts, watch});
+    featuredGroups.set(seed, {parts, watch, band});
   }
 
   function featuredLabels(root) {
     const seeds = new Set(), walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let n; (n = walker.nextNode());) {
+      if (/[¥￥$€£円]/.test(n.data)) {
+        const row = bandRowFor(n.parentElement, root);
+        if (row) seeds.add(row);
+      }
       if (!/注目|popular|featured|レシピ|recipes/i.test(n.data)) continue;
       for (let el = n.parentElement; el && root.contains(el); el = el.parentElement) {
         const label = shortText(el, 48);
@@ -808,6 +863,12 @@ var pruneGenericGoogleFeaturedProductsV672;
     for (const h of root.querySelectorAll('[role="heading"][aria-label],h2[aria-label],h3[aria-label]')) {
       if (featuredLabel.test(normalize(h.getAttribute('aria-label')))) seeds.add(h);
     }
+    for (const el of root.querySelectorAll('[aria-expanded][aria-label],[role="button"][aria-label],button[aria-label]')) {
+      if (bandLabel(el.getAttribute('aria-label'))) {
+        const row = bandRowFor(el, root);
+        if (row) seeds.add(row);
+      }
+    }
     return seeds;
   }
 
@@ -818,7 +879,8 @@ var pruneGenericGoogleFeaturedProductsV672;
     for (const part of root.querySelectorAll('[' + MARK + '="featured-products"]')) part.remove();
     for (const seed of featuredLabels(root)) {
       if (!root.contains(seed)) continue;
-      for (const part of featuredParts(seed, root)) if (part !== root && root.contains(part)) part.remove();
+      const parts = isFeaturedHeading(seed) ? featuredParts(seed, root) : bandRowParts(seed, root);
+      for (const part of parts) if (part !== root && root.contains(part)) part.remove();
     }
   };
 
@@ -835,6 +897,11 @@ var pruneGenericGoogleFeaturedProductsV672;
     // notice. Inspect the child notice without hiding the shared controls.
     if (element.querySelector('input,textarea,select,nav,[role="navigation"]')) return;
     const text = shortText(element, 700);
+    const possibleBand = text || element.getAttribute('aria-label') || '';
+    if (featuredEnabled && possibleBand.length <= 70 && price.test(possibleBand) && bandLabel(possibleBand)) {
+      const row = bandRowFor(element, element.closest(productSearchScope));
+      if (row && !featuredGroups.has(row)) updateFeatured(row, true);
+    }
     if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading) && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
       const headingParent = element.closest(moduleHeading);
       const seed = isFeaturedHeading(headingParent) ? headingParent : element;
