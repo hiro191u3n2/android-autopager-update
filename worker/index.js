@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.75.0';
+export const VERSION = '6.76.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -141,6 +141,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google検索のレシピ欄を初回・追加ページで非表示にします。');
   header = header.replace('// @description  ', '// @description  Google検索の商品欄から取り残された価格帯と空の開閉行を非表示にします。');
   header = header.replace('// @description  ', '// @description  Google検索の「その他の画像」の直後に残る空行と価格帯を、リンクやボタンの形式によらずまとめて除去。');
+  header = header.replace('// @description  ', '// @description  Google検索の画像一覧の下に残る、開閉ボタン付きの価格帯を余白と区切り線ごと非表示にします。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;

@@ -39,3 +39,19 @@ export function priceAfterImagesPage(start) {
     .replace('<main id="search">','<nav data-keep-chip><button>￥300未満</button></nav><main id="search">')
     .replace('</div></main>', video + '</div></main>');
 }
+
+export function priceToggleCaptionPage(start) {
+  const page = priceAfterImagesPage(start);
+  if (start > 20) return page;
+  const toggle = '<button aria-expanded="false"><span class="sr">詳細を表示</span><i class="arrow"></i></button>';
+  const blank = '<div class="row" data-band="blank">' + toggle + '</div>';
+  const priceRow = '<div class="row" data-band="price"><div class="thumb"></div><a href="/search?udm=28"><span>￥2,000</span> – <span>￥6,000</span></a>' + toggle + '</div>';
+  const box = '<div data-price-frame>' + blank + priceRow + '</div>';
+  const prefix = page.slice(0, page.indexOf('</section>') + '</section>'.length);
+  const rest = page.slice(page.indexOf('<div class="MjjYud" data-keep="shop">'));
+  const markup = (prefix + box + rest)
+    .replace('</style>', '[data-price-frame]{padding:9px 0;border-block:6px solid #eee}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}[data-images-label]::before{content:"その他の画像"}</style>')
+    .replace('【楽天市場】無添加 天然 キング サーモン','サーモンキャンディ ♪ by モウイジャパン')
+    .replaceAll('item.rakuten.co.jp','cookpad.com');
+  return start ? markup.replace('href="/search?udm=2">その他の画像', 'href="/search?udm=2" aria-label="その他の画像" data-images-label>') : markup;
+}

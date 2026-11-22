@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Android 汎用オートページャー
 // @namespace    https://example.local/userscripts
-// @version      6.75.0
-// @description  Google検索の「その他の画像」の直後に残る空行と価格帯を、リンクやボタンの形式によらずまとめて除去。Google検索の商品欄から取り残された価格帯と空の開閉行を非表示にします。Google検索のレシピ欄を初回・追加ページで非表示にします。「注目されている商品」の2列の商品一覧と「その他の商品」を除去。自動追加する各ページも表示前に処理。Google検索の「注目されている商品」で、横並びのカードと画像付きの価格帯が残る表示を修正。Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
+// @version      6.76.0
+// @description  Google検索の画像一覧の下に残る、開閉ボタン付きの価格帯を余白と区切り線ごと非表示にします。Google検索の「その他の画像」の直後に残る空行と価格帯を、リンクやボタンの形式によらずまとめて除去。Google検索の商品欄から取り残された価格帯と空の開閉行を非表示にします。Google検索のレシピ欄を初回・追加ページで非表示にします。「注目されている商品」の2列の商品一覧と「その他の商品」を除去。自動追加する各ページも表示前に処理。Google検索の「注目されている商品」で、横並びのカードと画像付きの価格帯が残る表示を修正。Google検索でページをまたいで同じTikTok動画が2回表示される問題を修正。Googleモバイル検索の追加ページで、結果の間から消えていた背景色を引き継ぎ、複数の結果がひと続きに見える箇所に区切りを追加。Googleの自動追加ページで、同じ枠に並ぶ検索結果の間に灰色の区切りを表示。前のページとリンク先・見出し・本文が一致する通常の検索結果の重複表示を抑制。Googleの連続スクロール時に次ページの準備が追いつかない問題を修正。描画の固定待機と背景情報の二重走査を削除。動画タイトル取得を並行し、スクロール中は遅いタイトル応答でページ全体を止めません。Googleのページ境界でスクロールが止まる待ち時間を軽減。次の1ページを先に準備し、閲覧位置に応じて先読みを継続。検索語の変更・一時停止・画面離脱時の古い結果の追加を防止。Google追加結果の接したカードと、PDF表示・折返し装飾を含むURL行で区切り補修から漏れる条件を修正。既存の余白内で描画し、結果の位置と高さを維持。Googleの同一枠内の検索結果の区切りを補修。自動追加中の末尾案内を整理し、YouTubeの見出しを追加前に確定。Google診断ログ機能を削除。Google追加ページの商品カードの横並び幅、角丸背景、星評価、在庫アイコンとCSSの区切りを保持。大きなページでも表示の引き継ぎを中止せず、非表示部分を省いて処理を分割。Google追加結果の区切り補修が背景色の違いだけで中止される問題を修正。既存の隙間へ明示的に描画し、細い枠線と結果の配置を維持。Google検索の一覧直下に並ぶ結果の区切り欠落を修正。既存の余白へ区切りを描画し、表示間隔を維持。同じ見出し内の親ドメインのサイト名とサブドメインURLの二重計数を修正。Google追加ページの同じ枠内にある独立した検索結果の区切りを補修。サイトURLとリンクから境界を判定し、見出し形式や大きなページにも対応。複数結果を料金から商品1枚にまとめる誤変換を防止。Google検索語の再編集・日本語変換時の重さを修正。入力中の不要な走査を休止し、候補更新とキーボード表示による全結果再走査を除外。長い処理を分割し、検索確定後に自動再開。Google検索が白いままになる不具合を修正。表示設定の書き換え競合を制限し、ページ全体・検索欄・結果一覧の誤非表示を防止。補正案内・現在地帯・AI概要の非表示を継続。Google追加ページの動画・商品・記事カードの表示崩れを修正。取得元の配置・配色・非表示状態を引き継ぎ、画像・再生ボタン・説明文の重なりと記事の誤変換を防止。服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。CITYHILLのpno実リンク・表示枠なし要素・取得先レイアウト照合を修正。追加失敗時は商品末尾の実リンクへ自動遷移。現在ページ番号の長押しでローカル診断。CITYHILL予約一覧の検索URL型ページ送り・番号のみ/装飾矢印・色違いcc・商品末尾/内部スクロール検知を修正。CITYHILL検索一覧のスマホ用URL・相対商品リンク・ページナビ・JS式次ページ・遅延描画・取得失敗時の再試行に対応。PAL CLOSET・atomicboxx・CITYHILL商品一覧の自動ページ追加。色違い維持・複数検索条件・動的商品表示に対応。Rlab store（ROJITA）の商品一覧末尾で次ページを自動追加。専用ページ送り・data-layzr画像・重複防止・最終ページ判定に対応。汎用オートページャー。固定URLからの直接更新に対応。Google追加ページ内の全商品カードを価格要素から特定し、実ページ配色の隔離レイアウトと検索結果区切りで重なり・色ずれ・連結表示を防止。「他の人はこちらも検索」非表示、YouTube原題復元・複数画像対策、PimEyes全画面日本語化・Android画像選択のフォーカス不具合修正、Yahooニュース全文表示・一覧限定UA・記事動画のEdge互換UAと公式プレイヤー準備までの前面サムネ表示・ニュース一覧先行描画と初期監視軽量化・初回一括整理による高速表示・可変案内枠非表示・記事一覧の画像拡大崩れ防止・リアルタイム検索上部キャンペーン枠非表示、スマホダイジェスト・Buzzap専用の解析完了待機・定期監視・3経路取得・継続再試行対応、Buzzapのフォロー案内枠を丸ごと非表示。
 // @downloadURL  https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.user.js
 // @updateURL    https://hiro191u3n2.github.io/android-autopager-update/android-generic-autopager.meta.js
 // @homepageURL  https://hiro191u3n2.github.io/android-autopager-update/
@@ -522,9 +522,15 @@ var pruneGenericGoogleFeaturedProductsV672;
   const productSearchScope = '#rso,#search,#main,#center_col,main,[role="main"],.generic-autopager-page,.generic-autopager-google-source-root';
   const productExclusions = 'nav,body>header,[role="banner"],footer,form,aside,blockquote,[role="navigation"],[role="dialog"],[role="listbox"],g-related-question,.related-question-pair,[data-attrid*="people_also_ask"]';
 
+  function isImageFooter(el) {
+    return !!el && (imageFooter.test(shortText(el, 48) || '') ||
+      el.matches('a[href],button,[role="button"],' + moduleHeading) && imageFooter.test(normalize(el.getAttribute('aria-label'))));
+  }
+
   function isFeaturedHeading(el) {
     if (!el) return false;
-    if (featuredLabel.test(shortText(el, 48) || '')) return true;
+    if (featuredLabel.test(shortText(el, 48) || '') ||
+        el.matches('a[href],button,[role="button"]') && imageFooter.test(normalize(el.getAttribute('aria-label')))) return true;
     if (!el.matches(moduleHeading)) return false;
     if (featuredLabel.test(normalize(el.getAttribute('aria-label')))) return true;
     return [...el.childNodes].some(n => n.nodeType === 3 && featuredLabel.test(normalize(n.data))) &&
@@ -546,6 +552,7 @@ var pruneGenericGoogleFeaturedProductsV672;
     const excluded = productExclusions + ',input,select,textarea,[data-initq],[jscontroller="Da4hkd"],.generic-autopager-page';
     const ignored = 'script,style,template,noscript,svg,[hidden],[inert]';
     const previousParts = featuredGroups.get(seed)?.parts || [];
+    const toggleCaption = /^(?:開く|閉じる|展開|折りたたむ|(?:詳細|価格帯)(?:を表示|を開く|を展開|を閉じる|を折りたたむ)|expand|collapse|show details|hide details)$/i;
     const priceChars = /^[\s\d０-９.,，．¥￥$€£円以下未満以上超からまで~〜～‐-―−－\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069-]*$/;
     function ignoredNode(el) {
       if (el.matches(ignored)) return true;
@@ -563,6 +570,9 @@ var pruneGenericGoogleFeaturedProductsV672;
       function collect(node) {
         if (--budget < 0) return false;
         if (node.nodeType === 3) {
+          // Google can put a visually clipped instruction inside the toggle.
+          // Only disregard an exact action caption owned by an expand control.
+          if (toggleCaption.test(normalize(node.data)) && node.parentElement.closest('button,summary,[role="button"],[aria-expanded]')) return true;
           text += node.data;
           return text.length <= 100 && priceChars.test(node.data);
         }
@@ -877,7 +887,7 @@ var pruneGenericGoogleFeaturedProductsV672;
   }
 
   function featuredParts(seed, importedRoot) {
-    const images = imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || '');
+    const images = isImageFooter(seed);
     const scope = importedRoot || seed.closest(productSearchScope) || (images || seed.matches(moduleHeading) ? document.body : null);
     if (images && scope && !seed.closest(productExclusions)) return pricePartsAfterImages(seed, scope);
     const link = seed.closest('a[href]') || seed.querySelector('a[href]');
@@ -931,7 +941,7 @@ var pruneGenericGoogleFeaturedProductsV672;
     const owner = seed.closest('section,g-section-with-header,.Ww4FFb,.MjjYud,article');
     let watch = parts[0] || owner?.parentElement || seed.parentElement?.parentElement || seed;
     for (const part of parts) while (!watch.contains(part)) watch = watch.parentElement;
-    const images = !band && imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || '');
+    const images = !band && isImageFooter(seed);
     if (images) while (!watch.contains(seed)) watch = watch.parentElement;
     featuredGroups.set(seed, {parts, watch, band, images});
     if (!images && parts.some(part => !old?.parts.includes(part))) {
@@ -963,15 +973,16 @@ var pruneGenericGoogleFeaturedProductsV672;
     for (const h of root.querySelectorAll('[role="heading"][aria-label],h2[aria-label],h3[aria-label]')) {
       if (featuredLabel.test(normalize(h.getAttribute('aria-label')))) seeds.add(h);
     }
-    for (const el of root.querySelectorAll('[aria-expanded][aria-label],[role="button"][aria-label],button[aria-label]')) {
-      if (bandLabel(el.getAttribute('aria-label'))) {
+    for (const el of root.querySelectorAll('[aria-expanded][aria-label],[role="button"][aria-label],button[aria-label],a[href][aria-label]')) {
+      if (imageFooter.test(normalize(el.getAttribute('aria-label'))) && !el.closest(productExclusions)) seeds.add(el);
+      else if (bandLabel(el.getAttribute('aria-label'))) {
         const row = bandRowFor(el, root);
         if (row) seeds.add(row);
       }
     }
     // First remove the named shelf, then inspect what follows the image footer.
     // The detached import has no MutationObserver to run a second cleanup.
-    const footers = [...seeds].filter(seed => imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || ''));
+    const footers = [...seeds].filter(seed => isImageFooter(seed));
     for (const footer of footers) { seeds.delete(footer); seeds.add(footer); }
     return seeds;
   }
@@ -1010,12 +1021,12 @@ var pruneGenericGoogleFeaturedProductsV672;
             seed.closest(productSearchScope) === element.closest(productSearchScope)) updateFeatured(seed);
       }
     }
-    if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading) && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
+    if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading + ',a[href][aria-label],button[aria-label],[role="button"][aria-label]') && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
       const headingParent = element.closest(moduleHeading);
       const seed = isFeaturedHeading(headingParent) ? headingParent : element;
       const link = seed.closest('a[href]') || seed.querySelector('a[href]');
       // Plain mobile labels can be wrapped in several identical text spans.
-      const heading = seed.matches('h2,h3,h4,[role="heading"]') ||
+      const heading = seed.matches('h2,h3,h4,[role="heading"]') || imageFooter.test(normalize(seed.getAttribute('aria-label'))) ||
         ![...seed.children].some(child => featuredLabel.test(shortText(child, 45) || ''));
       if (heading && !(link && isExternalLink(link)) && !seed.closest(productExclusions) &&
           !featuredGroups.has(seed) && ![...featuredGroups.keys()].some(other => other.contains(seed))) updateFeatured(seed);

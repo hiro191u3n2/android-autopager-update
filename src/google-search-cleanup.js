@@ -502,9 +502,15 @@ var pruneGenericGoogleFeaturedProductsV672;
   const productSearchScope = '#rso,#search,#main,#center_col,main,[role="main"],.generic-autopager-page,.generic-autopager-google-source-root';
   const productExclusions = 'nav,body>header,[role="banner"],footer,form,aside,blockquote,[role="navigation"],[role="dialog"],[role="listbox"],g-related-question,.related-question-pair,[data-attrid*="people_also_ask"]';
 
+  function isImageFooter(el) {
+    return !!el && (imageFooter.test(shortText(el, 48) || '') ||
+      el.matches('a[href],button,[role="button"],' + moduleHeading) && imageFooter.test(normalize(el.getAttribute('aria-label'))));
+  }
+
   function isFeaturedHeading(el) {
     if (!el) return false;
-    if (featuredLabel.test(shortText(el, 48) || '')) return true;
+    if (featuredLabel.test(shortText(el, 48) || '') ||
+        el.matches('a[href],button,[role="button"]') && imageFooter.test(normalize(el.getAttribute('aria-label')))) return true;
     if (!el.matches(moduleHeading)) return false;
     if (featuredLabel.test(normalize(el.getAttribute('aria-label')))) return true;
     return [...el.childNodes].some(n => n.nodeType === 3 && featuredLabel.test(normalize(n.data))) &&
@@ -526,6 +532,7 @@ var pruneGenericGoogleFeaturedProductsV672;
     const excluded = productExclusions + ',input,select,textarea,[data-initq],[jscontroller="Da4hkd"],.generic-autopager-page';
     const ignored = 'script,style,template,noscript,svg,[hidden],[inert]';
     const previousParts = featuredGroups.get(seed)?.parts || [];
+    const toggleCaption = /^(?:開く|閉じる|展開|折りたたむ|(?:詳細|価格帯)(?:を表示|を開く|を展開|を閉じる|を折りたたむ)|expand|collapse|show details|hide details)$/i;
     const priceChars = /^[\s\d０-９.,，．¥￥$€£円以下未満以上超からまで~〜～‐-―−－\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069-]*$/;
     function ignoredNode(el) {
       if (el.matches(ignored)) return true;
@@ -543,6 +550,9 @@ var pruneGenericGoogleFeaturedProductsV672;
       function collect(node) {
         if (--budget < 0) return false;
         if (node.nodeType === 3) {
+          // Google can put a visually clipped instruction inside the toggle.
+          // Only disregard an exact action caption owned by an expand control.
+          if (toggleCaption.test(normalize(node.data)) && node.parentElement.closest('button,summary,[role="button"],[aria-expanded]')) return true;
           text += node.data;
           return text.length <= 100 && priceChars.test(node.data);
         }
@@ -857,7 +867,7 @@ var pruneGenericGoogleFeaturedProductsV672;
   }
 
   function featuredParts(seed, importedRoot) {
-    const images = imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || '');
+    const images = isImageFooter(seed);
     const scope = importedRoot || seed.closest(productSearchScope) || (images || seed.matches(moduleHeading) ? document.body : null);
     if (images && scope && !seed.closest(productExclusions)) return pricePartsAfterImages(seed, scope);
     const link = seed.closest('a[href]') || seed.querySelector('a[href]');
@@ -911,7 +921,7 @@ var pruneGenericGoogleFeaturedProductsV672;
     const owner = seed.closest('section,g-section-with-header,.Ww4FFb,.MjjYud,article');
     let watch = parts[0] || owner?.parentElement || seed.parentElement?.parentElement || seed;
     for (const part of parts) while (!watch.contains(part)) watch = watch.parentElement;
-    const images = !band && imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || '');
+    const images = !band && isImageFooter(seed);
     if (images) while (!watch.contains(seed)) watch = watch.parentElement;
     featuredGroups.set(seed, {parts, watch, band, images});
     if (!images && parts.some(part => !old?.parts.includes(part))) {
@@ -943,15 +953,16 @@ var pruneGenericGoogleFeaturedProductsV672;
     for (const h of root.querySelectorAll('[role="heading"][aria-label],h2[aria-label],h3[aria-label]')) {
       if (featuredLabel.test(normalize(h.getAttribute('aria-label')))) seeds.add(h);
     }
-    for (const el of root.querySelectorAll('[aria-expanded][aria-label],[role="button"][aria-label],button[aria-label]')) {
-      if (bandLabel(el.getAttribute('aria-label'))) {
+    for (const el of root.querySelectorAll('[aria-expanded][aria-label],[role="button"][aria-label],button[aria-label],a[href][aria-label]')) {
+      if (imageFooter.test(normalize(el.getAttribute('aria-label'))) && !el.closest(productExclusions)) seeds.add(el);
+      else if (bandLabel(el.getAttribute('aria-label'))) {
         const row = bandRowFor(el, root);
         if (row) seeds.add(row);
       }
     }
     // First remove the named shelf, then inspect what follows the image footer.
     // The detached import has no MutationObserver to run a second cleanup.
-    const footers = [...seeds].filter(seed => imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || ''));
+    const footers = [...seeds].filter(seed => isImageFooter(seed));
     for (const footer of footers) { seeds.delete(footer); seeds.add(footer); }
     return seeds;
   }
@@ -990,12 +1001,12 @@ var pruneGenericGoogleFeaturedProductsV672;
             seed.closest(productSearchScope) === element.closest(productSearchScope)) updateFeatured(seed);
       }
     }
-    if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading) && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
+    if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading + ',a[href][aria-label],button[aria-label],[role="button"][aria-label]') && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
       const headingParent = element.closest(moduleHeading);
       const seed = isFeaturedHeading(headingParent) ? headingParent : element;
       const link = seed.closest('a[href]') || seed.querySelector('a[href]');
       // Plain mobile labels can be wrapped in several identical text spans.
-      const heading = seed.matches('h2,h3,h4,[role="heading"]') ||
+      const heading = seed.matches('h2,h3,h4,[role="heading"]') || imageFooter.test(normalize(seed.getAttribute('aria-label'))) ||
         ![...seed.children].some(child => featuredLabel.test(shortText(child, 45) || ''));
       if (heading && !(link && isExternalLink(link)) && !seed.closest(productExclusions) &&
           !featuredGroups.has(seed) && ![...featuredGroups.keys()].some(other => other.contains(seed))) updateFeatured(seed);
