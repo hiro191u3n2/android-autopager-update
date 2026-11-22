@@ -126,7 +126,7 @@ try {
       return root.querySelector('[data-keep="shop"]').getBoundingClientRect().top - bottom;
     });
     assert(before ? gap > 20 : Math.abs(gap) <= 1, name + ' gap in CSS pixels: ' + gap);
-    assert.equal(await page.locator('#rso [data-price-frame]:visible').count(), before ? 1 : 0);
+    assert.equal(await page.locator('[data-price-frame]:visible').count(), before ? 3 : 0);
     if (!before) assert.equal(await page.locator('[data-band]:visible').count(), 0);
     for (const keep of ['images','shop','questions','article','videos']) {
       assert(await page.locator('#rso [data-keep="' + keep + '"]').first().isVisible());
