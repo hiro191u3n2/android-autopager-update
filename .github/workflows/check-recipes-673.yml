@@ -1,0 +1,31 @@
+name: Android recipe section comparison
+on:
+  push:
+    branches: [verify/recipes-6.73]
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build the verified package and Android fixture
+        run: |
+          node scripts/build-release.mjs "$PWD" /tmp/recipes-release 6.73.0
+          echo 'ad4a00c31035552365a25a9ee39d1bb4a76d5a326b1def3bba9f73c59fe77557  /tmp/recipes-release/android-generic-autopager.user.js' | sha256sum -c
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
+          sed -i 's/waitForPage(2, 0)/waitForPage(30, 0)/; s/"0".equals(start) || "10".equals(start) || "20".equals(start)/start.matches("(?:0|[1-9]0|[12][0-9]0)")/' tests/android-webview/MainActivity.java
+          bash tests/android-webview/build.sh "$PWD" "$RUNNER_TEMP/recipes" tests/android-webview/make-recipe-assets.mjs
+      - name: Test previous and candidate scripts in Android 17 WebView
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sed 's@tests/android-webview/run-mobile-frames.py@tests/android-webview/run-recipe-verify.py@' tests/android-webview/run-frame-emulator.sh > "$RUNNER_TEMP/run-recipes.sh"
+          bash "$RUNNER_TEMP/run-recipes.sh" 37.0 google_apis_ps16k 37 "$RUNNER_TEMP/recipes" "$RUNNER_TEMP/evidence"

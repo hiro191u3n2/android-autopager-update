@@ -491,7 +491,8 @@ var pruneGenericGoogleFeaturedProductsV672;
     }
   }
 
-  const featuredLabel = /^(?:注目\s*されて\s*い?る\s*商品|注目\s*の\s*商品|popular products|featured products)$/i;
+  const featuredLabel = /^(?:注目\s*されて\s*い?る\s*商品|注目\s*の\s*商品|popular products|featured products|レシピ|recipes)$/i;
+  const recipeLabel = /^(?:レシピ|recipes)$/i;
   const price = /[¥￥$€£]\s*\d|\d[\d,.]*\s*円/;
   const featureBoundary = BOUNDARY + ',.generic-autopager-page,.generic-autopager-google-source-root';
   const featureControls = 'button,[role="button"],a[href],summary';
@@ -690,11 +691,57 @@ var pruneGenericGoogleFeaturedProductsV672;
       /^(?=.*\d)[¥￥$€£\d.,円万千以下以上未満超からまで〜～~–－−-]+$/.test(text);
   }
 
+  function recipeParts(seed, scope) {
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        return normalize(n.data) && !n.parentElement.closest('script,style,svg,noscript,template') ?
+          NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    walker.currentNode = seed;
+    let last = seed, cards = 0, more = false;
+    for (let node; (node = walker.nextNode());) {
+      if (last.contains(node)) continue;
+      const el = node.parentElement;
+      if (el.closest(productExclusions + ',.tF2Cxc')) break;
+      const article = el.closest('article');
+      if (article && !article.contains(seed) && !article.matches('[itemtype$="/Recipe"]') && article.querySelector('p')) break;
+      const control = el.closest(featureControls) || el;
+      const label = shortText(control, 25);
+      if (cards && /^(?:フィードバック|feedback)$/i.test(label)) { last = control; break; }
+      if (cards && !more && /^(?:もっと見る|その他のレシピ|show more|more recipes)$/i.test(label)) {
+        more = true;
+        last = control;
+        continue;
+      }
+      if (more) break;
+      let card = null;
+      for (let unit = el; unit && unit !== scope && !unit.contains(seed) && !unit.contains(last); unit = unit.parentElement) {
+        if (unit.matches(featureBoundary) || !shortText(unit, 550) ||
+            unit.querySelector('article,.tF2Cxc,.related-question-pair')) break;
+        const links = unit.matches('a[href]') ? [unit] : [...unit.querySelectorAll('a[href]')].filter(isExternalLink);
+        if (new Set(links.map(a => a.href)).size > 1) break;
+        if (!links.some(isExternalLink) || !unit.querySelector(productImage)) continue;
+        if ([...unit.querySelectorAll(moduleHeading)].some(h => !h.closest('a[href]') && !h.querySelector('a[href]'))) break;
+        if (unit.matches('[itemtype$="/Recipe"]') ||
+            /レビューなし|件のレビュー|no reviews|\d[\d,.]*\s*(?:件|分|時間|min\b|reviews?\b)/i.test(unit.textContent) ||
+            unit.querySelector('[aria-label*="保存"],[aria-label*="Save" i],[itemprop="aggregateRating"]')) {
+          card = unit;
+        }
+      }
+      if (!card) break;
+      cards++;
+      last = card;
+    }
+    return cards ? sectionPartsBetween(seed, last, scope) : [];
+  }
+
   function featuredParts(seed, importedRoot) {
     const scope = importedRoot || seed.closest(productSearchScope) || (seed.matches(moduleHeading) ? document.body : null);
     const link = seed.closest('a[href]') || seed.querySelector('a[href]');
     if (!scope || seed.closest(productExclusions + ',article p') || link && isExternalLink(link) ||
         !isFeaturedHeading(seed)) return [];
+    if (recipeLabel.test(shortText(seed, 48)) || recipeLabel.test(seed.getAttribute('aria-label'))) return recipeParts(seed, scope);
     const isolated = isolatedFeaturedModule(seed, scope);
     if (isolated) return [isolated];
     const priced = pricedSectionParts(seed, scope);
@@ -746,7 +793,7 @@ var pruneGenericGoogleFeaturedProductsV672;
   function featuredLabels(root) {
     const seeds = new Set(), walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let n; (n = walker.nextNode());) {
-      if (!/注目|popular|featured/i.test(n.data)) continue;
+      if (!/注目|popular|featured|レシピ|recipes/i.test(n.data)) continue;
       for (let el = n.parentElement; el && root.contains(el); el = el.parentElement) {
         const label = shortText(el, 48);
         if (el.closest('script,style,template,noscript,' + productExclusions)) break;
