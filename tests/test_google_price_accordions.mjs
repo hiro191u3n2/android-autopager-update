@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { buildUserscript } from '../worker/index.js';
-import { priceAccordionPage, priceAfterImagesPage } from './fixtures/google-price-accordions.mjs';
+import { priceAccordionPage, priceAfterImagesPage, priceToggleCaptionPage } from './fixtures/google-price-accordions.mjs';
 
 const launch = {executablePath: process.env.GOOGLE_TEST_CHROMIUM_EXECUTABLE};
 if (process.env.GOOGLE_TEST_CHROMIUM_MODULE) {
@@ -99,5 +99,41 @@ try {
     }
     await page.close();
     console.log('PASS ' + name + ' price ranges after Images with CSS arrows, shopping links and hidden offer details');
+  }
+  const v675 = await readFile(new URL('../Android_Generic_AutoPager_v6.75.js', import.meta.url), 'utf8');
+  for (const [name, script] of [['v6.75', v675], ['current', candidate], ['fetch', candidate.replace('googleUseRenderedFrame:!0','googleUseRenderedFrame:!1')]]) {
+    const page = await browser.newPage({viewport:{width:390,height:780},isMobile:true,hasTouch:true});
+    const errors = [];
+    page.on('pageerror', err => errors.push(String(err)));
+    await page.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.pathname === '/search') return route.fulfill({contentType:'text/html; charset=utf-8', body:priceToggleCaptionPage(Number(url.searchParams.get('start')))});
+      return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg"/>'});
+    });
+    const hook = 'pruneGenericGoogleFeaturedProductsV672?.(u);';
+    assert(script.includes(hook));
+    const observed = script.replace(hook, hook + 'window.framesAfterPrune.push(u.querySelectorAll("[data-price-frame]").length);');
+    await page.addInitScript({content:'if (self === top) {\nwindow.framesAfterPrune=[];\n' + observed + '\n}'});
+    await page.goto('https://www.google.co.jp/search?q=サーモンキャンディ');
+    for (let i=0; i<2; i++) {
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+      await page.locator('.generic-autopager-page').nth(i).waitFor();
+    }
+    const before = name === 'v6.75';
+    assert.deepEqual(await page.evaluate(() => window.framesAfterPrune.slice(0, 2)), before ? [1,1] : [0,0], name + ' imported wrappers');
+    const gap = await page.locator('#rso').first().evaluate(root => {
+      const bottom = root.querySelector('[data-keep="images"]').getBoundingClientRect().bottom;
+      return root.querySelector('[data-keep="shop"]').getBoundingClientRect().top - bottom;
+    });
+    assert(before ? gap > 20 : Math.abs(gap) <= 1, name + ' gap in CSS pixels: ' + gap);
+    assert.equal(await page.locator('[data-price-frame]:visible').count(), before ? 3 : 0);
+    if (!before) assert.equal(await page.locator('[data-band]:visible').count(), 0);
+    for (const keep of ['images','shop','questions','article','videos']) {
+      assert(await page.locator('#rso [data-keep="' + keep + '"]').first().isVisible());
+      if (name !== 'fetch') assert.equal(await page.locator('[data-keep="' + keep + '"]:visible').count(), 3);
+    }
+    assert.deepEqual(errors, []);
+    await page.close();
+    console.log('PASS ' + name + ' price-toggle frame height and both neighboring results');
   }
 } finally { await browser.close(); }
