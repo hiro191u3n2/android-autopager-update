@@ -9,10 +9,15 @@ for variant in ('control','current'):
  adb('shell','am','start','-n',pkg+'/.MainActivity','--es','fixture','frames','--es','variant',variant)
  for _ in range(90):
   p=subprocess.run(['adb','exec-out','run-as',pkg,'cat','files/ready-30.json'],capture_output=True)
-  if p.returncode==0:break
+  try:
+   result=json.loads(p.stdout)
+   break
+  except (ValueError,UnicodeError): pass
   time.sleep(2)
- else:raise RuntimeError('Android WebView did not reach page 30')
- result=json.loads(p.stdout)
+ else:
+  subprocess.run(['adb','shell','run-as',pkg,'cat','files/error.txt'])
+  subprocess.run(['adb','logcat','-d','-s','AutoPagerTest:I','chromium:E'])
+  raise RuntimeError('Android WebView did not reach page 30')
  print(variant,result,flush=True)
  assert result['frameCommitted'] and result['androidApi']==37 and len(result['pages'])==30
  for i,row in enumerate(result['pages']):
