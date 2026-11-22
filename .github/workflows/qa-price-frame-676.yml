@@ -32,6 +32,9 @@ jobs:
           node scripts/build-release.mjs "$PWD" "$RUNNER_TEMP/release" 6.76.0
           node scripts/verify-release.mjs "$RUNNER_TEMP/release" 6.76.0
           for file in "$RUNNER_TEMP"/release/* "$RUNNER_TEMP"/release/.nojekyll; do cmp "$file" "./$(basename "$file")"; done
+      - name: Check whether the public Japanese search currently serves this layout
+        working-directory: /workspace/sites/android-autopager-update
+        run: node .qa/check-live.mjs
   webview:
     runs-on: ubuntu-24.04
     timeout-minutes: 28

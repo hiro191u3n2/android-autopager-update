@@ -113,7 +113,7 @@ try {
     const hook = 'pruneGenericGoogleFeaturedProductsV672?.(u);';
     assert(script.includes(hook));
     const observed = script.replace(hook, hook + 'window.framesAfterPrune.push(u.querySelectorAll("[data-price-frame]").length);');
-    await page.addInitScript({content:'if (self === top) {\\nwindow.framesAfterPrune=[];\\n' + observed + '\\n}'});
+    await page.addInitScript({content:'if (self === top) {\nwindow.framesAfterPrune=[];\n' + observed + '\n}'});
     await page.goto('https://www.google.co.jp/search?q=サーモンキャンディ');
     for (let i=0; i<2; i++) {
       await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
