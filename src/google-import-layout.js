@@ -200,10 +200,13 @@ function captureGenericGoogleLayoutV647(root) {
       const positioned = /^(?:absolute|fixed)$/.test(computed.position);
       const media = mediaFrames.has(node) || node.matches('img,video,canvas,svg');
       const decoration = !node.childElementCount && !node.textContent.trim();
+      // A collapsed panel still has offer text in the DOM. Changing its zero
+      // height to auto exposes those offers and breaks price-row boundaries.
+      const collapsed = computed.height === '0px' && /^(?:hidden|clip)$/.test(computed.overflowY);
       // Text heights remain flexible when a restored YouTube title grows.
       // Empty CSS icons/spacers, unlike text boxes, need their original height.
       values.push(['width', getGenericGoogleLayoutWidthV662(node, computed)]);
-      values.push(['height', positioned || media || decoration ? computed.height : 'auto']);
+      values.push(['height', positioned || media || decoration || collapsed ? computed.height : 'auto']);
       // An empty absolute background may use height:100%, with an outline
       // sized to calc(100% + 2px) inside it. Keep these sizes tied to the
       // cloned card when its text reflows. A frozen pixel height paints over
@@ -219,7 +222,7 @@ function captureGenericGoogleLayoutV647(root) {
           if (positioned) values.push(['top', top], ['bottom', bottom]);
         }
       }
-      if (!positioned && !media && !decoration) {
+      if (!positioned && !media && !decoration && !collapsed) {
         values.push(['min-height', '0']);
         const clamped = Number.parseInt(computed.getPropertyValue('-webkit-line-clamp'), 10) > 0;
         if (titleContainers.has(node) && !clamped) values.push(['max-height', 'none']);

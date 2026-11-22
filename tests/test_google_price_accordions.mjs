@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { buildUserscript } from '../worker/index.js';
-import { priceAccordionPage } from './fixtures/google-price-accordions.mjs';
+import { priceAccordionPage, priceAfterImagesPage } from './fixtures/google-price-accordions.mjs';
 
 const launch = {executablePath: process.env.GOOGLE_TEST_CHROMIUM_EXECUTABLE};
 if (process.env.GOOGLE_TEST_CHROMIUM_MODULE) {
@@ -11,6 +11,7 @@ if (process.env.GOOGLE_TEST_CHROMIUM_MODULE) {
   launch.args = bundle.args.filter(arg => !['--single-process', '--disable-web-security'].includes(arg));
 }
 const old = await readFile(new URL('../Android_Generic_AutoPager_v6.73.js', import.meta.url), 'utf8');
+const previous = await readFile(new URL('../Android_Generic_AutoPager_v6.74.js', import.meta.url), 'utf8');
 const candidate = await buildUserscript();
 const browser = await chromium.launch(launch);
 try {
@@ -64,5 +65,39 @@ try {
     assert.deepEqual(errors, []);
     await page.close();
     console.log('PASS ' + name + ' shopping price rows without a heading, initial and appended pages');
+  }
+  for (const [name, script] of [['v6.74', previous], ['v6.75', candidate]]) {
+    const page = await browser.newPage({viewport:{width:390,height:780},isMobile:true,hasTouch:true});
+    await page.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.pathname === '/search') return route.fulfill({contentType:'text/html; charset=utf-8',body:priceAfterImagesPage(Number(url.searchParams.get('start')))});
+      return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg"/>'});
+    });
+    await page.addInitScript({content:'if (self === top) {\n' + script + '\n}'});
+    await page.goto('https://www.google.co.jp/search?q=サーモンキャンディ');
+    for (let i=0; i<2; i++) {
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+      await page.locator('.generic-autopager-page').nth(i).waitFor();
+    }
+    assert.equal(await page.locator('[data-band]:visible').count(), name === 'v6.74' ? 6 : 0);
+    assert.equal(await page.locator('[data-suppressed-shelf]:visible').count(), 0);
+    for (const keep of ['images','shop','questions','article','videos']) assert.equal(await page.locator('[data-keep="' + keep + '"]:visible').count(), 3);
+    assert(await page.locator('[data-keep-chip] button').first().isVisible());
+    if (name === 'v6.75') {
+      assert.equal(await page.locator('[data-band-box]:visible').count(), 0);
+      assert.equal(await page.locator('.generic-autopager-page [data-band]').count(), 0);
+      // Reuse the same wrapper for an organic result, then stream back a price.
+      const box = page.locator('#rso [data-band-box]').first();
+      await box.evaluate(el=>{el.dataset.original=el.innerHTML; el.innerHTML='<a href="https://shop.example/organic"><h3>￥2,000–￥6,000</h3></a>';});
+      await box.locator('h3').waitFor();
+      await box.evaluate(el=>{el.innerHTML=el.dataset.original;});
+      await box.waitFor({state:'hidden'});
+      await page.evaluate(()=>history.pushState({},'', '/search?q=サーモンキャンディ&udm=28'));
+      await box.waitFor();
+      await page.evaluate(()=>history.back());
+      await box.waitFor({state:'hidden'});
+    }
+    await page.close();
+    console.log('PASS ' + name + ' price ranges after Images with CSS arrows, shopping links and hidden offer details');
   }
 } finally { await browser.close(); }

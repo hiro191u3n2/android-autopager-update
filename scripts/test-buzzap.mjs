@@ -24,7 +24,17 @@ assert.equal(executable.split(gridHook + 'for(const t of u.querySelectorAll(s))t
 executable = executable.replace(gridHook, '');
 assert.equal(executable.split(googleCleanup).length, 2);
 executable = executable.replace(googleCleanup, () => oldCleanup);
-assert(executable === frozen669Body, 'All executable code outside Google search cleanup must match published v6.69');
+const layoutMarker = '// Google loads result-specific CSS in each fetched document.';
+const stagingMarker = '// Prepare only a detached Google result page.';
+const packagedLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
+assert.equal(createHash('sha256').update(packagedLayout).digest('hex'),
+  'bf9c4166603319eaca5e3906f89d0fa2a9e3f3b8f4d606a4f6e9eefad295d697', 'Reviewed collapsed-panel layout snapshot');
+const layoutStart669 = frozen669Body.indexOf(layoutMarker), layoutEnd669 = frozen669Body.indexOf(stagingMarker);
+assert(layoutStart669 >= 0 && layoutEnd669 > layoutStart669);
+const candidateLayout = frozen669Body.slice(layoutStart669, layoutEnd669).trimEnd();
+assert.equal(executable.split(packagedLayout).length, 2);
+executable = executable.replace(packagedLayout, () => candidateLayout);
+assert(executable === frozen669Body, 'Executable outside Google cleanup and the reviewed layout snapshot must match v6.69');
 const readAhead669 = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
 const extra = readAhead669.indexOf('\n\n// A standalone TikTok tile');
 const videoHook = '  indexGenericGoogleVideoTilesV669(scope, target, index, removeCopies);\n';
@@ -42,9 +52,6 @@ assert.equal(executable.split(paintHook).length, 2, 'Mobile framing hook must be
 executable = executable.replace(mobileFrames + '\n', '').replace(paintHook, 'if(r)repairGenericGoogleResultBoundariesV658(u)');
 const frozen667 = await readFile(new URL('../Android_Generic_AutoPager_v6.67.js', import.meta.url), 'utf8');
 const frozen667Body = frozen667.slice(frozen667.indexOf(END) + END.length);
-const candidateLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
-const layoutMarker = '// Google loads result-specific CSS in each fetched document.';
-const stagingMarker = '// Prepare only a detached Google result page.';
 const start667 = frozen667Body.indexOf(layoutMarker), end667 = frozen667Body.indexOf(stagingMarker);
 assert(start667 >= 0 && end667 > start667);
 const currentLayout = frozen667Body.slice(start667, end667).trimEnd();

@@ -491,7 +491,8 @@ var pruneGenericGoogleFeaturedProductsV672;
     }
   }
 
-  const featuredLabel = /^(?:注目\s*されて\s*い?る\s*商品|注目\s*の\s*商品|popular products|featured products|レシピ|recipes)$/i;
+  const featuredLabel = /^(?:注目\s*されて\s*い?る\s*商品|注目\s*の\s*商品|popular products|featured products|レシピ|recipes|その他の画像|more images)$/i;
+  const imageFooter = /^(?:その他の画像|more images)$/i;
   const recipeLabel = /^(?:レシピ|recipes)$/i;
   const price = /[¥￥$€£]\s*\d|\d[\d,.]*\s*円/;
   const featureBoundary = BOUNDARY + ',.generic-autopager-page,.generic-autopager-google-source-root';
@@ -511,8 +512,78 @@ var pruneGenericGoogleFeaturedProductsV672;
   }
 
   function bandLabel(value) {
-    return /^(?:[¥$€£][\d.,]+|[\d.,]+円)(?:以下|未満|以上|超|から|まで|[~〜–—−-](?:[¥$€£]?[\d.,]+円?))$/.test(
-      normalize(value).normalize('NFKC').replace(/\s+/g, ''));
+    return /^(?:[¥$€£][\d.,]+|[\d.,]+円)(?:以下|未満|以上|超|から|まで|[~〜‐-―−-](?:[¥$€£]?[\d.,]+円?))$/.test(
+      normalize(value).normalize('NFKC').replace(/[\s\u061c\u202a-\u202e\u2066-\u2069]/g, ''));
+  }
+
+  // Some mobile layouts put a price-range link and an unlabelled row
+  // directly after the Images footer. Neither row needs to be a button.
+  function pricePartsAfterImages(seed, scope) {
+    const link = seed.closest('a[href]');
+    if (link && isExternalLink(link)) return [];
+    const footer = seed.closest('a,button,[role="button"]') || seed;
+    if (!scope.contains(footer)) return [];
+    const excluded = productExclusions + ',input,select,textarea,[data-initq],[jscontroller="Da4hkd"],.generic-autopager-page';
+    const ignored = 'script,style,template,noscript,svg,[hidden],[inert]';
+    const previousParts = featuredGroups.get(seed)?.parts || [];
+    const priceChars = /^[\s\d０-９.,，．¥￥$€£円以下未満以上超からまで~〜～‐-―−－\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069-]*$/;
+    function ignoredNode(el) {
+      if (el.matches(ignored)) return true;
+      // The original shelf can still be in the document with display:none.
+      // Revalidate our own rows, while stepping past the already hidden shelf.
+      if (savedDisplay.has(el)) return !previousParts.includes(el) && !bandLabel(shortText(el, 70));
+      const style = el.isConnected ? getComputedStyle(el) : el.style;
+      return style && (style.display === 'none' || style.visibility === 'hidden' ||
+        style.contentVisibility === 'hidden' || style.height === '0px' && /hidden|clip/.test(style.overflowY));
+    }
+    // Read the displayed label without folding hidden offer details or SVG
+    // titles into it. A mixed subtree is visited in document order below.
+    function rangeText(el) {
+      let text = '', budget = 140;
+      function collect(node) {
+        if (--budget < 0) return false;
+        if (node.nodeType === 3) {
+          text += node.data;
+          return text.length <= 100 && priceChars.test(node.data);
+        }
+        if (node.nodeType !== 1 || ignoredNode(node)) return true;
+        if (node.matches(excluded + ',cite') || node.matches('a[href]') && isExternalLink(node)) return false;
+        for (const child of node.childNodes) if (!collect(child)) return false;
+        return true;
+      }
+      return collect(el) ? normalize(text) : null;
+    }
+    const parts = [], empty = [];
+    let budget = 100;
+    function visit(el) {
+      if (--budget < 0 || el.matches(excluded + ',cite') ||
+          el.matches('a[href]') && isExternalLink(el)) return false;
+      if (ignoredNode(el)) return true;
+      const label = rangeText(el);
+      if (bandLabel(label || (label === '' && el.getAttribute('aria-label')))) {
+        parts.push(...empty, el);
+        empty.length = 0;
+        return true;
+      }
+      if (label === '') {
+        // Do not collect an independent link, a result icon or the footer's
+        // own inline chevron as a blank row.
+        if (!el.matches('a[href],img,span,i') && !el.querySelector('cite,a[href]')) empty.push(el);
+        return true;
+      }
+      if (parts.length || el.matches('article,' + moduleHeading)) return false;
+      for (const child of el.childNodes) {
+        if (child.nodeType === 3 && normalize(child.data)) return false;
+        if (child.nodeType === 1 && !visit(child)) return false;
+      }
+      return true;
+    }
+    for (let node = footer; node && node !== scope; node = node.parentElement) {
+      for (let next = node.nextSibling; next; next = next.nextSibling) {
+        if (next.nodeType === 3 && normalize(next.data) || next.nodeType === 1 && !visit(next)) return parts;
+      }
+    }
+    return parts;
   }
 
   // A collapsed shopping accordion can be rendered independently of its
@@ -786,7 +857,9 @@ var pruneGenericGoogleFeaturedProductsV672;
   }
 
   function featuredParts(seed, importedRoot) {
-    const scope = importedRoot || seed.closest(productSearchScope) || (seed.matches(moduleHeading) ? document.body : null);
+    const images = imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || '');
+    const scope = importedRoot || seed.closest(productSearchScope) || (images || seed.matches(moduleHeading) ? document.body : null);
+    if (images && scope && !seed.closest(productExclusions)) return pricePartsAfterImages(seed, scope);
     const link = seed.closest('a[href]') || seed.querySelector('a[href]');
     if (!scope || seed.closest(productExclusions + ',article p') || link && isExternalLink(link) ||
         !isFeaturedHeading(seed)) return [];
@@ -838,7 +911,14 @@ var pruneGenericGoogleFeaturedProductsV672;
     const owner = seed.closest('section,g-section-with-header,.Ww4FFb,.MjjYud,article');
     let watch = parts[0] || owner?.parentElement || seed.parentElement?.parentElement || seed;
     for (const part of parts) while (!watch.contains(part)) watch = watch.parentElement;
-    featuredGroups.set(seed, {parts, watch, band});
+    const images = !band && imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || '');
+    if (images) while (!watch.contains(seed)) watch = watch.parentElement;
+    featuredGroups.set(seed, {parts, watch, band, images});
+    if (!images && parts.some(part => !old?.parts.includes(part))) {
+      for (const [footer, group] of featuredGroups) {
+        if (group.images && !group.parts.length && footer.closest(productSearchScope) === seed.closest(productSearchScope)) updateFeatured(footer);
+      }
+    }
   }
 
   function featuredLabels(root) {
@@ -848,7 +928,7 @@ var pruneGenericGoogleFeaturedProductsV672;
         const row = bandRowFor(n.parentElement, root);
         if (row) seeds.add(row);
       }
-      if (!/注目|popular|featured|レシピ|recipes/i.test(n.data)) continue;
+      if (!/注目|popular|featured|レシピ|recipes|その他|画像|images/i.test(n.data)) continue;
       for (let el = n.parentElement; el && root.contains(el); el = el.parentElement) {
         const label = shortText(el, 48);
         if (el.closest('script,style,template,noscript,' + productExclusions)) break;
@@ -869,6 +949,10 @@ var pruneGenericGoogleFeaturedProductsV672;
         if (row) seeds.add(row);
       }
     }
+    // First remove the named shelf, then inspect what follows the image footer.
+    // The detached import has no MutationObserver to run a second cleanup.
+    const footers = [...seeds].filter(seed => imageFooter.test(shortText(seed, 48) || seed.getAttribute('aria-label') || ''));
+    for (const footer of footers) { seeds.delete(footer); seeds.add(footer); }
     return seeds;
   }
 
@@ -901,6 +985,10 @@ var pruneGenericGoogleFeaturedProductsV672;
     if (featuredEnabled && possibleBand.length <= 70 && price.test(possibleBand) && bandLabel(possibleBand)) {
       const row = bandRowFor(element, element.closest(productSearchScope));
       if (row && !featuredGroups.has(row)) updateFeatured(row, true);
+      if (!row) for (const [seed, group] of featuredGroups) {
+        if (group.images && !group.parts.length && (seed.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+            seed.closest(productSearchScope) === element.closest(productSearchScope)) updateFeatured(seed);
+      }
     }
     if (featuredEnabled && (featuredLabel.test(text || '') || element.matches(moduleHeading) && isFeaturedHeading(element)) && (!element.closest('p,blockquote') || element.matches(moduleHeading))) {
       const headingParent = element.closest(moduleHeading);
