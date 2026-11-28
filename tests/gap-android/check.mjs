@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { gapCases, gapPage, measureGap } from '../fixtures/google-leading-gap.mjs';
+import { gapCases, emptyGapCases, gapPage, measureGap } from '../fixtures/google-leading-gap.mjs';
 import { connect, sleep } from './cdp.mjs';
 const c=await connect();
 console.log('WEBVIEW', await c.val('navigator.userAgent'));
@@ -40,7 +40,7 @@ try {
         assert(result,'Page four did not appear: '+sample);
         console.log('MEASURE',JSON.stringify({label,sample,sha,...result,failures}));
         assert.deepEqual(failures,[]);
-        const blank=['empty','removed','transparent','loader'].includes(sample);
+        const blank=emptyGapCases.includes(sample);
         const expected=sample==='short'?8:blank&&label==='6.79.0'?0:250;
         assert.equal(result.slot,expected);
         assert(Math.abs(result.gap-result.normalGap-expected)<=1);

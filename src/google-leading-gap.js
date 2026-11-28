@@ -6,14 +6,18 @@ function collapseGenericGoogleLeadingGap(section) {
   const box = root.getBoundingClientRect();
   if (box.width < 100) return;
   const headings = 'h3,[role="heading"],.DKV0Md,.n0jPhd,.vvjwJb';
-  const anchorFor = node => node.closest('a[href]') || node.querySelector('a[href]');
   let first;
-  for (const heading of root.querySelectorAll(headings)) {
-    const link = anchorFor(heading);
-    if (link && genericGoogleTailExternalV663(link) && heading.getBoundingClientRect().height > 0) {
-      first = heading;
-      break;
+  // Mobile Google also uses plain text links for some result titles.
+  for (const selector of [headings, 'a[href]']) {
+    for (const label of root.querySelectorAll(selector)) {
+      const link = label.closest('a[href]') || label.querySelector('a[href]');
+      if (link && label.textContent.trim() && genericGoogleTailExternalV663(link) &&
+          label.getBoundingClientRect().height > 0 && getComputedStyle(label).visibility === 'visible') {
+        first = label;
+        break;
+      }
     }
+    if (first) break;
   }
   if (!first) return;
   const top = first.getBoundingClientRect().top;
@@ -68,7 +72,7 @@ function genericGoogleSlotHasContent(slot) {
         if (!['""', "''"].includes(paint.content) || illustrated(paint)) return true;
       }
     }
-    stack.push(...node.children);
+    for (const child of node.children) stack.push(child);
   }
   return false;
 }
