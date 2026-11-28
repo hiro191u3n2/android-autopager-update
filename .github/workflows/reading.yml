@@ -1,0 +1,35 @@
+name: Google page-local reading controls on Android
+on:
+  push:
+    branches: [qa/google-reading-controls-6.84]
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: '37.0', target: google_apis_ps16k }
+          - { image: '35', target: google_apis }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify each page retains its own reading controls
+        run: bash tests/android-interactions/run.sh "${{ matrix.image }}" "${{ matrix.target }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: google-reading-api-${{ matrix.image }}
+          path: evidence
