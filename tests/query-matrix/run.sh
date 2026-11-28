@@ -48,8 +48,10 @@ adb shell dumpsys activity activities >evidence/activity.txt
 adb logcat -d -t 900 >evidence/logcat.txt
 adb forward tcp:9444 localabstract:"$sock"
 adb shell dumpsys webviewupdate >evidence/provider.txt
-echo '15ef8d4a0615d9d513a290a9c23a77983dad4dd25f576b0f4d96467f25fe78d0  android-generic-autopager.user.js' | sha256sum -c -
-node "$harness/run-matrix.mjs" android-generic-autopager.user.js evidence/results.jsonl "$(seq -s, "$3" "$4")"
+candidate="$RUNNER_TEMP/qa-candidate"
+node scripts/build-release.mjs "$PWD" "$candidate" 6.78.0
+echo "7e40964c72d3caa0b2c59c3b49405994203b85a7ba198c57b16e3698454ec574  $candidate/android-generic-autopager.user.js" | sha256sum -c -
+node "$harness/run-matrix.mjs" "$candidate/android-generic-autopager.user.js" evidence/results.jsonl "$(seq -s, "$3" "$4")"
 python - "$3" "$4" <<'PY'
 import sys,json
 rows=[json.loads(l) for l in open('evidence/results.jsonl')]

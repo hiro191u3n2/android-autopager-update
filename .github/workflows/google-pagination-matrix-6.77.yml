@@ -1,20 +1,27 @@
-name: Android Google pagination offline matrix
+name: Android WebView 1000-query seven-page replay
 on:
   push:
-    branches: [qa/google-pagination-6.77-emulator]
+    branches: [qa/google-pagination-1000-seven]
 permissions:
   contents: read
 jobs:
   android:
     runs-on: ubuntu-24.04
-    timeout-minutes: 28
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { image: '35', target: google_apis, start: 0, end: 49 }
-          - { image: '35', target: google_apis, start: 50, end: 99 }
-          - { image: '37.0', target: google_apis_ps16k, start: 50, end: 99 }
+          - { image: '37.0', target: google_apis_ps16k, start: 0, end: 99 }
+          - { image: '37.0', target: google_apis_ps16k, start: 100, end: 199 }
+          - { image: '37.0', target: google_apis_ps16k, start: 200, end: 299 }
+          - { image: '37.0', target: google_apis_ps16k, start: 300, end: 399 }
+          - { image: '37.0', target: google_apis_ps16k, start: 400, end: 499 }
+          - { image: '37.0', target: google_apis_ps16k, start: 500, end: 599 }
+          - { image: '37.0', target: google_apis_ps16k, start: 600, end: 699 }
+          - { image: '37.0', target: google_apis_ps16k, start: 700, end: 799 }
+          - { image: '37.0', target: google_apis_ps16k, start: 800, end: 899 }
+          - { image: '37.0', target: google_apis_ps16k, start: 900, end: 999 }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,7 +34,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Scroll each fixture to its fifth page in Android WebView
+      - name: Scroll each fixture to its seventh page in Android WebView
         run: bash tests/query-matrix/run.sh "${{ matrix.image }}" "${{ matrix.target }}" "${{ matrix.start }}" "${{ matrix.end }}"
       - uses: actions/upload-artifact@v4
         if: always()

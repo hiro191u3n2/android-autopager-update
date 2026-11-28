@@ -1,3 +1,4 @@
+import {combinations} from './queries.mjs';
 import {recipePage} from '../fixtures/google-recipes.mjs';
 import {featuredGridPage} from '../fixtures/google-featured-grid.mjs';
 import {priceToggleCaptionPage} from '../fixtures/google-price-accordions.mjs';
@@ -101,11 +102,14 @@ Android WebView
 ゲーム音楽 オーケストラ
 丸の内 カフェ
 半角＋全角 スペース`.split('\n');
-if(terms.length!==100||new Set(terms).size!==100)throw Error('100 unique queries required');
+terms.push(...combinations);
+if(terms.length!==1000||new Set(terms).size!==1000)throw Error('1000 unique queries required');
 const esc=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
-const qr=(s,n)=>'/search?'+new URLSearchParams({q:s,start:n}).toString().replaceAll('&','&amp;');
+const filterCases = [{lr:'lang_ja'}, {cr:'countryJP'}, {safe:'active'}, {filter:'0'}, {as_sitesearch:'example.org'}, {tbs:'qdr:m'}, {nfpr:'1'}, {}, {gl:'jp'}, {as_epq:'東京 駅'}];
+export function searchFilters(index) {return filterCases[index%filterCases.length] || {};}
+const qr=(s,n,filters={})=>'/search?'+new URLSearchParams({q:s,start:n,...filters}).toString().replaceAll('&','&amp;');
 export function fixture(url){
- const q=url.searchParams.get('q')||'', at=terms.indexOf(q), variant=at%10, raw=Number(url.searchParams.get('start')||0), start=Math.min(40,raw), t=esc(q), p=start/10+1;
+ const q=url.searchParams.get('q')||'', at=terms.indexOf(q), variant=at%10, raw=Number(url.searchParams.get('start')||0), start=Math.min(60,raw), t=esc(q), p=start/10+1;
  const shapes=['article','div','section'], tag=shapes[Math.abs(at)%3]; const cls=tag==='div'?'Ww4FFb':'MjjYud';
  const card=(key,label,body)=>'<'+tag+' class="'+cls+'" data-qa-item="'+key+'"><div><cite>https://info.example</cite><a href="https://info.example/'+key+'"><h3>'+label+'</h3></a></div><p>'+body+'</p></'+tag+'>';
  const extra=Array.from({length:variant===3?8:1},(_,i)=>card('common-'+i,'共通の参考資料 '+i,'各ページに共通して掲載される参考資料の説明文です。')).join('');
@@ -114,6 +118,10 @@ export function fixture(url){
  const pick=variant===4?featuredGridPage:variant===5?recipePage:variant===6?priceToggleCaptionPage:null;
  if(pick){const base=pick(variant===6?(start%30):start);module=base.split('<div id="rso">')[1].split('</div></main>')[0];style=(base.match(/<style>([\s\S]*?)<\/style>/)||[])[1]||''; }
  if(variant===7)module='<section><h2>動画</h2><a href="https://video.example/'+p+'">動画一覧 '+p+'</a></section>';
- const nav=variant===2?'<nav><a href="'+qr(q+' 関連',start+10)+'">関連の検索結果</a><a href="'+qr(q,start+30)+'">4</a><a href="'+qr(q,start+10)+'">次の結果</a></nav>':'<nav><a id="pnnext" href="'+qr(q,start+10)+'">次へ</a></nav>';
+ const filters=searchFilters(at), path=n=>qr(q,n,filters);
+ const next=path(start+10), distractors=[];
+ if(start>=40 && Object.keys(filters).length) distractors.push(qr(q,start+10));
+ if(variant===2 || start>=40) distractors.push(qr(q+' 関連',start+10,filters),path(start+30));
+ const nav=distractors.length?'<nav>'+[...distractors,next].map(h=>'<a href="'+h+'">検索結果</a>').join('')+'</nav>':'<nav><a id="pnnext" href="'+next+'">次へ</a></nav>';
  return '<!doctype html><html lang=ja><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>'+t+' - Google 検索</title><style>'+style+'body{margin:0;font:16px sans-serif} [data-qa-item]{display:block;padding:18px 12px;border-bottom:5px solid #eee}h3{margin:8px 0}</style></head><body><main id="search"><div id="rso">'+extra+results+module+'</div></main>'+nav+'</body></html>';
 }
