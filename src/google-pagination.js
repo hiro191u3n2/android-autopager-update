@@ -14,8 +14,7 @@ function genericGoogleForwardLink(doc, source) {
     for (const link of doc.querySelectorAll(selector)) {
       let url;
       try { url = new URL(link.getAttribute('href'), current); } catch { continue; }
-      if (!identity || genericGoogleNextIdentityV663(url.href) !== identity ||
-          url.searchParams.get('tbs') !== current.searchParams.get('tbs')) continue;
+      if (!identity || genericGoogleNextIdentityV663(url.href) !== identity) continue;
       const raw = url.searchParams.get('start');
       if (!/^\d+$/.test(raw || '')) continue;
       const index = Number(raw);

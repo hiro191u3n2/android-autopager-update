@@ -133,6 +133,19 @@ function create(url = 'https://www.google.com/search?q=read-ahead') {
 }
 
 {
+  const test = create('https://www.google.com/search?q=read-ahead&lr=lang_ja&cr=countryJP');
+  try {
+    const { window, helper } = test;
+    const ticket = helper.ticket();
+    window.history.replaceState(null, '', '/search?ved=tracking&cr=countryJP&q=read-ahead&lr=lang_ja');
+    assert(helper.valid(ticket), 'Parameter order and tracking keep the prepared page usable');
+    window.history.replaceState(null, '', '/search?q=read-ahead&lr=lang_ja&cr=countryFR');
+    assert.equal(helper.valid(ticket), false, 'Changing only the region discards the prepared page');
+    console.log('PASS read-ahead unit: search filters invalidate pending imports'); passed++;
+  } finally { test.close(); }
+}
+
+{
   const test = create();
   try {
     test.state.target.remove();

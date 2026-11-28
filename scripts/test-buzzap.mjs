@@ -20,6 +20,15 @@ assert(oldCleanupEnd > 2);
 const oldCleanup = frozen669Body.slice(2, oldCleanupEnd);
 const prefix = `\n\n${oldCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const frozen677 = await readFile(new URL('../Android_Generic_AutoPager_v6.77.js', import.meta.url), 'utf8');
+const identityBlock = /function genericGoogleTailRouteV663\(\)[\s\S]*?(?=function genericGoogleTailExternalV663\()/g;
+const previousIdentity = frozen677.match(identityBlock);
+assert.equal(previousIdentity.length, 1);
+function restoreFilterIdentity(text) {
+  assert.equal(text.match(identityBlock)?.length, 1);
+  return text.replace(identityBlock, () => previousIdentity[0]);
+}
+executable = restoreFilterIdentity(executable);
 const pagination = (await readFile(new URL('../src/google-pagination.js', import.meta.url), 'utf8')).trim();
 assert.equal(executable.split(pagination + '\n').length, 2);
 executable = executable.replace(pagination + '\n', '');
@@ -112,7 +121,7 @@ assert.equal(executable.split(currentLayout).length, 2);
 assert.equal(executable.split(currentReadAhead).length, 2);
 executable = executable.replace(currentLayout, () => googleLayout).replace(currentReadAhead, () => readAhead666);
 assert(executable === frozen666Body, 'Only Google import layout and result page handling may differ from v6.66');
-const currentStaging = (await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim();
+const currentStaging = restoreFilterIdentity((await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim());
 const frozen665 = await readFile(new URL('../Android_Generic_AutoPager_v6.65.js', import.meta.url), 'utf8');
 const frozen665Body = frozen665.slice(frozen665.indexOf(END) + END.length);
 const stagingStart665 = frozen665Body.indexOf('// Prepare only a detached Google result page.');

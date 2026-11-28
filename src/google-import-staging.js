@@ -123,7 +123,7 @@ function genericGoogleTailRouteV663() {
   try {
     const url = new URL(location.href);
     if (!/^(?:www\.)?google\.[a-z.]+$/i.test(url.hostname) || url.pathname !== '/search' || url.searchParams.get('udm') === '50') return '';
-    return JSON.stringify([url.origin, url.pathname, ...['q', 'tbm', 'udm', 'start'].map(key => url.searchParams.get(key))]);
+    return genericGoogleNextIdentityV663(url.href, true);
   } catch (_) { return ''; }
 }
 
@@ -131,7 +131,13 @@ function genericGoogleNextIdentityV663(value, page = false) {
   try {
     const url = new URL(value, location.href);
     if (url.origin !== location.origin || url.pathname !== '/search') return '';
-    return JSON.stringify([url.origin, url.pathname, ...['q', 'tbm', 'udm', ...(page ? ['start'] : [])].map(key => url.searchParams.get(key))]);
+    const filters = new URLSearchParams();
+    for (const [key, value] of url.searchParams) {
+      if (['q', 'tbm', 'udm', 'tbs', 'lr', 'cr', 'gl', 'safe', 'filter', 'nfpr', 'num'].includes(key) ||
+          key.startsWith('as_') || (page && key === 'start')) filters.append(key, value);
+    }
+    filters.sort();
+    return JSON.stringify([url.origin, url.pathname, filters.toString()]);
   } catch (_) { return ''; }
 }
 
