@@ -37,7 +37,7 @@ for i in $(seq 1 45); do sock=$(adb shell cat /proc/net/unix | sed -n 's/.*@\(we
 test -n "$sock"
 adb forward tcp:9444 localabstract:"$sock"
 adb shell dumpsys webviewupdate >evidence/provider.txt
-sha256sum android-generic-autopager.user.js
+echo '15ef8d4a0615d9d513a290a9c23a77983dad4dd25f576b0f4d96467f25fe78d0  android-generic-autopager.user.js' | sha256sum -c -
 node "$harness/run-matrix.mjs" android-generic-autopager.user.js evidence/results.jsonl "$(seq -s, "$3" "$4")"
 python - "$3" "$4" <<'PY'
 import sys,json
