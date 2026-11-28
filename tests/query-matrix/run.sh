@@ -2,6 +2,7 @@
 set -eu -o pipefail
 harness=tests/query-matrix
 sdk="$ANDROID_HOME"
+export PATH="$sdk/platform-tools:$PATH"
 bt="$sdk/build-tools/35.0.0"
 jarpath="$sdk/platforms/android-35/android.jar"
 out="$RUNNER_TEMP/pager-compile"
@@ -24,7 +25,7 @@ echo no | "$sdk/cmdline-tools/22.0/bin/avdmanager" create avd --force --name pag
 "$sdk/emulator/emulator" -avd pager -port 5554 -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect -cores 2 -memory 3072 >evidence/emulator.log 2>&1 &
 trap 'adb emu kill >/dev/null 2>&1 || true' EXIT
 timeout 150 adb wait-for-device
-for i in $(seq 1 100); do boot=$(adb shell getprop sys.boot_completed | tr -d '\r'); [ "$boot" != 1 ] || break; sleep 3; done
+for i in $(seq 1 100); do boot=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true); [ "$boot" != 1 ] || break; sleep 3; done
 test "$boot" = 1
 adb shell settings put global hide_error_dialogs 1
 adb shell wm size 720x1440
