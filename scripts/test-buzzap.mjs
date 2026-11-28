@@ -20,6 +20,17 @@ assert(oldCleanupEnd > 2);
 const oldCleanup = frozen669Body.slice(2, oldCleanupEnd);
 const prefix = `\n\n${oldCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const startup = (await readFile(new URL('../src/google-startup.js', import.meta.url), 'utf8')).trim();
+const restoreGotoClassifier = text => text.replace("    if (link.getAttribute('href')?.includes('/goto') && genericGoogleGotoDestination(link, link.ownerDocument.URL)) return true;\n", '');
+executable = restoreGotoClassifier(executable);
+executable = executable.replace(startup + '\n', '').replace('void startGenericPagerWithGoogleResults(e);t+=1,t<80', 'void e();t+=1,t<80');
+executable = executable.replace('if(genericGoogleReadyFrameRoot(a))return void n(a);const s=U(t);',
+  'if(a&&a.querySelector("a[href]"))return void n(a);const s=U(t);');
+executable = executable.replace('normalizeGenericGoogleGotoLinks(u,n),', '').replace('let t=genericGoogleGotoDestination(r,e)||et(r,e);', 'let t=et(r,e);');
+executable = executable.replace('a.hash="";const s=/^(?:www\\.)?google\\.[a-z.]+$/i.test(a.hostname)?(a.pathname==="/goto"?genericGoogleGotoIdentity(r,e):""):a.href;if(!s)continue;',
+  'if(/^(?:www\\.)?google\\.[a-z.]+$/i.test(a.hostname))continue;a.hash="";const s=a.href;');
+const frozen681 = await readFile(new URL('../Android_Generic_AutoPager_v6.81.js', import.meta.url), 'utf8');
+assert(executable === frozen681.slice(frozen681.indexOf(END) + END.length), 'Only the deferred Google startup may differ from v6.81');
 const frozen680 = await readFile(new URL('../Android_Generic_AutoPager_v6.80.js', import.meta.url), 'utf8');
 const previousGap = frozen680.match(/\/\/ Result pages are cloned without Google's scripts\.[\s\S]*?(?=\nfunction e\(\)\{)/)[0];
 const currentGap = (await readFile(new URL('../src/google-leading-gap.js', import.meta.url), 'utf8')).trim();
@@ -140,7 +151,7 @@ assert.equal(executable.split(currentLayout).length, 2);
 assert.equal(executable.split(currentReadAhead).length, 2);
 executable = executable.replace(currentLayout, () => googleLayout).replace(currentReadAhead, () => readAhead666);
 assert(executable === frozen666Body, 'Only Google import layout and result page handling may differ from v6.66');
-const currentStaging = restoreFilterIdentity((await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim());
+const currentStaging = restoreGotoClassifier(restoreFilterIdentity((await readFile(new URL('../src/google-import-staging.js', import.meta.url), 'utf8')).trim()));
 const frozen665 = await readFile(new URL('../Android_Generic_AutoPager_v6.65.js', import.meta.url), 'utf8');
 const frozen665Body = frozen665.slice(frozen665.indexOf(END) + END.length);
 const stagingStart665 = frozen665Body.indexOf('// Prepare only a detached Google result page.');

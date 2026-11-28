@@ -143,6 +143,7 @@ function genericGoogleNextIdentityV663(value, page = false) {
 
 function genericGoogleTailExternalV663(link) {
   try {
+    if (link.getAttribute('href')?.includes('/goto') && genericGoogleGotoDestination(link, link.ownerDocument.URL)) return true;
     let url = new URL(link.getAttribute('href'), location.href);
     if (/^(?:www\.)?google\.[a-z.]+$/i.test(url.hostname) && url.pathname === '/url') {
       url = new URL(url.searchParams.get('q') || url.searchParams.get('url') || '', location.href);
