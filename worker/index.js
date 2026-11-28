@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.82.0';
+export const VERSION = '6.83.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -175,6 +175,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Googleの追加ページで地図が消えたりボタンのタップ範囲が縮んだりする問題を修正。');
   header = header.replace('// @description  ', '// @description  Google追加ページの大きな先頭余白、別ページに向くページ内リンク・入力ラベル、画面幅変更後のグリッドのはみ出しを修正。');
   header = header.replace('// @description  ', '// @description  Google検索で結果欄の生成が遅い場合や、掲載先がGoogleの/gotoリンクで渡される場合に次ページの追加が止まる問題を修正。');
+  header = header.replace('// @description  ', '// @description  Googleの追加ページで、映画などの検索結果の見出し・説明・評価・画像が右端に重なる問題を修正。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
