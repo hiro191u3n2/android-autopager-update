@@ -1,0 +1,33 @@
+name: Offline Android 17 replay of 1000 search and reading scenarios
+on:
+  push:
+    branches: [qa/google-reading-replay-1000-6.84]
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Check page reachability, disclosure state, accessibility and link destinations (network intercepted)
+        run: bash tests/android-interactions/run.sh 37.0 google_apis_ps16k "${{ matrix.shard }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reading-replay-${{ matrix.shard }}
+          path: evidence
