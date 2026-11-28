@@ -20,6 +20,13 @@ assert(oldCleanupEnd > 2);
 const oldCleanup = frozen669Body.slice(2, oldCleanupEnd);
 const prefix = `\n\n${oldCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const leadingGap = (await readFile(new URL('../src/google-leading-gap.js', import.meta.url), 'utf8')).trim();
+for (const added of [leadingGap + '\n', 'if(r)collapseGenericGoogleLeadingGap(u);']) {
+  assert.equal(executable.split(added).length, 2);
+  executable = executable.replace(added, '');
+}
+const frozen678 = await readFile(new URL('../Android_Generic_AutoPager_v6.78.js', import.meta.url), 'utf8');
+assert(executable === frozen678.slice(frozen678.indexOf(END) + END.length), 'Only the leading gap repair may differ from v6.78');
 const frozen677 = await readFile(new URL('../Android_Generic_AutoPager_v6.77.js', import.meta.url), 'utf8');
 const identityBlock = /function genericGoogleTailRouteV663\(\)[\s\S]*?(?=function genericGoogleTailExternalV663\()/g;
 const previousIdentity = frozen677.match(identityBlock);
