@@ -1,0 +1,100 @@
+name: Live Google search and scroll audit on Android 17
+on:
+  push:
+    branches: [qa/google-live-1000-6.83]
+permissions:
+  contents: read
+jobs:
+  search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Boot the Android WebView emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          bash tests/android-interactions/boot.sh 37.0 google_apis_ps16k
+      - name: Search terms 1 through 5 in the same WebView
+        run: node tests/android-interactions/audit.mjs 0 5
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('evidence/results-0.jsonl') != ''
+        with:
+          name: live-google-0-5
+          path: |
+            evidence/results-0.jsonl
+            evidence/state-0.json
+            evidence/provider.txt
+            evidence/blocked.json
+      - name: Search terms 6 through 25 in the same WebView
+        run: node tests/android-interactions/audit.mjs 5 25
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('evidence/results-5.jsonl') != ''
+        with:
+          name: live-google-5-25
+          path: |
+            evidence/results-5.jsonl
+            evidence/state-5.json
+            evidence/provider.txt
+            evidence/blocked.json
+      - name: Search terms 26 through 100 in the same WebView
+        run: node tests/android-interactions/audit.mjs 25 100
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('evidence/results-25.jsonl') != ''
+        with:
+          name: live-google-25-100
+          path: |
+            evidence/results-25.jsonl
+            evidence/state-25.json
+            evidence/provider.txt
+            evidence/blocked.json
+      - name: Search terms 101 through 250 in the same WebView
+        run: node tests/android-interactions/audit.mjs 100 250
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('evidence/results-100.jsonl') != ''
+        with:
+          name: live-google-100-250
+          path: |
+            evidence/results-100.jsonl
+            evidence/state-100.json
+            evidence/provider.txt
+            evidence/blocked.json
+      - name: Search terms 251 through 500 in the same WebView
+        run: node tests/android-interactions/audit.mjs 250 500
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('evidence/results-250.jsonl') != ''
+        with:
+          name: live-google-250-500
+          path: |
+            evidence/results-250.jsonl
+            evidence/state-250.json
+            evidence/provider.txt
+            evidence/blocked.json
+      - name: Search terms 501 through 750 in the same WebView
+        run: node tests/android-interactions/audit.mjs 500 750
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('evidence/results-500.jsonl') != ''
+        with:
+          name: live-google-500-750
+          path: |
+            evidence/results-500.jsonl
+            evidence/state-500.json
+            evidence/provider.txt
+            evidence/blocked.json
+      - name: Search terms 751 through 1000 in the same WebView
+        run: node tests/android-interactions/audit.mjs 750 1000
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('evidence/results-750.jsonl') != ''
+        with:
+          name: live-google-750-1000
+          path: |
+            evidence/results-750.jsonl
+            evidence/state-750.json
+            evidence/provider.txt
+            evidence/blocked.json
