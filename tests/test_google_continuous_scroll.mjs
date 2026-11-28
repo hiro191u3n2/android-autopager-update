@@ -32,7 +32,9 @@ function fixture(start, { videos = false, ample = false } = {}) {
   const count = ample && !start ? 70 : 10;
   const cards = Array.from({ length: count }, (_, n) => {
     const video = videos && start && n === 0;
-    const number = start + n + 1;
+    // Extra first-page rows provide fling distance. Keep their identities out
+    // of the next page so the fling actually crosses a populated append.
+    const number = ample && !start && n >= 10 ? 1000 + n : start + n + 1;
     const href = video ? `https://www.youtube.com/watch?v=smooth0000${start}` : `https://result${number}.example/article`;
     return `<article class="result" data-result="${start}-${n}"><div class="source">検索元 ${number}<br>https://${video ? 'www.youtube.com' : 'result' + number + '.example'}</div><a href="${href}"><h3>${video ? 'Googleの動画タイトル ' : '通常の検索結果 '}${number}</h3></a><p>本文とリンクを保ったまま次の検索結果へ続きます。</p></article>`;
   }).join('');

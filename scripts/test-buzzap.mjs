@@ -20,6 +20,30 @@ assert(oldCleanupEnd > 2);
 const oldCleanup = frozen669Body.slice(2, oldCleanupEnd);
 const prefix = `\n\n${oldCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const frozen683 = await readFile(new URL('../Android_Generic_AutoPager_v6.83.js', import.meta.url), 'utf8');
+const aheadStart = frozen683.indexOf('// Keep one Google result page ready ahead of the reader.');
+const nextModule = (await readFile(new URL('../src/google-frame-preparation.js', import.meta.url), 'utf8')).trim();
+const aheadEnd = frozen683.indexOf(nextModule, aheadStart);
+assert(aheadStart > 0 && aheadEnd > aheadStart);
+const oldReadAhead = frozen683.slice(aheadStart, aheadEnd).trimEnd();
+const newReadAhead = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url),'utf8')).trim();
+executable = executable.replace(newReadAhead, () => oldReadAhead)
+  .replace('const emptyImportedGooglePage=genericGoogleReadAheadV665?.appended(u)===false;if(r&&!emptyImportedGooglePage)checkGenericGooglePageStart(u);',
+    'if(genericGoogleReadAheadV665)genericGoogleReadAheadV665.appended(u);if(r)checkGenericGooglePageStart(u);')
+  .replace('emptyImportedGooglePage?genericGoogleForwardLink(n,i):$(n,i,l.rule)', '$(n,i,l.rule)')
+  .replace('!emptyImportedGooglePage&&t.updateAddressBar', 't.updateAddressBar')
+  .replace('emptyImportedGooglePage||document.dispatchEvent','document.dispatchEvent');
+const refsHeading = '// Imported results share one document.';
+const nextHeading = '// Keep the original external destination';
+const references = frozen683.slice(frozen683.indexOf(refsHeading), frozen683.indexOf(nextHeading)).trimEnd();
+const newReferences = (await readFile(new URL('../src/google-local-references.js', import.meta.url), 'utf8')).trim();
+const oldPruneStart = frozen683.indexOf('for(const u of t.querySelectorAll("[hidden],[inert]"))u.remove();');
+const oldPruneEnd = frozen683.indexOf('}(u)}if(l.rule?.remove)', oldPruneStart);
+assert(oldPruneStart > 0 && oldPruneEnd > oldPruneStart);
+executable = executable.replace(newReferences, () => references)
+  .replace('pruneGenericGoogleHiddenPanels(t)', () => frozen683.slice(oldPruneStart, oldPruneEnd))
+  .replace('scopeGenericGoogleReferences(u,o,n,e.ownerDocument.URL)', 'scopeGenericGoogleReferences(u,o)');
+assert(executable === frozen683.slice(frozen683.indexOf(END) + END.length), 'Only local reading controls and empty Google pages may differ from v6.83');
 const restoreMovieGrid = text => text.replace("  'grid-template-areas', 'justify-items', 'justify-self',\n", '');
 const frozen682 = await readFile(new URL('../Android_Generic_AutoPager_v6.82.js', import.meta.url), 'utf8');
 executable = restoreMovieGrid(executable);
@@ -38,7 +62,6 @@ assert(executable === frozen681.slice(frozen681.indexOf(END) + END.length), 'Onl
 const frozen680 = await readFile(new URL('../Android_Generic_AutoPager_v6.80.js', import.meta.url), 'utf8');
 const previousGap = frozen680.match(/\/\/ Result pages are cloned without Google's scripts\.[\s\S]*?(?=\nfunction e\(\)\{)/)[0];
 const currentGap = (await readFile(new URL('../src/google-leading-gap.js', import.meta.url), 'utf8')).trim();
-const references = (await readFile(new URL('../src/google-local-references.js', import.meta.url), 'utf8')).trim();
 const restoreGrid = text => text.replace(/      \/\/ getComputedStyle returns pixel tracks[\s\S]*?\n      \}\n/, '');
 executable = restoreGrid(executable).replace(currentGap + '\n' + references, () => previousGap)
   .replace('scopeGenericGoogleReferences(u,o),', '').replace('if(r)checkGenericGooglePageStart(u);', 'if(r)collapseGenericGoogleLeadingGap(u);');
@@ -93,7 +116,7 @@ const candidateLayout = frozen669Body.slice(layoutStart669, layoutEnd669).trimEn
 assert.equal(executable.split(packagedLayout).length, 2);
 executable = executable.replace(packagedLayout, () => candidateLayout);
 assert(executable === frozen669Body, 'Executable outside Google cleanup and the reviewed layout snapshot must match v6.69');
-const readAhead669 = (await readFile(new URL('../src/google-read-ahead.js', import.meta.url), 'utf8')).trim();
+const readAhead669 = oldReadAhead;
 const extra = readAhead669.indexOf('\n\n// A standalone TikTok tile');
 const videoHook = '  indexGenericGoogleVideoTilesV669(scope, target, index, removeCopies);\n';
 assert(extra > 0 && readAhead669.split(videoHook).length === 2);

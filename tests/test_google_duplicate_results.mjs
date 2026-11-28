@@ -52,11 +52,14 @@ try {
       const ids = (p) => result.nth(p).locator('[data-result]').evaluateAll(nodes => nodes.map(n => n.dataset.result));
       const expected = ['different-url', 'different-title', 'different-snippet', 'sitelinks', 'rich', 'new'];
       assert.deepEqual(await ids(0), fixed ? expected : ['repeat', ...expected]);
-      assert.deepEqual(await ids(1), fixed ? [] : ['later-repeat', 'prior-import-repeat']);
+      if (fixed) assert.equal(await result.and(page.locator('[data-page="3"]')).count(), 0, 'No divider for an entirely duplicate page');
+      else assert.deepEqual(await ids(1), ['later-repeat', 'prior-import-repeat']);
       assert.equal(await result.nth(0).locator('[data-outer-repeat]').count(), fixed ? 0 : 1);
       await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-      await result.nth(2).waitFor();
-      assert.deepEqual(await ids(2), ['last'], 'The next populated page loads after an all-duplicate page.');
+      const last = result.and(page.locator('[data-page="4"]'));
+      await last.waitFor();
+      assert.deepEqual(await last.locator('[data-result]').evaluateAll(nodes => nodes.map(n => n.dataset.result)), ['last'],
+        'The next populated page loads after an all-duplicate page.');
       assert.equal(await result.nth(0).getByText('別の結果', {exact:true}).count(), 1);
       assert.equal(await page.locator('#rso').first().locator(':scope > [data-result]').evaluateAll(nodes => nodes.map(n => n.outerHTML).join('')), first);
       assert.deepEqual(errors, []);
