@@ -28,8 +28,10 @@ try {
         const u=new URL(f.src||'about:blank');if(u.pathname!=='/search')return [];
         const d=f.contentDocument;if(!d)return [{offset:u.searchParams.get('start'),access:false}];
         const target=e=>{try {const x=new URL(e.getAttribute('href'),d.URL);return [x.hostname,x.pathname.slice(0,40),x.pathname==='/url'?[...x.searchParams.keys()].slice(0,6):null];}catch{return[]}};
+        const goto=[...d.querySelectorAll('#rso a[href]')].filter(a=>{try{return new URL(a.getAttribute('href'),d.URL).pathname==='/goto'}catch{return false}});
+        const wrapper=goto.slice(0,4).map(a=>{const u=new URL(a.getAttribute('href'),d.URL);return {keys:[...u.searchParams].map(([k,v])=>[k,v.length,/^https?:/i.test(v)?new URL(v).hostname:null]),hrefLen:a.getAttribute('href').length,title:(a.querySelector('h3,[role=heading]')?.innerText||a.innerText||'').slice(0,55),unique:new Set(goto.map(x=>x.getAttribute('href'))).size,attrs:[a,a.parentElement,a.firstElementChild].filter(Boolean).map(e=>[e.tagName,[...e.attributes].map(v=>[v.name,/^https?:/i.test(v.value)?new URL(v.value).hostname:null])])}});
         const areas=['#rso','#search [role=main]','#search','#main','main','body'].map(selector=>{const e=d.querySelector(selector);if(!e)return [selector];return [selector,e.querySelectorAll('h3,[role=heading]').length,[...e.querySelectorAll('a[href]')].slice(0,22).map(target),e.innerText?.slice(-150)]});
-        return [{offset:u.searchParams.get('start'),path:d.location.pathname,...(d.readyState!=='loading'?{areas,firstTitles:[...d.querySelectorAll('h3,[role=heading]')].map(n=>n.innerText?.slice(0,32)).slice(0,12)}:{})}];
+        return [{offset:u.searchParams.get('start'),path:d.location.pathname,...(d.readyState!=='loading'?{areas,wrapper,firstTitles:[...d.querySelectorAll('h3,[role=heading]')].map(n=>n.innerText?.slice(0,32)).slice(0,12)}:{})}];
       }catch{return[]}}),
       gapToFirst:(()=>{if(!root||!divider)return null;let h=[...root.querySelectorAll('h3,[role=heading]')].find(h=>h.getBoundingClientRect().height);return h?Math.round(h.getBoundingClientRect().top-divider.getBoundingClientRect().bottom):null})(),
       currentKeys:[...new URL(location.href).searchParams.keys()].sort(),
