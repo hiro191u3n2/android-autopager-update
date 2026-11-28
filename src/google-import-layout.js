@@ -19,6 +19,7 @@ const genericGoogleLayoutPropertiesV647 = [
   'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis',
   'justify-content', 'align-items', 'align-content', 'align-self', 'order',
   'row-gap', 'column-gap', 'grid-template-columns', 'grid-template-rows',
+  'grid-template-areas', 'justify-items', 'justify-self',
   'grid-auto-flow', 'grid-auto-columns', 'grid-auto-rows',
   'grid-column-start', 'grid-column-end', 'grid-row-start', 'grid-row-end',
   'font-family', 'font-size', 'font-style', 'font-weight', 'font-variant',
