@@ -18,6 +18,6 @@ public class MainActivity extends Activity {
         });
         view.setWebChromeClient(new WebChromeClient());
         setContentView(view);
-        view.loadData("<html><head><meta name=viewport content=\\"width=device-width\\"><title>Pager QA</title></head><body>Ready</body></html>", "text/html", "utf-8");
+        view.loadData("<html><head><meta name='viewport' content='width=device-width'><title>Pager QA</title></head><body>Ready</body></html>", "text/html", "utf-8");
     }
 }
