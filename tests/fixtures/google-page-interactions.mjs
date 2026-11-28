@@ -1,6 +1,6 @@
 import { gapPage } from './google-leading-gap.mjs';
 
-export const residualGaps = ['padding', 'root-margin', 'stack', 'clipped', 'status', 'empty-frame', 'late'];
+export const residualGaps = ['padding', 'root-margin', 'stack', 'clipped', 'status', 'empty-frame', 'ad-frame', 'overlay', 'late'];
 export const preservedStarts = ['hero', 'caption', 'live-frame'];
 export function interactionPage(n, sample) {
   let page = gapPage(n, 'short').replace('<div data-slot style="height:8px"></div>', '');
@@ -20,11 +20,15 @@ export function interactionPage(n, sample) {
     clipped: '<div><div class="slot"><span style="width:0;height:0;overflow:hidden"><span>取得中</span></span></div>',
     status: '<div><div class="slot" role="status" aria-busy="true" aria-label="読み込み中"></div>',
     'empty-frame': '<div><div class="slot"><iframe style="width:100%;height:240px;border:0" src="about:blank"></iframe></div>',
+    'ad-frame': '<div><div class="slot"><iframe title="広告" width="300" height="250" src="about:blank"></iframe></div>',
+    overlay: '<div style="padding-top:250px">',
     late: '<div><div class="slot"><span data-transient>検索中</span></div>',
     hero: '<div style="padding-top:250px;position:relative"><button style="position:absolute;top:20px">予告を再生</button>',
     caption: '<div><p>映画作品の説明</p><div style="height:250px"></div>',
     'live-frame': '<div><div class="slot"><iframe title="地図" srcdoc="映画館"></iframe></div>'
   };
+  if (sample === 'overlay') page = page.replaceAll('<article class="MjjYud"', '<article style="position:relative" class="MjjYud"')
+    .replace(/<a href="([^"]+)"><h3>([^<]+)<\/h3><\/a>/g, '<a aria-label="$2" style="position:absolute;inset:0" href="$1"></a><h3>$2</h3>');
   return page.replace('<div id="rso"><div>', '<div id="rso"' + (sample === 'root-margin' ? ' style="margin-top:250px"' : '') + '>' + parts[sample]);
 }
 

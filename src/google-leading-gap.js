@@ -28,8 +28,8 @@ function collapseGenericGoogleLeadingGap(section) {
   // Mobile Google also uses plain text links for some result titles.
   for (const selector of [headings, 'a[href]']) {
     for (const label of root.querySelectorAll(selector)) {
-      const link = label.closest('a[href]') || label.querySelector('a[href]');
-      if (link && label.textContent.trim() && genericGoogleTailExternalV663(link) &&
+      const link = label.closest('a[href]') || label.querySelector('a[href]') || genericGoogleLeadingOverlay(label, root);
+      if (link && (label.textContent.trim() || link.getAttribute('aria-label')) && genericGoogleTailExternalV663(link) &&
           label.getBoundingClientRect().height > 0 && getComputedStyle(label).visibility === 'visible') {
         first = label;
         break;
@@ -84,6 +84,21 @@ function collapseGenericGoogleLeadingGap(section) {
   if (covered >= 80) for (const slot of blank) slot.node.style.setProperty('display', 'none', 'important');
 }
 
+// Some mobile titles are plain siblings of a stretched, empty result link.
+function genericGoogleLeadingOverlay(label, root) {
+  const title = label.getBoundingClientRect();
+  if (!title.width || !title.height) return null;
+  for (let p = label.parentElement, depth = 0; p && p !== root && depth < 3; p = p.parentElement, depth++) {
+    for (const a of p.children) {
+      if (!a.matches('a[href]') || !genericGoogleTailExternalV663(a)) continue;
+      const r = a.getBoundingClientRect();
+      if (r.left <= title.left + 2 && r.right >= title.left + Math.min(title.width / 2, 100) &&
+          r.top <= title.top + 2 && r.bottom >= title.bottom - 2) return a;
+    }
+  }
+  return null;
+}
+
 function genericGoogleLeadingPaddingPaint(node, padding) {
   if (node.shadowRoot || node.matches('a,button,[role="img"],[role="button"]')) return true;
   for (const pseudo of ['::before', '::after']) {
@@ -127,7 +142,8 @@ function genericGoogleSlotHasContent(slot) {
     // Detached blank embeds have no producer. Keep any authored source,
     // lazy-load hint, srcdoc, or frame with an actual document inside it.
     if (node.matches('iframe') && (!node.getAttribute('src') || node.getAttribute('src') === 'about:blank') &&
-        !node.matches('[srcdoc],[data-src],[data-url],[data-lazy-src],[aria-label],[title]')) {
+        !node.matches('[srcdoc],[data-src],[data-url],[data-lazy-src]') &&
+        (!node.matches('[aria-label],[title]') || /^(?:広告|advertisement|ad)$/i.test((node.getAttribute('aria-label') || node.title || '').trim()))) {
       try {
         const body = node.contentDocument?.body;
         if (body && !body.childElementCount && !body.textContent.trim() && !illustrated(css)) continue;
