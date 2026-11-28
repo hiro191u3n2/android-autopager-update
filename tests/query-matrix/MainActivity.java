@@ -10,6 +10,7 @@ public class MainActivity extends Activity {
         view.getSettings().setJavaScriptEnabled(true);
         view.getSettings().setDomStorageEnabled(true);
         view.getSettings().setUseWideViewPort(true);
+        view.getSettings().setLoadWithOverviewMode(true);
         view.setWebViewClient(new WebViewClient(){
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request){return false;}
             @Override public boolean shouldOverrideUrlLoading(WebView view, String url){return false;}
@@ -17,6 +18,6 @@ public class MainActivity extends Activity {
         });
         view.setWebChromeClient(new WebChromeClient());
         setContentView(view);
-        view.loadData("<html><body>Ready</body></html>", "text/html", "utf-8");
+        view.loadData("<html><head><meta name=viewport content=\\"width=device-width\\"><title>Pager QA</title></head><body>Ready</body></html>", "text/html", "utf-8");
     }
 }

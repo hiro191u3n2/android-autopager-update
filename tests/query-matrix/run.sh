@@ -30,12 +30,22 @@ test "$boot" = 1
 adb shell settings put global hide_error_dialogs 1
 adb shell wm size 720x1440
 adb shell wm density 320
+adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
+adb shell settings put global window_animation_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global animator_duration_scale 0
+if [ "$image" = '37.0' ]; then adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton; fi
 adb shell settings put system screen_off_timeout 2147483647
 adb install --no-incremental -r "$out/pager.apk"
-adb shell am start -n jp.hiro.autopager.webviewtest/.MainActivity
-for i in $(seq 1 45); do sock=$(adb shell cat /proc/net/unix | sed -n 's/.*@\(webview_devtools_remote_[0-9]*\).*/\1/p' | head -1 | tr -d '\r'); [ -z "$sock" ] || break; sleep 1; done
-test -n "$sock"
+adb shell am start -W -n jp.hiro.autopager.webviewtest/.MainActivity
+pid=$(adb shell pidof jp.hiro.autopager.webviewtest | tr -d '\r')
+test -n "$pid"
+sock=webview_devtools_remote_"$pid"
+for i in $(seq 1 45); do if adb shell cat /proc/net/unix | grep -F "@$sock" > /dev/null; then break; fi; sleep 1; done
+adb shell dumpsys window >evidence/window.txt
+adb shell dumpsys activity activities >evidence/activity.txt
+adb logcat -d -t 900 >evidence/logcat.txt
 adb forward tcp:9444 localabstract:"$sock"
 adb shell dumpsys webviewupdate >evidence/provider.txt
 echo '15ef8d4a0615d9d513a290a9c23a77983dad4dd25f576b0f4d96467f25fe78d0  android-generic-autopager.user.js' | sha256sum -c -

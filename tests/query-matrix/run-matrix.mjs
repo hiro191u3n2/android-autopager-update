@@ -4,7 +4,16 @@ import {connect,sleep} from './cdp.mjs';
 const [script,output,which='all',backend='native']=process.argv.slice(2);const source=readFileSync(script,'utf8');
 let chosen=which==='all'?terms.map((_,i)=>i):which.split(',').map(Number);
 const done=new Set();try{for(const l of readFileSync(output,'utf8').trim().split('\n'))done.add(JSON.parse(l).index);}catch{}
-const c=await connect();await c.send('Network.enable');await c.send('Network.setCacheDisabled',{cacheDisabled:true});
+const c=await connect();
+let ready;
+for(let i=0;i<80;i++){
+ ready=await c.val('({title:document.title,visible:document.visibilityState,w:innerWidth,h:innerHeight,scrollWidth:document.documentElement?.scrollWidth,text:document.body?.innerText})');
+ if(ready?.title==='Pager QA'&&ready.visible==='visible'&&ready.w>=250&&ready.h>=300)break;
+ await sleep(250);
+}
+console.log('APP_SURFACE',JSON.stringify(ready));
+if(ready?.title!=='Pager QA'||ready.visible!=='visible'||ready.w<250||ready.h<300)throw Error('Expected the foreground test WebView at phone size');
+await c.send('Network.enable');await c.send('Network.setCacheDisabled',{cacheDisabled:true});
 await c.send('Page.addScriptToEvaluateOnNewDocument',{source});
 if(backend==='mobile'){await c.send('Emulation.setDeviceMetricsOverride',{width:390,height:800,deviceScaleFactor:1,mobile:true});await c.send('Emulation.setTouchEmulationEnabled',{enabled:true});}console.log(await c.val('navigator.userAgent'));
 let current,req=[],errors=[];
@@ -24,7 +33,7 @@ for(const index of chosen.filter(n=>!done.has(n))){
  let result, failures=[];
  for(let k=0;k<180;k++){
    await sleep(backend==='native'?250:100);
-   try{result=await c.val(`(()=>{const pages=[...document.querySelectorAll('.generic-autopager-page')];window.scrollBy(0,Math.max(400,innerHeight*.9));const cards=[...document.querySelectorAll('[data-qa-item]')].filter(e=>e.getBoundingClientRect().height>0);const ids=cards.map(e=>e.dataset.qaItem);const isVisible=e=>e.getBoundingClientRect().height>0&&getComputedStyle(e).visibility!=='hidden';return {url:location.href, pages:pages.map(e=>Number(e.dataset.page)), sources:pages.map(e=>new URL(e.dataset.sourceUrl).searchParams.get('q')),ids, leak:[...document.querySelectorAll('[data-recipe-card],[data-offer],[data-band]')].filter(isVisible).length,overflow:document.documentElement.scrollWidth-innerWidth,y:Math.round(scrollY),p5top:pages[3]?.getBoundingClientRect().top,status:document.getElementById('generic-autopager-status-v2')?.textContent,detail:document.getElementById('generic-autopager-status-v2')?.title}})()`);}catch{continue;}
+   try{result=await c.val(`(()=>{const pages=[...document.querySelectorAll('.generic-autopager-page')];window.scrollBy(0,Math.max(400,innerHeight*.9));const cards=[...document.querySelectorAll('[data-qa-item]')].filter(e=>e.getBoundingClientRect().height>0);const ids=cards.map(e=>e.dataset.qaItem);const isVisible=e=>e.getBoundingClientRect().height>0&&getComputedStyle(e).visibility!=='hidden';return {width:innerWidth,height:innerHeight,visible:document.visibilityState,url:location.href, pages:pages.map(e=>Number(e.dataset.page)), sources:pages.map(e=>new URL(e.dataset.sourceUrl).searchParams.get('q')),ids, leak:[...document.querySelectorAll('[data-recipe-card],[data-offer],[data-band]')].filter(isVisible).length,overflow:document.documentElement.scrollWidth-innerWidth,y:Math.round(scrollY),p5top:pages[3]?.getBoundingClientRect().top,status:document.getElementById('generic-autopager-status-v2')?.textContent,detail:document.getElementById('generic-autopager-status-v2')?.title}})()`);}catch{continue;}
    if(result.pages.length>=4&&result.p5top<900)break;
    if(errors.length||req.some(([q])=>q!==current)||((Date.now()-before)>1800 && req.length>=2 && /制限|検出|取得でき|確認画面|同意画面|\.at is not|^停止/.test((result.status||'')+(result.detail||''))))break;
    if(Date.now()-before>(backend==='native'?60000:8000))break;
@@ -35,6 +44,6 @@ for(const index of chosen.filter(n=>!done.has(n))){
  if(Array.from({length:5},(_,n)=>[0,1,2].map(i=>'item-'+(n+1)+'-'+i)).flat().some(id=>!ids.includes(id)))failures.push('missing-organic');
  if(new Set(ids).size!==ids.length)failures.push('duplicate-organic');
  if(result?.leak)failures.push('leaked-module');if(result?.overflow>2)failures.push('overflow');if(errors.length)failures.push('js-error');
- const record={index,q:current,failures,requests:req.slice(),result,errors:errors.slice(0,4),elapsed:Date.now()-before};appendFileSync(output,JSON.stringify(record)+'\n');console.log(index,current,failures.join(',')||'PASS',record.elapsed);
+ const record={index,q:current,failures,requests:req.slice(),result,errors:errors.slice(0,4),elapsed:Date.now()-before};appendFileSync(output,JSON.stringify(record)+'\n');console.log(index,current,failures.join(',')||'PASS',record.elapsed,failures.length?JSON.stringify(record):'');
 }
 c.close();
