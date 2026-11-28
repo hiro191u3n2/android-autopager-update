@@ -28,7 +28,7 @@ try{
       await c.send('Page.navigate',{url:'about:blank'});
       await wait('location.href==="about:blank"');
       await c.send('Page.navigate',{url});
-      await wait('(scrollTo(0,document.documentElement.scrollHeight),!!document.querySelector(\'[data-reading="7"]\'))');
+      await wait('(scrollTo(0,document.documentElement?.scrollHeight||0),!!document.querySelector(\'[data-reading="7"]\'))');
       const r=await c.val('('+measureReadingOrder.toString()+')()');
       const doc=await c.send('DOM.getDocument');
       const button=await c.send('DOM.querySelector',{nodeId:doc.root.nodeId,selector:'[data-reading="3"] [data-narrator]'});
