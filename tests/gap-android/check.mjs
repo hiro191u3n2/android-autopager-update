@@ -13,7 +13,12 @@ c.on('Fetch.requestPaused',async ({requestId,request})=>{
   const u=new URL(request.url), search=u.hostname==='www.google.com'&&u.pathname==='/search';
   const n=1+Number(u.searchParams.get('start'))/10;
   const html=search&&n<=4?gapPage(n,sample):'<main>終了</main>';
-  await c.send('Fetch.fulfillRequest',{requestId,responseCode:search?200:404,responseHeaders:[{name:'Content-Type',value:'text/html; charset=utf-8'},{name:'Cache-Control',value:'no-store'}],body:Buffer.from(html).toString('base64')});
+  try {
+    await c.send('Fetch.fulfillRequest',{requestId,responseCode:search?200:404,responseHeaders:[{name:'Content-Type',value:'text/html; charset=utf-8'},{name:'Cache-Control',value:'no-store'}],body:Buffer.from(html).toString('base64')});
+  } catch (error) {
+    // A prefetched frame can be discarded when we navigate to the next test.
+    if (!/Invalid InterceptionId|Invalid interception id/i.test(error.message)) failures.push(error.message);
+  }
 });
 await c.send('Fetch.enable',{patterns:[{urlPattern:'*'}]});
 const records=[];
