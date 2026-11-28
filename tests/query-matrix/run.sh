@@ -38,6 +38,9 @@ adb shell settings put global animator_duration_scale 0
 if [ "$image" = '37.0' ]; then adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton; fi
 adb shell settings put system screen_off_timeout 2147483647
 adb install --no-incremental -r "$out/pager.apk"
+# Let the Android 17 navigation-mode change and boot-time updates finish before starting WebView.
+sleep 30
+adb logcat -c
 adb shell am start -W -n jp.hiro.autopager.webviewtest/.MainActivity
 pid=$(adb shell pidof jp.hiro.autopager.webviewtest | tr -d '\r')
 test -n "$pid"
@@ -51,7 +54,17 @@ adb shell dumpsys webviewupdate >evidence/provider.txt
 candidate="$RUNNER_TEMP/qa-candidate"
 node scripts/build-release.mjs "$PWD" "$candidate" 6.78.0
 echo "7e40964c72d3caa0b2c59c3b49405994203b85a7ba198c57b16e3698454ec574  $candidate/android-generic-autopager.user.js" | sha256sum -c -
+set +e
 node "$harness/run-matrix.mjs" "$candidate/android-generic-autopager.user.js" evidence/results.jsonl "$(seq -s, "$3" "$4")"
+test_status=$?
+set -e
+adb logcat -d -t 6000 >evidence/completed-logcat.txt
+adb shell dumpsys activity exit-info jp.hiro.autopager.webviewtest >evidence/app-exits.txt
+if [ "$test_status" -ne 0 ]; then
+  adb shell pidof jp.hiro.autopager.webviewtest || true
+  rg -i 'FATAL EXCEPTION|Fatal signal|low memory|Killing.*(webviewtest|sandboxed_process)|Render process gone' evidence/completed-logcat.txt | tail -30 || true
+  exit "$test_status"
+fi
 python - "$3" "$4" <<'PY'
 import sys,json
 rows=[json.loads(l) for l in open('evidence/results.jsonl')]
