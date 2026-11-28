@@ -20,6 +20,10 @@ assert(oldCleanupEnd > 2);
 const oldCleanup = frozen669Body.slice(2, oldCleanupEnd);
 const prefix = `\n\n${oldCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const restoreVisibleSizes = text => text.replace(/      \/\/ A viewport with out-of-flow artwork[\s\S]*?(?=      styles\.push\(\{)/, '');
+executable = restoreVisibleSizes(executable);
+const frozen679 = await readFile(new URL('../Android_Generic_AutoPager_v6.79.js', import.meta.url), 'utf8');
+assert(executable === frozen679.slice(frozen679.indexOf(END) + END.length), 'Only the map viewport and control sizing repair may differ from v6.79');
 const leadingGap = (await readFile(new URL('../src/google-leading-gap.js', import.meta.url), 'utf8')).trim();
 for (const added of [leadingGap + '\n', 'if(r)collapseGenericGoogleLeadingGap(u);']) {
   assert.equal(executable.split(added).length, 2);
@@ -57,7 +61,7 @@ assert.equal(executable.split(googleCleanup).length, 2);
 executable = executable.replace(googleCleanup, () => oldCleanup);
 const layoutMarker = '// Google loads result-specific CSS in each fetched document.';
 const stagingMarker = '// Prepare only a detached Google result page.';
-const packagedLayout = restoreWebView83Edits((await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim());
+const packagedLayout = restoreVisibleSizes(restoreWebView83Edits((await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim()));
 assert.equal(createHash('sha256').update(packagedLayout).digest('hex'),
   'bf9c4166603319eaca5e3906f89d0fa2a9e3f3b8f4d606a4f6e9eefad295d697', 'Reviewed collapsed-panel layout snapshot');
 const layoutStart669 = frozen669Body.indexOf(layoutMarker), layoutEnd669 = frozen669Body.indexOf(stagingMarker);

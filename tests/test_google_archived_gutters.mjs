@@ -54,16 +54,28 @@ async function measure(script) {
       return title && box.height ? [{ title: title.innerText, y: Math.round(box.top + scrollY) - 4 }] : [];
     }));
     const shot = PNG.sync.read(await page.screenshot({ fullPage: true, scale: 'css', animations: 'disabled' }));
-    return headers.map(({ title, y }) => ({ title, gutter: [4, 40, 240, 470, 494].map(x => {
+    const areas = await root.evaluate(node => {
+      const map = node.querySelector('[data-src*="/maps/vt/"]');
+      const action = [...node.querySelectorAll('a')].find(a => a.textContent.includes('View 1,411 hotels'));
+      const label = [...action.querySelectorAll('*')].find(el => getComputedStyle(el).display === 'flex');
+      return [map, label, action].map(el => Math.round(el.getBoundingClientRect().height));
+    });
+    const gutters = headers.map(({ title, y }) => ({ title, gutter: [4, 40, 240, 470, 494].map(x => {
       assert(y >= 0 && y < shot.height && x < shot.width);
       return shot.data.readUInt32BE((y * shot.width + x) * 4);
     }) }));
+    return { gutters, areas };
   } finally { await context.close(); }
 }
 try {
-  const native = await measure(null);
-  const previous = await measure(await readFile(new URL('../Android_Generic_AutoPager_v6.67.js', import.meta.url), 'utf8'));
-  const current = await measure(await buildUserscript());
+  const { gutters: native, areas } = await measure(null);
+  const { gutters: previous } = await measure(await readFile(new URL('../Android_Generic_AutoPager_v6.67.js', import.meta.url), 'utf8'));
+  const old = await measure(await readFile(new URL('../Android_Generic_AutoPager_v6.79.js', import.meta.url), 'utf8'));
+  const { gutters: current, areas: restored } = await measure(await buildUserscript());
+  assert.deepEqual(areas, [120, 40, 56]);
+  assert.deepEqual(old.areas, [0, 20, 36]);
+  assert.deepEqual(restored, areas);
+  console.log('PASS archived Google hotel map, footer button and tap area:', old.areas, '=>', restored);
   assert.deepEqual(previous.map(r => r.title), native.map(r => r.title));
   assert.deepEqual(current.map(r => r.title), native.map(r => r.title));
   const nativeGrey = 0xf1f3f4ff;
