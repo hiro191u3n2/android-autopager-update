@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.79.0';
+export const VERSION = '6.80.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -155,6 +155,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google検索の連続スクロールで、別の検索語への移動、ページ飛ばし、先頭8リンクの一致や確認画面の文言による誤停止、古いWebViewでの区切り処理エラーを修正。');
   header = header.replace('// @description  ', '// @description  Google検索のページ追加で、サイト指定・言語・地域などの検索条件が外れる問題を修正。');
   header = header.replace('// @description  ', '// @description  Google検索の追加ページで、ページ見出しと先頭の検索結果の間に残る大きな空枠を折りたたみます。');
+  header = header.replace('// @description  ', '// @description  Googleの追加ページで地図が消えたりボタンのタップ範囲が縮んだりする問題を修正。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;

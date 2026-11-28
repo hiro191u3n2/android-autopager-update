@@ -237,6 +237,34 @@ function captureGenericGoogleLayoutV647(root) {
           }
         }
       }
+      // A viewport with out-of-flow artwork has no intrinsic content height.
+      // Leave its height responsive when the source uses percentages or calc().
+      if (!media && computed.position === 'relative' && /^(?:hidden|clip)$/.test(computed.overflowY) &&
+          parseFloat(computed.height) > 0 && node.childElementCount && !titleContainers.has(node)) {
+        const children = Array.from(node.children);
+        if (children.some(child => view.getComputedStyle(child).position === 'absolute') &&
+            children.every(child => {
+              const style = view.getComputedStyle(child);
+              return style.position === 'absolute' || style.display === 'none';
+            })) {
+          const authored = node.computedStyleMap?.().get('height');
+          values.push(['height', authored && String(authored) !== 'auto' ? String(authored) : computed.height]);
+        }
+      }
+      // Preserve the source's explicit tap area as a minimum. Longer labels
+      // can still wrap and grow, including after a title has been restored.
+      if (!positioned && !media && !decoration && !collapsed && !titleContainers.has(node) &&
+          node.closest('a[href],button,[role="button"]') && parseFloat(computed.height) > 0) {
+        const authored = node.computedStyleMap?.().get('height');
+        const height = authored ? String(authored) : node.style.height;
+        const minimum = computed.minHeight;
+        if (/^[\d.]+px$/.test(height) && parseFloat(height) > 0) {
+          const floor = minimum === 'auto' || minimum === '0px' ? height : 'max(' + height + ',' + minimum + ')';
+          values.push(['min-height', view.CSS.supports('min-height', floor) ? floor : minimum]);
+        } else if (minimum !== 'auto' && minimum !== '0px') {
+          values.push(['min-height', minimum]);
+        }
+      }
       styles.push({
         values,
         pseudos: computed.display === 'none' ? [] : getGenericGoogleLayoutPseudosV662(node, view),
