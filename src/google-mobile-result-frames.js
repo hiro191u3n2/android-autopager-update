@@ -119,7 +119,7 @@ function repairGenericGoogleMobileFramesV668(page) {
     }
     const a = rect(anchor);
     const start = Math.min(a.top, m.top, address ? rect(address).top : a.top);
-    if (rows.length && start <= rect(rows.at(-1).title).bottom + 3) continue;
+    if (rows.length && start <= rect(rows[rows.length - 1].title).bottom + 3) continue;
     used.add(title);
     rows.push({ anchor, menu, title, address, start });
   }

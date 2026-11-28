@@ -575,7 +575,7 @@ function getGenericGoogleResultSurfaceV660(record, root, rect, style) {
   const colored = color => color && color !== 'transparent' && !/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(color);
   for (let node = record.title; node && node !== root; node = node.parentElement) {
     const s = style(node), r = rect(node), color = s.backgroundColor;
-    const alpha = /^rgba\(/.test(color) ? Number.parseFloat(color.split(',').at(-1)) : 1;
+    const alpha = /^rgba\(/.test(color) ? Number.parseFloat(color.slice(color.lastIndexOf(',') + 1)) : 1;
     if (node.contains(record.source) && colored(color) && alpha === 1 &&
         s.visibility === 'visible' && Number.parseFloat(s.opacity || '1') === 1 &&
         Math.abs(r.left - box.left) <= 1 && Math.abs(r.right - box.right) <= 1 &&

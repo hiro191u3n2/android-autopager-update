@@ -1,6 +1,7 @@
 // Recovery invariant tests. Original browser regression sources were pruned.
 // Do not describe byte-preservation checks as live-site playback/browser tests.
 import assert from 'node:assert/strict';
+import { GOOGLE_PAGINATION_REPLACEMENTS } from '../worker/index.js';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { buildUserscript, REALTIME_GUARD, PRODUCT_GUARD, MODULE_REPLACEMENTS, COMMERCE_IMAGE_REPLACEMENTS, GOOGLE_LAYOUT_REPLACEMENTS, GOOGLE_STAGING_REPLACEMENTS, GOOGLE_READ_AHEAD_REPLACEMENTS, GOOGLE_FRAME_PREPARATION_REPLACEMENTS, END, VERSION } from '../worker/index.js';
@@ -19,6 +20,20 @@ assert(oldCleanupEnd > 2);
 const oldCleanup = frozen669Body.slice(2, oldCleanupEnd);
 const prefix = `\n\n${oldCleanup}\n${realtime}\n${gallery}\n`;
 let executable = output.slice(output.indexOf(END) + END.length);
+const pagination = (await readFile(new URL('../src/google-pagination.js', import.meta.url), 'utf8')).trim();
+assert.equal(executable.split(pagination + '\n').length, 2);
+executable = executable.replace(pagination + '\n', '');
+for (const [previous, changed] of GOOGLE_PAGINATION_REPLACEMENTS) {
+  assert.equal(executable.split(changed).length, 2);
+  executable = executable.replace(changed, () => previous);
+}
+const frozen676 = await readFile(new URL('../Android_Generic_AutoPager_v6.76.js', import.meta.url), 'utf8');
+const restoreWebView83Edits = text => text
+  .replace("color.slice(color.lastIndexOf(',') + 1)", "color.split(',').at(-1)")
+  .replace('rows[rows.length - 1].title', 'rows.at(-1).title');
+executable = restoreWebView83Edits(executable);
+assert(executable === frozen676.slice(frozen676.indexOf(END) + END.length),
+  'Only the reviewed Google pagination changes may differ from v6.76');
 const gridHook = 'if(r)pruneGenericGoogleFeaturedProductsV672?.(u);';
 assert.equal(executable.split(gridHook + 'for(const t of u.querySelectorAll(s))t.remove();').length, 2);
 executable = executable.replace(gridHook, '');
@@ -26,7 +41,7 @@ assert.equal(executable.split(googleCleanup).length, 2);
 executable = executable.replace(googleCleanup, () => oldCleanup);
 const layoutMarker = '// Google loads result-specific CSS in each fetched document.';
 const stagingMarker = '// Prepare only a detached Google result page.';
-const packagedLayout = (await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim();
+const packagedLayout = restoreWebView83Edits((await readFile(new URL('../src/google-import-layout.js', import.meta.url), 'utf8')).trim());
 assert.equal(createHash('sha256').update(packagedLayout).digest('hex'),
   'bf9c4166603319eaca5e3906f89d0fa2a9e3f3b8f4d606a4f6e9eefad295d697', 'Reviewed collapsed-panel layout snapshot');
 const layoutStart669 = frozen669Body.indexOf(layoutMarker), layoutEnd669 = frozen669Body.indexOf(stagingMarker);
@@ -45,7 +60,7 @@ executable = executable.replace(readAhead669, () => currentReadAhead);
 assert.equal(createHash('sha256').update(executable).digest('hex'),
   '2c6a91179a3f8a14347dc047bf9b5d17be51412a8ff1d49b38cc044cbe376be9',
   'Executable outside the standalone video deduplicator must match the published v6.68');
-const mobileFrames = (await readFile(new URL('../src/google-mobile-result-frames.js', import.meta.url), 'utf8')).trim();
+const mobileFrames = restoreWebView83Edits((await readFile(new URL('../src/google-mobile-result-frames.js', import.meta.url), 'utf8')).trim());
 const paintHook = 'if(r){repairGenericGoogleResultBoundariesV658(u);repairGenericGoogleMobileFramesV668(u)}';
 assert.equal(executable.split(mobileFrames + '\n').length, 2, 'Mobile framing module must be included once');
 assert.equal(executable.split(paintHook).length, 2, 'Mobile framing hook must be included once');

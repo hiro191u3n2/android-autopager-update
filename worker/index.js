@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.76.0';
+export const VERSION = '6.77.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -26,6 +26,11 @@ export const GOOGLE_LAYOUT_REPLACEMENTS = [
   ['const m=()=>{r&&t.googleFixBrokenMultiImageRichResults&&(y(u,i),M(u))}', 'const m=()=>{r&&t.googleFixBrokenMultiImageRichResults&&(y(u,i),M(u));if(r)repairGenericGoogleResultBoundariesV658(u)}'],
 ];
 // Keep Google titles and recurring tail controls settled before they are shown.
+export const GOOGLE_PAGINATION_REPLACEMENTS = [
+  ["const o=[\"a#pnnext[href]\",'a[aria-label=\"Next page\"][href]','a[aria-label=\"次へ\"][href]','a[aria-label*=\"次のページ\"][href]','a[rel~=\"next\" i][href]','nav a[href*=\"start=\"]','[role=\"navigation\"] a[href*=\"start=\"]','a[href*=\"/search?\"][href*=\"start=\"]'];for(const c of o)for(const o of e.querySelectorAll(c)){const e=et(o,n);if(!nt(e,n))continue;const r=rt(n),i=rt(e);if(!r||!i)continue;const a=V(r.searchParams.get(\"start\"))??0,s=V(i.searchParams.get(\"start\"));if(null!==s&&s>a)return t.googleForceJapaneseUi?b(i.href):i.href}", 'const next=genericGoogleForwardLink(e,n);if(next)return t.googleForceJapaneseUi?b(next):next;'],
+  ['function U(t){const e=', 'function U(t){const result=genericGoogleResultOrGate(t);if(result!==null)return result;const e='],
+  ['if(!o.has(s)&&(o.add(s),n.push(s),n.length>=8))break', 'if(!o.has(s)){o.add(s);n.push(s)}'],
+];
 export const GOOGLE_STAGING_REPLACEMENTS = [
   ["if(!u||!u.childElementCount)throw new Error(\"追加できる本文がありません\");","if(!u||!u.childElementCount)throw new Error(\"追加できる本文がありません\");if(r){cleanGenericGoogleImportedTailV663(u);if(t.googleRestoreYouTubeOriginalTitles)await prepareGenericGoogleTitlesV663(u,S,C,v)}"],
   [",r&&t.googleRestoreYouTubeOriginalTitles&&async function(t){if(!t)return;const e=new Set,n=[];for(const i of t.querySelectorAll(\"a[href]\")){const o=S(i.getAttribute(\"href\")||i.href);if(!o)continue;let r=i;for(let e=0;r&&r!==t&&e<9&&!r.querySelector?.('h3,[role=\"heading\"]');e+=1)r=r.parentElement;if(!r||r===t||e.has(r))continue;e.add(r);const a=r.querySelector(\"h3\")||Array.from(r.querySelectorAll('[role=\"heading\"]')).find(t=>{const e=Number(t.getAttribute(\"aria-level\")||0);return!e||e>=2});if(!a)continue;const s=w(r,a);s&&v(a,s),n.push({titleElement:a,video:o})}let o=0;const r=Math.min(3,n.length);await Promise.all(Array.from({length:r},async()=>{for(;o<n.length;){const{titleElement:t,video:e}=n[o];o+=1;try{const n=await C(e);if(!n||!t.isConnected)continue;v(t,n)}catch{}}}))}(u);",";/* generic-google-titles-prepared-v663 */"],
@@ -86,7 +91,7 @@ export async function buildUserscript() {
     assert.equal(body.split(from).length, 2, 'Generic image hydration boundary changed');
     body = body.replace(from, to);
   }
-  for (const [from, to] of GOOGLE_STAGING_REPLACEMENTS) {
+  for (const [from, to] of [...GOOGLE_PAGINATION_REPLACEMENTS, ...GOOGLE_STAGING_REPLACEMENTS]) {
     assert.equal(body.split(from).length, 2, 'Google staging boundary changed');
     body = body.replace(from, to);
   }
@@ -109,12 +114,13 @@ export async function buildUserscript() {
   assert.equal(body.split(oldPaint).length, 2, 'Google result boundary hook changed');
   body = body.replace(oldPaint, 'if(r){repairGenericGoogleResultBoundariesV658(u);repairGenericGoogleMobileFramesV668(u)}');
   const googleMobileFrames = (await readFile(new URL('src/google-mobile-result-frames.js', root), 'utf8')).trim();
+  const pagination = (await readFile(new URL('src/google-pagination.js', root), 'utf8')).trim();
   const googleLayout = (await readFile(new URL('src/google-import-layout.js', root), 'utf8')).trim();
   const googleStaging = (await readFile(new URL('src/google-import-staging.js', root), 'utf8')).trim();
   const googleReadAhead = (await readFile(new URL('src/google-read-ahead.js', root), 'utf8')).trim();
   const googleFramePreparation = (await readFile(new URL('src/google-frame-preparation.js', root), 'utf8')).trim();
   assert.equal(body.split('function e(){').length, 2, 'Google layout helper boundary changed');
-  body = body.replace('function e(){', () => `${googleLayout}\n${googleStaging}\n${googleReadAhead}\n${googleFramePreparation}\n${googleMobileFrames}\nfunction e(){`);
+  body = body.replace('function e(){', () => `${googleLayout}\n${googleStaging}\n${pagination}\n${googleReadAhead}\n${googleFramePreparation}\n${googleMobileFrames}\nfunction e(){`);
   let header = baseline.slice(0, end).replace(/^(\/\/ @version\s+)6\.44\.0$/m, `$1${VERSION}`);
   header = header.replace('// @description  ', '// @description  Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。');
   header = header.replace('// @description  ', '// @description  服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。');
@@ -142,6 +148,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google検索の商品欄から取り残された価格帯と空の開閉行を非表示にします。');
   header = header.replace('// @description  ', '// @description  Google検索の「その他の画像」の直後に残る空行と価格帯を、リンクやボタンの形式によらずまとめて除去。');
   header = header.replace('// @description  ', '// @description  Google検索の画像一覧の下に残る、開閉ボタン付きの価格帯を余白と区切り線ごと非表示にします。');
+  header = header.replace('// @description  ', '// @description  Google検索の連続スクロールで、別の検索語への移動、ページ飛ばし、先頭8リンクの一致や確認画面の文言による誤停止、古いWebViewでの区切り処理エラーを修正。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
