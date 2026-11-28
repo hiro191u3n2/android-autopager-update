@@ -196,6 +196,11 @@ function captureGenericGoogleLayoutV647(root) {
       if (node.matches('script,style,link,meta,template')) { styles.push(null); continue; }
       const computed = view.getComputedStyle(node);
       const values = getGenericGoogleLayoutValuesV662(computed);
+      // getComputedStyle returns pixel tracks even for a fluid CSS grid.
+      if (computed.display === 'grid' || computed.display === 'inline-grid') {
+        const tracks = node.computedStyleMap?.().get('grid-template-columns');
+        if (tracks && String(tracks) !== 'none') values.push(['grid-template-columns', String(tracks)]);
+      }
       if (computed.display === 'none') hiddenBranches.add(node);
       const positioned = /^(?:absolute|fixed)$/.test(computed.position);
       const media = mediaFrames.has(node) || node.matches('img,video,canvas,svg');

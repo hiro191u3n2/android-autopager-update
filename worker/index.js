@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-export const VERSION = '6.80.0';
+export const VERSION = '6.81.0';
 export const BASELINE_BLOB = 'ee0c1d906375c7d34ebc3046719abef10d42c7ae';
 export const CORE_START = 'function e(){if(window.__genericFashionAutoPagerV641)return;';
 export const REALTIME_GUARD = 'if(/^search\\.yahoo\\.co\\.jp$/i.test(location.hostname)&&/^\\/realtime\\/search\\/?$/i.test(location.pathname))return;';
@@ -119,12 +119,16 @@ export async function buildUserscript() {
   const googleStaging = (await readFile(new URL('src/google-import-staging.js', root), 'utf8')).trim();
   const googleReadAhead = (await readFile(new URL('src/google-read-ahead.js', root), 'utf8')).trim();
   const leadingGap = (await readFile(new URL('src/google-leading-gap.js', root), 'utf8')).trim();
+  const localReferences = (await readFile(new URL('src/google-local-references.js', root), 'utf8')).trim();
+  const cloneReady = 'u.dataset.genericAutopagerPage=String(o),i.appendChild(u)';
+  assert.equal(body.split(cloneReady).length, 2, 'Expected one Google clone mount');
+  body = body.replace(cloneReady, 'u.dataset.genericAutopagerPage=String(o),scopeGenericGoogleReferences(u,o),i.appendChild(u)');
   const appended = 'if(genericGoogleReadAheadV665)genericGoogleReadAheadV665.appended(u);';
   assert.equal(body.split(appended).length, 2, 'Expected one Google page append hook');
-  body = body.replace(appended, appended + 'if(r)collapseGenericGoogleLeadingGap(u);');
+  body = body.replace(appended, appended + 'if(r)checkGenericGooglePageStart(u);');
   const googleFramePreparation = (await readFile(new URL('src/google-frame-preparation.js', root), 'utf8')).trim();
   assert.equal(body.split('function e(){').length, 2, 'Google layout helper boundary changed');
-  body = body.replace('function e(){', () => `${googleLayout}\n${googleStaging}\n${pagination}\n${googleReadAhead}\n${googleFramePreparation}\n${googleMobileFrames}\n${leadingGap}\nfunction e(){`);
+  body = body.replace('function e(){', () => `${googleLayout}\n${googleStaging}\n${pagination}\n${googleReadAhead}\n${googleFramePreparation}\n${googleMobileFrames}\n${leadingGap}\n${localReferences}\nfunction e(){`);
   let header = baseline.slice(0, end).replace(/^(\/\/ @version\s+)6\.44\.0$/m, `$1${VERSION}`);
   header = header.replace('// @description  ', '// @description  Yahooリアルタイム検索の「もっと見る」をスクロールで自動読込。公式ボタン利用・二重読込防止・エラー時の手動操作を維持。');
   header = header.replace('// @description  ', '// @description  服ブランド一覧のスクロール負荷を削減。商品詳細の誤ページ探索防止・CITYHILLサムネイルのタップ補助。');
@@ -156,6 +160,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google検索のページ追加で、サイト指定・言語・地域などの検索条件が外れる問題を修正。');
   header = header.replace('// @description  ', '// @description  Google検索の追加ページで、ページ見出しと先頭の検索結果の間に残る大きな空枠を折りたたみます。');
   header = header.replace('// @description  ', '// @description  Googleの追加ページで地図が消えたりボタンのタップ範囲が縮んだりする問題を修正。');
+  header = header.replace('// @description  ', '// @description  Google追加ページの大きな先頭余白、別ページに向くページ内リンク・入力ラベル、画面幅変更後のグリッドのはみ出しを修正。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;
