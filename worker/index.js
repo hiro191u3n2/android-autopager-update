@@ -141,7 +141,16 @@ export async function buildUserscript() {
   body = body.replace(hiddenPanels, 'pruneGenericGoogleHiddenPanels(t)');
   const appended = 'if(genericGoogleReadAheadV665)genericGoogleReadAheadV665.appended(u);';
   assert.equal(body.split(appended).length, 2, 'Expected one Google page append hook');
-  body = body.replace(appended, appended + 'if(r)checkGenericGooglePageStart(u);');
+  body = body.replace(appended, 'const emptyImportedGooglePage=genericGoogleReadAheadV665?.appended(u)===false;if(r&&!emptyImportedGooglePage)checkGenericGooglePageStart(u);');
+  // A blank source page can point to another genuine page. Follow that link,
+  // but never synthesize endless offsets from a page with no remaining content.
+  const afterPage = 'l.pages+=1,l.retryCount=0,l.nextUrl=$(n,i,l.rule)';
+  const address = 't.updateAddressBar)try{history.replaceState(history.state,"",i)}';
+  const loadedEvent = 'document.dispatchEvent(new CustomEvent("GenericAutoPagerLoaded",{detail:{page:l.pages,url:i,container:u}}))';
+  for (const marker of [afterPage, address, loadedEvent]) assert.equal(body.split(marker).length, 2);
+  body = body.replace(afterPage, 'l.pages+=1,l.retryCount=0,l.nextUrl=emptyImportedGooglePage?genericGoogleForwardLink(n,i):$(n,i,l.rule)')
+    .replace(address, '!emptyImportedGooglePage&&' + address)
+    .replace(loadedEvent, 'emptyImportedGooglePage||' + loadedEvent);
   const googleFramePreparation = (await readFile(new URL('src/google-frame-preparation.js', root), 'utf8')).trim();
   assert.equal(body.split('function e(){').length, 2, 'Google layout helper boundary changed');
   body = body.replace('function e(){', () => `${googleLayout}\n${googleStaging}\n${pagination}\n${googleReadAhead}\n${googleFramePreparation}\n${googleMobileFrames}\n${leadingGap}\n${localReferences}\n${startup}\nfunction e(){`);
@@ -180,6 +189,7 @@ export async function buildUserscript() {
   header = header.replace('// @description  ', '// @description  Google検索で結果欄の生成が遅い場合や、掲載先がGoogleの/gotoリンクで渡される場合に次ページの追加が止まる問題を修正。');
   header = header.replace('// @description  ', '// @description  Googleの追加ページで、映画などの検索結果の見出し・説明・評価・画像が右端に重なる問題を修正。');
   header = header.replace('// @description  ', '// @description  Google検索の追加ページで、別ページの折りたたみが閉じる問題、注釈リンクの再読み込み、読み上げ用の説明の取り違えを修正。');
+  header = header.replace('// @description  ', '// @description  Google検索で結果が残っていないページに区切りだけを追加し、次ページがないのに先読みする問題を修正。');
   const output = `${header}\n\n${googleCleanup.trim()}\n${module.trim()}\n${gallery.trim()}\n${body}`;
   new Function(output);
   return output;

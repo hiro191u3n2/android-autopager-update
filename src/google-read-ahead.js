@@ -49,7 +49,6 @@ function createGenericGoogleReadAheadV665(state, load) {
   };
   const appended = section => {
     if (section?.parentNode === state.target) {
-      latest = section;
       const imported = section.querySelector('.generic-autopager-google-source-root');
       if (imported && valid()) {
         if (!indexedOriginal) {
@@ -61,7 +60,21 @@ function createGenericGoogleReadAheadV665(state, load) {
           indexedOriginal = true;
         }
         indexGenericGoogleResultsV667(imported, state.target, seenResults, true);
+        // A source consisting only of removed navigation or duplicate cards can
+        // leave just the divider. A zero-height wrapper can still paint children
+        // (display:contents, floats or positioned media), so check those boxes too.
+        const box = imported.getBoundingClientRect();
+        if (!box.width || !box.height) {
+          const contents = imported.ownerDocument.createRange();
+          contents.selectNodeContents(imported);
+          if (!Array.from(contents.getClientRects()).some(rect => rect.width > 0 && rect.height > 0)) {
+            section.remove();
+            schedule();
+            return false;
+          }
+        }
       }
+      latest = section;
     }
     schedule();
   };
